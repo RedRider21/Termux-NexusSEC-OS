@@ -172,6 +172,16 @@ Per i pacchetti Kali, la prima volta usa **🐉 Abilita repo Kali**.
 - **Ho aggiornato l'app ma non vedo le novità.**
   Menu → **⏻ Riavvia server**, poi ricarica la pagina (a volte serve ricaricare
   due volte per via della cache).
+- **Nel terminale la tastiera mi mette la maiuscola (es. `Cd` invece di `cd`).**
+  È l'auto-maiuscola della tastiera del telefono. Il terminale interattivo è servito
+  da *ttyd* e non possiamo forzarlo dall'app. Disattiva l'auto-maiuscola nella
+  tastiera: **Gboard → Impostazioni → Correzione testo → Maiuscole automatiche: OFF**
+  (i campi della web-app, invece, hanno già l'auto-maiuscola disattivata).
+- **Ho lanciato uno strumento (es. nmap) ma poi non posso digitare altri comandi.**
+  Le schede con `» run` sono **one-shot**: eseguono *quel* comando e ti mostrano il
+  risultato, non sono una shell. Per digitare comandi liberi e concatenarli, apri il
+  **⌨️ Terminale** (in basso) oppure una scheda `▮ terminale`: lì resti dentro una
+  shell e continui a interagire.
 - **Un tool dice "❌ non su stock".**
   Alcuni strumenti (Wi-Fi in monitor mode, attacchi MITM, programmi grafici) non
   possono funzionare su Android senza root: sono elencati solo per completezza.
