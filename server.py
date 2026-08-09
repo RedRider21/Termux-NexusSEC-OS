@@ -20,22 +20,28 @@ Sicurezza:
 
 from __future__ import annotations
 
+import asyncio
 import atexit
+import os
 import shutil
+import signal
 import socket
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from native import run_native
 from tools import (PROOT, TOOLS, TOR_SOCKS_PORT, detection_targets, exec_prefix,
-                  inner_command, profiles_list, tools_by_category, validate_target)
+                  inner_command, install_command, install_package_command,
+                  install_profile_command, profiles_list, system_command,
+                  tools_by_category, validate_target)
 
 # --------------------------------------------------------------------------- #
 # Configurazione
@@ -140,7 +146,9 @@ def installed_ids() -> set:
     if _INSTALLED["ids"] is not None and now - _INSTALLED["t"] < INSTALL_TTL:
         return _INSTALLED["ids"]
 
-    ids = {tid for tid, t in TOOLS.items() if t.get("mode") == "native"}
+    # "native" (API HTTP) e "stream" (script Python in casa) non dipendono da
+    # un pacchetto installato dall'utente: sono sempre disponibili.
+    ids = {tid for tid, t in TOOLS.items() if t.get("mode") in ("native", "stream")}
     termux_bins, proot_bins = detection_targets()
 
     for tid, b in termux_bins.items():
@@ -277,6 +285,191 @@ def open_terminal(tool_id: str):
     proc = subprocess.Popen(ttyd_cmd)
     _ttyd_procs[tool_id] = (proc, port)
     return {"url": f"http://{HOST}:{port}"}
+
+
+# --------------------------------------------------------------------------- #
+# Flusso live bidirezionale (WebSocket) -> pannello nativo della PWA
+# --------------------------------------------------------------------------- #
+#
+# Come funziona, in due parole:
+#   1. Il browser apre una WebSocket verso questo server locale (127.0.0.1).
+#   2. Il server lancia il comando del tool come processo figlio con pipe su
+#      stdin/stdout (niente shell, argv come lista -> niente injection).
+#   3. Ogni pezzo di output del processo viene spedito subito al browser
+#      ({"type":"out"}) -> l'utente vede il FLUSSO riga per riga.
+#   4. Quando lo script chiede qualcosa (input()), l'utente scrive nel pannello:
+#      il testo arriva qui ({"type":"in"}) e viene scritto sullo stdin del
+#      processo -> interazione bidirezionale.
+# Le pipe (non un PTY) tengono l'output pulito: gli script Python con input()
+# funzionano perfettamente e il testo non contiene codici di terminale.
+
+def _read_chunk(fd: int) -> bytes:
+    """Lettura bloccante di un blocco dallo stdout del processo (b'' a EOF)."""
+    try:
+        return os.read(fd, 4096)
+    except OSError:
+        return b""
+
+
+def _terminate(proc: subprocess.Popen) -> None:
+    """Termina il processo (e il suo gruppo, per i comandi con proot/bash)."""
+    if proc.poll() is not None:
+        return
+    try:
+        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+    except (ProcessLookupError, PermissionError, OSError):
+        try:
+            proc.terminate()
+        except OSError:
+            pass
+
+
+async def _stream_process(ws: WebSocket, argv: list[str], *, allow_input: bool) -> None:
+    """Esegue argv con pipe e ne fa lo streaming sulla WebSocket.
+
+    Condiviso da /api/stream (tool interattivi) e /api/sysstream (manutenzione).
+    `allow_input=True` inoltra i messaggi {type:in} sullo stdin del processo.
+    """
+    env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"        # gli script Python devono stampare subito
+    try:
+        proc = subprocess.Popen(
+            argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, bufsize=0,
+            start_new_session=True, env=env,
+        )
+    except OSError as e:
+        await ws.send_json({"type": "error", "data": f"Avvio fallito: {e}"})
+        await ws.close()
+        return
+
+    await ws.send_json({"type": "start", "data": " ".join(argv)})
+    loop = asyncio.get_running_loop()
+    stop = asyncio.Event()
+
+    async def pump_output() -> None:
+        fd = proc.stdout.fileno()
+        while not stop.is_set():
+            data = await loop.run_in_executor(None, _read_chunk, fd)
+            if not data:
+                break
+            try:
+                await ws.send_json({"type": "out", "data": data.decode(errors="replace")})
+            except (WebSocketDisconnect, RuntimeError):
+                break
+        rc = proc.poll()
+        if rc is None:
+            rc = await loop.run_in_executor(None, proc.wait)
+        try:
+            await ws.send_json({"type": "end", "data": rc})
+            await ws.close()
+        except (WebSocketDisconnect, RuntimeError):
+            pass
+
+    out_task = asyncio.create_task(pump_output())
+    try:
+        while True:
+            msg = await ws.receive_json()
+            kind = msg.get("type")
+            if kind == "in" and allow_input and proc.poll() is None:
+                try:
+                    proc.stdin.write((msg.get("data", "") + "\n").encode())
+                    proc.stdin.flush()
+                except (BrokenPipeError, OSError):
+                    pass
+            elif kind == "sig":          # Ctrl-C dal pannello
+                _terminate(proc)
+                break
+    except WebSocketDisconnect:
+        pass
+    finally:
+        stop.set()
+        _terminate(proc)
+        out_task.cancel()
+
+
+@app.websocket("/api/stream/{tool_id}")
+async def stream_tool(ws: WebSocket, tool_id: str) -> None:
+    await ws.accept()
+    tool = TOOLS.get(tool_id)
+    if tool is None or tool.get("works") is False or tool.get("mode") in (None, "native"):
+        await ws.send_json({"type": "error", "data": "Tool non eseguibile in streaming."})
+        await ws.close()
+        return
+
+    prefix = exec_prefix(tool_id)
+    if prefix and shutil.which("proot-distro") is None:
+        await ws.send_json({"type": "error", "data": "proot-distro non trovato. Lancia install.sh."})
+        await ws.close()
+        return
+
+    # Se il comando esce via Tor (proxychains), assicurati che Tor sia attivo.
+    if any("proxychains4" in part for part in tool.get("cmd", [])):
+        try:
+            ensure_tor()
+        except HTTPException as e:
+            await ws.send_json({"type": "error", "data": str(e.detail)})
+            await ws.close()
+            return
+
+    argv = list(prefix) + list(tool["cmd"])
+    await _stream_process(ws, argv, allow_input=True)
+
+
+# --------------------------------------------------------------------------- #
+# Gestione del sistema DALLA PWA (niente comandi a mano in Termux)
+# --------------------------------------------------------------------------- #
+#
+# Azioni whitelisted: aggiornamenti (Termux / app / Debian), installazione di un
+# tool o di un intero profilo. L'output scorre live nello stesso pannello.
+# I comandi sono costruiti dal registry (tools.py), MAI da testo libero.
+
+@app.websocket("/api/sysstream/{action}")
+async def sys_stream(ws: WebSocket, action: str) -> None:
+    await ws.accept()
+    arg = ws.query_params.get("arg", "")
+    try:
+        if action == "install-tool":
+            argv = install_command(arg)
+        elif action == "install-profile":
+            argv = install_profile_command(arg, skip=installed_ids())
+        elif action == "install-package":
+            repo, _, pkgs = arg.partition(":")
+            argv = install_package_command(repo, pkgs)
+        else:
+            argv = system_command(action)
+    except ValueError as e:
+        await ws.send_json({"type": "error", "data": str(e)})
+        await ws.close()
+        return
+
+    # Se il comando passa dal Debian, serve proot-distro.
+    if "proot-distro" in argv and shutil.which("proot-distro") is None:
+        await ws.send_json({"type": "error",
+                            "data": "proot-distro non trovato. Lancia prima install.sh."})
+        await ws.close()
+        return
+
+    await _stream_process(ws, argv, allow_input=False)
+    # Dopo un'installazione, invalida la cache cosi' il tool risulta subito attivo.
+    if action in ("install-tool", "install-profile", "install-package"):
+        _INSTALLED["ids"] = None
+
+
+class RestartResp(BaseModel):
+    ok: bool
+
+
+@app.post("/api/system/restart")
+def system_restart() -> RestartResp:
+    """Riavvia il server (re-exec). La PWA si ricollega da sola dopo qualche secondo."""
+    def _do() -> None:
+        time.sleep(0.6)
+        _cleanup()
+        os.execv(sys.executable, [sys.executable, *sys.argv])
+    import threading
+    threading.Thread(target=_do, daemon=True).start()
+    return RestartResp(ok=True)
 
 
 @atexit.register
