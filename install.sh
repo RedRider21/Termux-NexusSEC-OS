@@ -59,10 +59,17 @@ for t in hydra john aircrack-ng sqlmap; do
     pkg_try "$t"
 done
 
-# --- 3. Dipendenze Python del ponte -----------------------------------------
-log "Installo FastAPI + uvicorn (il ponte web)..."
-python -m pip install --upgrade pip
-python -m pip install "fastapi" "uvicorn[standard]"
+# --- 3. Dipendenze Python del ponte (stack LEGGERO per Termux) --------------
+# IMPORTANTE: su Termux la libc e' bionic, quindi i wheel "manylinux" di PyPI non
+# sono compatibili. Con "uvicorn[standard]" o pydantic v2, pip prova a COMPILARE
+# da sorgente (uvloop, httptools, watchfiles e pydantic-core, alcuni in Rust) e
+# l'installazione si BLOCCA per minuti/all'infinito.
+# A noi basta lo stack puro-Python: fastapi<0.100 + pydantic v1 + uvicorn +
+# websockets. Si installa in pochi secondi, senza compilare nulla.
+log "Installo il ponte web (FastAPI + uvicorn, stack leggero per Termux)..."
+pkg install -y python-pip >/dev/null 2>&1 || true
+python -m pip install --no-input --disable-pip-version-check \
+    "fastapi<0.100" "pydantic<2" "uvicorn" "websockets"
 
 # sqlmap: se il pacchetto Termux non c'e', ripiego su pip (e' puro Python).
 if ! command -v sqlmap >/dev/null 2>&1; then
