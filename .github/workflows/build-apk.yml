@@ -15,6 +15,9 @@ on:
   release:
     types: [ published ]
 
+permissions:
+  contents: write        # necessario per allegare l'APK alle Release
+
 jobs:
   build:
     runs-on: ubuntu-latest
