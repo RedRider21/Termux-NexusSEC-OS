@@ -487,6 +487,7 @@ const ICON = {
   nmap_quick:"🛰️", nmap_ping:"📡", whois:"🌐", whatweb:"🔎", nikto:"🕷️",
   sqlmap:"💉", metasploit:"🎯", hydra:"🐍", aircrack:"📶", john:"🔓", shell:"⌨️",
   tor_ip:"🧅", shell_anon:"🕵️", rdap:"📇", recon_demo:"◈",
+  shell_live:"⌨️", shell_live_anon:"🕵️",
   dig:"🧭", dnsrecon:"🔬", wafw00f:"🛡️", wfuzz:"🌀",
   dnsenum:"🧬", theharvester:"🌾", wpscan:"📰", gobuster:"🚪", dirb:"📁",
   commix:"🧨", hashcat:"⚡", hashid:"🏷️", crunch:"🧱", cewl:"📝",
@@ -836,7 +837,7 @@ function toolCard(tool){
   let mainBadge;
   if(broken) mainBadge=`<span class="badge nope" title="tocca per sapere perché">❌ non su stock</span>`;
   else if(off) mainBadge=`<span class="badge off" title="tocca per l'istruzione di installazione">＋ da installare</span>`;
-  else if(stream) mainBadge=`<span class="badge term">◈ flusso live</span>`;
+  else if(stream) mainBadge=`<span class="badge term">${tool.id.startsWith("shell_live")?"⌨️ shell":"◈ flusso live"}</span>`;
   else mainBadge=`<span class="badge ${interactive?"term":""}">${interactive?"▮ terminale":"» run"}</span>`;
   b.innerHTML=`<div class="top"><span class="emoji">${ICON[tool.id]||"▸"}</span>`
     +`<span class="nm">${escapeHtml(tool.name)}</span></div>`
@@ -1004,7 +1005,8 @@ function renderStartMenu(){
   cat("SISTEMA");
   const sys=document.createElement("div"); sys.className="sm-sys";
   const mk=(label,fn)=>{ const b=document.createElement("button"); b.textContent=label; b.onclick=fn; sys.appendChild(b); };
-  mk("⌨️ Terminale",()=>{ closeStart(); const sh=findTool("shell"); if(sh) openTerminal(sh); });
+  mk("⌨️ Shell (pannello)",()=>{ closeStart(); const sh=findTool("shell_live"); if(sh) openStream(sh); });
+  mk("▮ Terminale ttyd",()=>{ closeStart(); const sh=findTool("shell"); if(sh) openTerminal(sh); });
   mk(anonMode?"🧅 Tor: ON":"🧅 Tor: off",()=>{ setTor(!anonMode).then(renderStartMenu); });
   mk(showCatalog?"🧰 Catalogo: ON":"🧰 Catalogo",()=>{ $("#catBtn").click(); renderStartMenu(); });
   mk("↻ Rileva tool",async()=>{ await refreshTools(); renderStartMenu(); });
@@ -1050,7 +1052,7 @@ function closeStart(){ $("#startmenu").classList.remove("open"); $("#scrim").cla
 $("#startBtn").onclick=openStart;
 $("#smClose").onclick=closeStart;
 $("#scrim").onclick=closeStart;
-$("#tbTerm").onclick=()=>{ const sh=findTool("shell"); if(sh) openTerminal(sh); else toast("Shell non disponibile"); };
+$("#tbTerm").onclick=()=>{ const sh=findTool("shell_live"); if(sh) openStream(sh); else toast("Shell non disponibile"); };
 $("#tbTor").onclick=()=>setTor(!anonMode);
 $("#smRefresh").onclick=async()=>{ await refreshTools(); renderStartMenu(); };
 
