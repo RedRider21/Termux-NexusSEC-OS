@@ -42,15 +42,20 @@ jobs:
           gradle wrapper --gradle-version 8.7
           ./gradlew assembleDebug --no-daemon --stacktrace
 
+      - name: Rename APK
+        run: |
+          cp android-launcher/app/build/outputs/apk/debug/app-debug.apk \
+             NexusSEC-x-Android.apk
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NexusSEC-launcher-debug
-          path: android-launcher/app/build/outputs/apk/debug/app-debug.apk
+          name: NexusSEC-x-Android
+          path: NexusSEC-x-Android.apk
 
       - name: Attach APK to Release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.release.tag_name }}
-          files: android-launcher/app/build/outputs/apk/debug/app-debug.apk
+          files: NexusSEC-x-Android.apk
