@@ -167,6 +167,24 @@ TOOLS: dict[str, dict] = {
         "cmd": ["bash", "-l"],
         "help": "Terminale libero dentro il Debian minimale (proot)",
     },
+    "shell_live": {
+        "name": "Shell (pannello)",
+        "category": "Sistema", "mode": "stream", "runtime": "termux", "target": None,
+        "cmd": ["bash"],
+        "help": "Shell Termux dentro il pannello dell'app: scrivi un comando e premi "
+                "Invio, l'output scorre live. Il campo e' della web-app, quindi niente "
+                "auto-maiuscola della tastiera (a differenza del terminale ttyd). "
+                "Nota: non e' un vero terminale (niente frecce/tab), i comandi che "
+                "restano in esecuzione mostrano l'output alla loro fine.",
+    },
+    "shell_live_anon": {
+        "name": "Shell (pannello, via Tor)",
+        "category": "Anonimato", "mode": "stream", "runtime": "termux", "target": None,
+        "cmd": ["proxychains4", "bash"],
+        "anon_ok": True, "force_anon": True,
+        "help": "Come la Shell (pannello) ma il traffico TCP passa da Tor "
+                "(proxychains). Richiede Tor attivo.",
+    },
     "recon_demo": {
         "name": "Recon demo (flusso live)",
         "category": "Sistema", "mode": "stream", "runtime": "termux", "target": None,

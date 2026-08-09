@@ -101,8 +101,10 @@ Questa è l'interfaccia (una web-app). Da qui in poi comandi da qui.
 - **🧅 Tor:** instrada il traffico via Tor (per i tool che lo supportano).
 - **🧰 Catalogo:** mostra anche i tool non ancora installati.
 - **🎨 Tema:** cambia l'aspetto (Terminale, Glass, Neon, Minimal chiaro/scuro).
-- **Barra in basso (stile desktop):** pulsante **NexusSEC** = menu, ⌨️ terminale,
-  🧅 Tor, orologio.
+- **Barra in basso (stile desktop):** pulsante **NexusSEC** = menu, ⌨️ **Shell
+  (pannello)** = una shell dentro l'app dove scrivi comandi liberi (consigliata sul
+  telefono: niente auto-maiuscola), 🧅 Tor, orologio. Dal menu trovi anche **▮
+  Terminale ttyd** (terminale vero, ma la maiuscola dipende dalla tastiera).
 
 ---
 
@@ -179,9 +181,11 @@ Per i pacchetti Kali, la prima volta usa **🐉 Abilita repo Kali**.
   (i campi della web-app, invece, hanno già l'auto-maiuscola disattivata).
 - **Ho lanciato uno strumento (es. nmap) ma poi non posso digitare altri comandi.**
   Le schede con `» run` sono **one-shot**: eseguono *quel* comando e ti mostrano il
-  risultato, non sono una shell. Per digitare comandi liberi e concatenarli, apri il
-  **⌨️ Terminale** (in basso) oppure una scheda `▮ terminale`: lì resti dentro una
-  shell e continui a interagire.
+  risultato, non sono una shell. Per digitare comandi liberi e concatenarli usa la
+  **⌨️ Shell (pannello)** (pulsante in basso o menu): scrivi un comando, premi Invio e
+  l'output scorre lì; `cd`, variabili e stato **restano** tra un comando e l'altro.
+  Il campo è della web-app, quindi **niente auto-maiuscola** della tastiera. Non è un
+  vero terminale (niente frecce/tab): per quello c'è **▮ Terminale ttyd**.
 - **Un tool dice "❌ non su stock".**
   Alcuni strumenti (Wi-Fi in monitor mode, attacchi MITM, programmi grafici) non
   possono funzionare su Android senza root: sono elencati solo per completezza.
