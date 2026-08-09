@@ -6,16 +6,35 @@ il tutto dentro Termux. Per restare leggero, i tool girano dove conviene: **nati
 in Termux** dove possibile, in un **Debian minimale** (proot) solo per i pochi che
 non esistono in Termux, o come **richieste HTTP dirette** quando basta un'API.
 
-> **In sintesi:** ~120 tool organizzati in **5 profili** (Pen Testing, Web, OSINT,
-> Forensics, Reverse). L'installazione base occupa **~700 MB–1 GB** e attiva un set
-> pronto all'uso; gli altri ~100 tool si installano **on-demand** dal catalogo. I
-> tool che su telefono stock non possono girare (Wi-Fi/monitor mode, GUI) sono
-> elencati ma marcati **❌ non su stock**, senza illusioni.
+> **In sintesi:** ~135 tool nel catalogo, organizzati in **5 profili** (Pen Testing,
+> Web, OSINT, Forensics, Reverse). L'installazione base occupa **~700 MB–1 GB** e
+> attiva un set pronto all'uso; gli altri si installano **on-demand** dal catalogo,
+> e con **＋ Installa pacchetto** puoi aggiungere *qualsiasi* pacchetto dei repo
+> Termux/Debian/Kali (centinaia in più). I tool che su telefono stock non possono
+> girare (Wi-Fi/monitor mode, GUI) sono elencati ma marcati **❌ non su stock**.
 
 > ⚠️ **Uso legale.** I tool inclusi vanno usati **solo** su sistemi e reti di tua
 > proprietà o per cui hai un'autorizzazione scritta. Usarli contro terzi senza
 > permesso è un reato. Questo progetto è pensato per apprendimento, laboratorio e
 > penetration test autorizzati.
+
+> 📖 **Sei un utente e vuoi solo installarlo?** Segui il **[MANUALE.md](MANUALE.md)**:
+> guida semplice, passo per passo, senza gergo.
+
+### Novità
+
+- **◈ Flusso live (WebSocket).** Alcuni strumenti (es. *Recon demo*) mostrano
+  l'output **in diretta** in un pannello nativo dell'app e ti fanno **rispondere
+  alle domande** — interazione bidirezionale, non solo un terminale incorporato.
+- **🎨 Temi.** Aspetto cambiabile al volo: *Terminale*, *Glass*, *Neon*, *Minimal
+  chiaro/scuro* (scelta salvata; anche via link `?theme=<id>`).
+- **🛠️ Gestione dalla PWA.** Aggiornamenti (Termux / app / Debian), installazione
+  di un tool o di un intero profilo, **installazione di un pacchetto qualsiasi**
+  (Termux/Debian/Kali per nome), abilitazione del **repo Kali**, **autostart**
+  all'accensione e riavvio del server si fanno **dai pulsanti dell'app**, con output
+  live: quasi zero comandi a mano in Termux.
+- **🚀 Autostart.** Con Termux:Boot il server parte da solo all'accensione; si
+  attiva/disattiva dal menu (`boot/start-nexussec.sh`).
 
 ---
 
@@ -147,11 +166,12 @@ All'utente sembra una app; sotto, gira il minimo indispensabile.
 | `install.sh` | Termux | Bootstrap: Termux base, tool nativi, Python, Debian minimale + whatweb/nikto |
 | `tools.py` | ovunque | Registry dei tool + `runtime` + validazione input (nessuna dipendenza) |
 | `native.py` | ovunque | Tool "nativi": richieste HTTP dirette (es. RDAP), senza proot |
-| `server.py` | Termux | Backend **reale**: esegue i tool in Termux o in proot, via ttyd / native |
-| `mock_server.py` | PC | Backend **finto** per sviluppare la UI senza Termux (solo stdlib) |
+| `server.py` | Termux | Backend **reale**: esegue i tool in Termux o proot (ttyd / native / **WebSocket stream**), gestione sistema, Tor |
+| `mock_server.py` | PC | Backend **finto** per sviluppare la UI senza Termux (solo stdlib; niente WebSocket) |
+| `scripts/` | Termux/PC | Script Python "in casa" per la modalità `stream` (es. `recon_demo.py`) |
 | `webapp/` | ovunque | La PWA: `index.html`, `manifest.json`, `sw.js` |
 
-### Le tre modalità dei tool
+### Le quattro modalità dei tool
 
 - **`oneshot`** — il tool parte, produce un output e finisce (es. `nmap -sT`).
   A seconda del `runtime` gira **direttamente in Termux** o **dentro il Debian**
@@ -159,9 +179,22 @@ All'utente sembra una app; sotto, gira il minimo indispensabile.
 - **`interactive`** — il tool è una sessione (es. `msfconsole`, una shell).
   Viene esposto come **terminale nel browser** tramite `ttyd`. Se l'incorporamento
   in iframe viene bloccato, l'app offre il tasto **↗ Scheda** per aprirlo a parte.
+- **`stream`** ◈ — output **live** in un pannello nativo dell'app via **WebSocket**,
+  con **campo input** per rispondere alle domande dello script. Il server lancia il
+  comando con pipe (`PYTHONUNBUFFERED`), spedisce l'output riga per riga e scrive le
+  risposte sullo `stdin`. Ideale per script Python interattivi (vedi `recon_demo.py`).
 - **`native`** — nessun binario: il server Python fa direttamente una **richiesta
   HTTP a un'API pubblica** (es. `rdap` → whois via RDAP). Leggero, istantaneo,
   funziona anche prima di installare qualsiasi cosa e persino sul PC.
+
+### Gestione del sistema dalla PWA
+
+Dal menu **NexusSEC → MANUTENZIONE** e dai pulsanti **Installa ora** l'app esegue,
+con output live nello stesso pannello streaming, azioni *whitelisted*:
+`update-termux`, `update-app` (git pull), `update-debian`, `install-tool`,
+`install-profile` (endpoint `/api/sysstream/{action}`), più `POST /api/system/restart`
+per riavviare il server. I comandi sono **costruiti dal registry**, mai da testo
+libero dell'utente: niente iniezione di comandi.
 
 Nella UI ogni tool mostra un badge del runtime: **📦 Termux** (nativo, veloce),
 **🐧 Debian** (in proot), **🌐 live** (nativo HTTP).
@@ -375,17 +408,22 @@ il toggle Tor, lo storico e il salvataggio output sono identici alla versione re
 
 ## Funzioni della UI
 
-- **Barra desktop** in basso (stile OS): pulsante **▤ NexusSEC** che apre l'**hub**
-  (non ripete la griglia): i **Profili**, i controlli di **Sistema** (terminale, Tor,
-  catalogo, aggiorna, storico) e i tool **Recenti**. In basso anche scorciatoia
+- **Barra desktop** in basso (stile OS, ma da cellulare): pulsante **▤ NexusSEC** che
+  apre l'**hub** (non ripete la griglia): i **Profili**, i controlli di **Sistema**
+  (terminale, Tor, catalogo, rileva tool, storico), la **Manutenzione** (aggiorna
+  Termux/app/Debian, riavvia server) e i tool **Recenti**. In basso anche scorciatoia
   **⌨️ terminale**, toggle **🧅 Tor**, i terminali aperti come "finestre", e una tray
   con stato Tor e orologio.
+- **🎨 Temi**: pulsante nell'header per cambiare aspetto (Terminale / Glass / Neon /
+  Minimal chiaro / Minimal scuro). La scelta è salvata; forzabile via `?theme=<id>`.
 - **Profili** (come la distro): Pen Testing / Web / OSINT / Forensics / Reverse.
   Selezionandone uno la pagina si filtra ai suoi tool e un banner offre **⤓ Installa
-  profilo** (il comando che installa in blocco i tool mancanti del profilo).
+  profilo**: mostra i comandi **e** un pulsante **⬇ Installa ora** che installa in
+  blocco i mancanti con output live.
 - **Rilevamento automatico**: ogni tool **installato** ha sempre un pulsante attivo;
   quelli non installati appaiono in grigio con **＋ da installare** e, se toccati,
-  mostrano il comando esatto per installarli. Il tasto **↻** riesegue il rilevamento.
+  mostrano il comando esatto **e** un pulsante **⬇ Installa ora** (installazione dal
+  vivo, senza toccare Termux). Il tasto **↻** riesegue il rilevamento.
 - **Onestà**: i tool che sul telefono non possono girare (Wi-Fi/monitor mode, MITM,
   GUI) sono marcati **❌ non su stock** e, se toccati, spiegano perché.
 - **Griglia per categoria** con icone e ricerca istantanea; badge per modalità
@@ -541,13 +579,19 @@ lanciare **qualunque** comando installato.
 ```
 Termux-NexusSEC-OS/
 ├── install.sh          # bootstrap Termux nativo + Debian minimale (+ tor/proxychains)
-├── tools.py            # registry ~120 tool + runtime + BIN + PROFILI + validazione
+├── tools.py            # registry ~120 tool + runtime + BIN + PROFILI + install/system command
 ├── native.py           # tool "nativi" via HTTP (RDAP), senza proot
-├── server.py           # backend reale (FastAPI, Termux/proot + ttyd + native + Tor + rilevamento)
+├── server.py           # backend reale (FastAPI: Termux/proot + ttyd + WebSocket stream + native + Tor + gestione sistema)
 ├── mock_server.py      # backend finto per il PC (solo stdlib)
+├── scripts/
+│   └── recon_demo.py   # script Python interattivo di esempio (modalità stream)
+├── boot/
+│   └── start-nexussec.sh  # avvio automatico via Termux:Boot (autostart)
 ├── README.md           # questo file
+├── MANUALE.md          # manuale utente passo-passo (per utente medio)
+├── style-backup/       # copia del look precedente (rollback estetica)
 └── webapp/
-    ├── index.html      # la PWA (griglia + hub profili/sistema + terminale)
+    ├── index.html      # la PWA (griglia + hub profili/sistema + terminale + pannello stream + temi)
     ├── manifest.json   # metadati PWA (installabile)
     └── sw.js           # service worker (HTML network-first, asset in cache)
 ```

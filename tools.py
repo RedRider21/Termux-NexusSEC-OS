@@ -8,6 +8,10 @@ Non importa nulla di esterno: cosi' e' usabile anche senza FastAPI installato.
 from __future__ import annotations
 
 import re
+from pathlib import Path
+
+# Cartella degli script Python "in casa" (girano nativi in Termux, senza proot).
+SCRIPTS_DIR = Path(__file__).parent / "scripts"
 
 # Distro minimale in proot: solo per i pochi tool non disponibili nativamente in
 # Termux (whatweb, nikto, metasploit). Debian slim pesa ~200-400 MB, contro i
@@ -32,6 +36,9 @@ TOR_SOCKS_PORT = 9050
 # --------------------------------------------------------------------------- #
 # mode:    "oneshot"     -> HTTP + output JSON
 #          "interactive" -> terminale web via ttyd
+#          "stream"      -> flusso live bidirezionale via WebSocket, reso nel
+#                           pannello nativo della PWA (output riga per riga +
+#                           input alle domande dello script). Vedi /api/stream.
 #          "native"      -> richiesta HTTP diretta dal server (nessun binario)
 # runtime: "termux"      -> eseguito direttamente in Termux (pacchetto nativo)
 #          "proot"       -> eseguito nel Debian minimale via proot-distro
@@ -159,6 +166,13 @@ TOOLS: dict[str, dict] = {
         "category": "Sistema", "mode": "interactive", "runtime": "proot", "target": None,
         "cmd": ["bash", "-l"],
         "help": "Terminale libero dentro il Debian minimale (proot)",
+    },
+    "recon_demo": {
+        "name": "Recon demo (flusso live)",
+        "category": "Sistema", "mode": "stream", "runtime": "termux", "target": None,
+        "cmd": ["python3", "-u", str(SCRIPTS_DIR / "recon_demo.py")],
+        "help": "Script Python interattivo: mostra il flusso live e le domande "
+                "nel pannello nativo (esempio del WebSocket).",
     },
 
     # ======================================================================= #
@@ -499,6 +513,34 @@ _c("autorecon", "AutoRecon", "Exploitation", "termux", pip=True,
 _c("torsocks", "torsocks", "Anonimato", "termux",
    help="Tipo: anonimato. Instrada un singolo comando via Tor.")
 
+# --- Ampliamento catalogo (portabili) ---------------------------------------
+_c("sslyze", "SSLyze", "Web", "termux", pip=True,
+   help="Tipo: TLS. Analisi configurazione SSL/TLS di un server.", anon=True)
+_c("testssl", "testssl.sh", "Web", repo="kali", binn="testssl.sh",
+   help="Tipo: TLS. Test approfondito di cifrari, protocolli e vulnerabilità TLS.")
+_c("dirsearch", "dirsearch", "Web", "termux", pip=True,
+   help="Tipo: web recon. Brute force di percorsi/file su un web server.", anon=True)
+_c("arjun", "Arjun", "Web", "termux", pip=True,
+   help="Tipo: web recon. Scopre parametri HTTP nascosti.", anon=True)
+_c("katana", "Katana", "Web", repo="kali",
+   help="Tipo: web crawler. Crawler veloce per URL/endpoint (ProjectDiscovery).")
+_c("dnstwist", "dnstwist", "OSINT", "termux", pip=True,
+   help="Tipo: OSINT. Trova domini simili/typosquatting (phishing).")
+_c("fierce", "fierce", "OSINT", "termux", pip=True,
+   help="Tipo: OSINT DNS. Ricognizione DNS e ricerca sottodomini.")
+_c("sublist3r", "Sublist3r", "OSINT", "termux", pip=True,
+   help="Tipo: OSINT. Enumerazione sottodomini da fonti pubbliche.")
+_c("assetfinder", "assetfinder", "OSINT", repo="kali",
+   help="Tipo: OSINT. Trova domini e sottodomini collegati a un target.")
+_c("waybackurls", "waybackurls", "OSINT", repo="kali",
+   help="Tipo: OSINT. URL storici di un dominio dalla Wayback Machine.")
+_c("dnsx", "dnsx", "OSINT", repo="kali",
+   help="Tipo: OSINT DNS. Toolkit DNS veloce (risoluzione, record, wildcard).")
+_c("maigret", "Maigret", "OSINT", "termux", pip=True,
+   help="Tipo: OSINT. Cerca un username su centinaia di siti.", anon=True)
+_c("photon", "Photon", "OSINT", "termux", pip=True,
+   help="Tipo: OSINT crawler. Estrae URL, email, dati da un sito.", anon=True)
+
 # --- NON usabili su telefono stock (informativi) ----------------------------
 _n("kismet", "Kismet", "Wireless",
    reason="Sniffing Wi-Fi: richiede monitor mode e root, impossibile su stock.",
@@ -618,6 +660,144 @@ def profiles_list() -> list[dict]:
     """Elenco dei profili per la UI."""
     return [{"key": k, "name": v["name"], "icon": v["icon"],
              "desc": v["desc"], "tools": v["tools"]} for k, v in PROFILES.items()]
+
+
+# --------------------------------------------------------------------------- #
+# Comandi di installazione (usati dalla PWA per installare senza toccare Termux)
+# --------------------------------------------------------------------------- #
+
+# I nomi dei pacchetti provengono SOLO dal registry (non dall'utente): questo
+# regex e' una difesa in profondita' contro caratteri inattesi nelle stringhe
+# passate a "bash -lc".
+_PKG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9+._-]*$")
+
+
+def _pkg_of(tool_id: str, t: dict) -> str:
+    pkg = t.get("pkg") or BIN.get(tool_id) or tool_id
+    if not _PKG_RE.match(pkg):
+        raise ValueError(f"Nome pacchetto non valido: {pkg!r}")
+    return pkg
+
+
+def install_command(tool_id: str) -> list[str]:
+    """argv per installare UN tool, in base a runtime/pip/repo.
+
+    - pip            -> pip install <pkg>
+    - runtime termux -> pkg install -y <pkg> (con fallback su root-repo)
+    - proot/kali     -> apt-get install -y <pkg> dentro il Debian
+    """
+    t = TOOLS.get(tool_id)
+    if t is None:
+        raise ValueError("Tool sconosciuto.")
+    if t.get("works") is False:
+        raise ValueError(t.get("reason", "Non installabile su questo telefono."))
+    if t.get("mode") in ("native", "stream"):
+        raise ValueError("Questo elemento non richiede installazione.")
+    pkg = _pkg_of(tool_id, t)
+    if t.get("pip"):
+        return ["pip", "install", pkg]
+    if t.get("runtime") == "termux":
+        return ["bash", "-lc",
+                f"pkg install -y {pkg} || (pkg install -y root-repo && pkg install -y {pkg})"]
+    return list(PROOT) + ["bash", "-lc",
+                          f"DEBIAN_FRONTEND=noninteractive apt-get install -y {pkg}"]
+
+
+def install_profile_command(key: str, skip: set | None = None) -> list[str]:
+    """argv (bash -lc) che installa i tool MANCANTI di un profilo, in blocchi
+    per runtime (Termux / pip / Debian). `skip` = id gia' installati da saltare.
+    """
+    prof = PROFILES.get(key)
+    if not prof:
+        raise ValueError("Profilo sconosciuto.")
+    skip = skip or set()
+    termux, pip, debian = [], [], []
+    for tid in prof["tools"]:
+        t = TOOLS.get(tid)
+        if not t or t.get("works") is False or tid in skip:
+            continue
+        if t.get("mode") in ("native", "stream"):
+            continue
+        pkg = _pkg_of(tid, t)
+        if t.get("pip"):
+            pip.append(pkg)
+        elif t.get("runtime") == "termux":
+            termux.append(pkg)
+        else:
+            debian.append(pkg)
+    parts = []
+    if termux:
+        parts.append('echo "== pacchetti Termux =="; pkg install -y ' + " ".join(sorted(set(termux))))
+    if pip:
+        parts.append('echo "== tool Python (pip) =="; pip install ' + " ".join(sorted(set(pip))))
+    if debian:
+        parts.append('echo "== nel Debian (proot) =="; proot-distro login debian -- '
+                     'bash -lc "DEBIAN_FRONTEND=noninteractive apt-get install -y '
+                     + " ".join(sorted(set(debian))) + '"')
+    script = " ; ".join(parts) if parts else 'echo "Niente da installare: tutto gia\' presente."'
+    return ["bash", "-lc", script]
+
+
+def install_package_command(repo: str, pkgs: str) -> list[str]:
+    """argv per installare uno o piu' pacchetti QUALSIASI per nome.
+
+    Sblocca l'intero parco pacchetti dei repository gia' presenti, oltre al
+    catalogo curato: repo "termux" (pkg), "debian" (apt in proot), "kali"
+    (apt in proot col repo Kali abilitato). I nomi sono validati con _PKG_RE.
+    """
+    names = [p for p in pkgs.split() if p]
+    if not names:
+        raise ValueError("Nessun pacchetto indicato.")
+    for n in names:
+        if not _PKG_RE.match(n):
+            raise ValueError(f"Nome pacchetto non valido: {n!r}")
+    joined = " ".join(names)
+    if repo == "termux":
+        return ["bash", "-lc",
+                f"pkg install -y {joined} || (pkg install -y root-repo && pkg install -y {joined})"]
+    if repo in ("debian", "kali"):
+        return list(PROOT) + ["bash", "-lc",
+                              f"apt-get update; DEBIAN_FRONTEND=noninteractive apt-get install -y {joined}"]
+    raise ValueError("Repository sconosciuto (usa termux/debian/kali).")
+
+
+# Azioni di manutenzione whitelisted (nessun input dall'utente).
+def system_command(action: str) -> list[str]:
+    """argv per un'azione di sistema whitelisted (aggiornamenti / repo Kali)."""
+    if action == "update-termux":
+        return ["bash", "-lc", "pkg update -y && pkg upgrade -y"]
+    if action == "update-app":
+        repo = str(Path(__file__).parent)
+        return ["bash", "-lc", f'cd "{repo}" && git pull --ff-only']
+    if action == "update-debian":
+        return list(PROOT) + ["bash", "-lc",
+                              "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade"]
+    if action == "enable-kali":
+        # Abilita (una volta sola) il repo Kali dentro il Debian in proot, cosi'
+        # diventano installabili i pacchetti di sicurezza di Kali.
+        script = (
+            'set -e; '
+            'echo "deb https://http.kali.org/kali kali-rolling main contrib non-free" '
+            '> /etc/apt/sources.list.d/kali.list; '
+            'apt-get update -o Acquire::AllowInsecureRepositories=true '
+            '-o Acquire::AllowDowngradeToInsecureRepositories=true || true; '
+            'DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-unauthenticated kali-archive-keyring; '
+            'apt-get update; echo "== Repo Kali abilitato =="'
+        )
+        return list(PROOT) + ["bash", "-lc", script]
+    if action == "setup-autostart":
+        repo = str(Path(__file__).parent)
+        return ["bash", "-lc",
+                f'mkdir -p ~/.termux/boot && '
+                f'cp "{repo}/boot/start-nexussec.sh" ~/.termux/boot/start-nexussec.sh && '
+                f'chmod +x ~/.termux/boot/start-nexussec.sh && '
+                f'echo "Autostart ABILITATO. Installa l\'app Termux:Boot (F-Droid) e riavvia il telefono."']
+    if action == "disable-autostart":
+        return ["bash", "-lc",
+                'rm -f ~/.termux/boot/start-nexussec.sh && '
+                'echo "Autostart DISABILITATO. Il server non partirà più da solo all\'accensione." || '
+                'echo "Nessun autostart configurato."']
+    raise ValueError("Azione di sistema sconosciuta.")
 
 
 def detection_targets() -> tuple[dict, dict]:

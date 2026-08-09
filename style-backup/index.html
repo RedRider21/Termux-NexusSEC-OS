@@ -7,67 +7,22 @@
 <link rel="manifest" href="manifest.json">
 <title>Termux-NexusSEC-OS</title>
 <style>
-  /* ===== TEMA di default: "Terminale" (verde matrix) ===== */
   :root{
-    --font: ui-monospace,"Cascadia Code",Menlo,Consolas,monospace;
-    --bg:#050705; --bg2:#0a1a0f; --panel:#0b0e0b; --card:#0d120d; --card2:#0a0d0a;
-    --line:#16321f; --fg:#3dff88; --fg-dim:#2aa35a; --muted:#5a7a63; --white:#d7f5e2;
-    --text:#c7f5da; --red:#ff5c5c; --red-bd:#5a1e1e; --amber:#ffb454; --amber-bd:#4a3a12;
-    --on-accent:#04160a; --accent-a:#123020; --accent-b:#0b1c12;
-    --glass:rgba(6,10,7,.94); --overlay:rgba(3,5,3,.97); --scrim:rgba(0,0,0,.55);
-    --glow:0 0 8px var(--fg); --radius:14px;
-  }
-  /* ===== Dark elegante "glass" (teal/slate translucido) ===== */
-  html[data-theme="glass"]{
-    --bg:#0a0d12; --bg2:#13212c; --panel:rgba(20,28,38,.72); --card:rgba(24,32,44,.6);
-    --card2:rgba(16,22,32,.6); --line:rgba(130,170,205,.2); --fg:#7fe7d0; --fg-dim:#5bbcd0;
-    --muted:#93a6bb; --white:#eaf2fb; --text:#d6e4f0; --red:#ff8080; --red-bd:rgba(255,128,128,.35);
-    --amber:#f4c06a; --amber-bd:rgba(244,192,106,.4); --on-accent:#06222a;
-    --accent-a:rgba(90,205,192,.3); --accent-b:rgba(60,150,185,.24);
-    --glass:rgba(16,24,34,.72); --overlay:rgba(8,12,18,.9); --scrim:rgba(0,0,0,.55);
-    --glow:0 0 10px rgba(127,231,208,.55);
-  }
-  /* ===== Cyber neon raffinato ===== */
-  html[data-theme="neon"]{
-    --bg:#05060a; --bg2:#0a1122; --panel:#0b0f1a; --card:#0c1120; --card2:#080b16;
-    --line:#1c2b4a; --fg:#39f5c8; --fg-dim:#2fc6e6; --muted:#6a7ba0; --white:#e6f7ff;
-    --text:#bfeede; --red:#ff5c8a; --red-bd:#5a1e3a; --amber:#ffcf5c; --amber-bd:#5a4a12;
-    --on-accent:#04121a; --accent-a:#0e2b3a; --accent-b:#12183a;
-    --glass:rgba(8,12,22,.9); --overlay:rgba(4,6,12,.96); --scrim:rgba(0,0,10,.6);
-    --glow:0 0 12px #39f5c8;
-  }
-  /* ===== Minimal pro (scuro, sans) ===== */
-  html[data-theme="minimal-dark"]{
-    --font: system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --bg:#131417; --bg2:#131417; --panel:#1b1d21; --card:#1c1e23; --card2:#191b20;
-    --line:#2c2f36; --fg:#5aa0ff; --fg-dim:#8b95a3; --muted:#8b95a3; --white:#eef1f5;
-    --text:#d7dbe2; --red:#ef5350; --red-bd:#5a2a2a; --amber:#e0a63a; --amber-bd:#5a4a2a;
-    --on-accent:#ffffff; --accent-a:#2563eb; --accent-b:#1d4ed8;
-    --glass:rgba(22,24,28,.94); --overlay:rgba(15,16,19,.96); --scrim:rgba(0,0,0,.55);
-    --glow:none;
-  }
-  /* ===== Minimal pro (chiaro, sans) ===== */
-  html[data-theme="minimal-light"]{
-    --font: system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --bg:#f4f6f9; --bg2:#f4f6f9; --panel:#ffffff; --card:#ffffff; --card2:#f6f8fb;
-    --line:#e3e6ec; --fg:#2563eb; --fg-dim:#5b6675; --muted:#8a94a3; --white:#141821;
-    --text:#25303f; --red:#d64545; --red-bd:#f0c2c2; --amber:#b7791f; --amber-bd:#ecd6a6;
-    --on-accent:#ffffff; --accent-a:#2563eb; --accent-b:#1d4ed8;
-    --glass:rgba(255,255,255,.9); --overlay:rgba(244,246,249,.97); --scrim:rgba(20,24,33,.35);
-    --glow:none;
+    --bg:#050705; --panel:#0b0e0b; --card:#0d120d; --line:#16321f;
+    --fg:#3dff88; --fg-dim:#2aa35a; --muted:#5a7a63; --white:#d7f5e2;
+    --red:#ff5c5c; --amber:#ffb454; --radius:14px;
   }
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
-    margin:0; background:var(--bg); color:var(--text);
-    font-family:var(--font);
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:ui-monospace,"Cascadia Code",Menlo,Consolas,monospace;
     -webkit-tap-highlight-color:transparent;
-    background-image:radial-gradient(circle at 50% -10%, var(--bg2) 0%, var(--bg) 60%);
-    transition:background-color .2s, color .2s;
+    background-image:radial-gradient(circle at 50% -10%, #0a1a0f 0%, var(--bg) 60%);
   }
   /* ---------- header ---------- */
   header{
-    position:sticky; top:0; z-index:5; background:var(--glass);
+    position:sticky; top:0; z-index:5; background:rgba(5,7,5,.92);
     backdrop-filter:blur(6px); border-bottom:1px solid var(--line);
     padding:10px 14px calc(10px + env(safe-area-inset-bottom,0));
   }
@@ -87,31 +42,6 @@
   }
   #search::placeholder{color:var(--muted)}
   #status{display:block; text-align:center; color:var(--muted); font-size:11px; margin-top:6px}
-  /* ---------- barra categorie (chip) ---------- */
-  .cats{display:flex; gap:6px; overflow-x:auto; scrollbar-width:none;
-    max-width:760px; margin:8px auto 0; padding-bottom:2px}
-  .cats::-webkit-scrollbar{display:none}
-  .chip{flex:0 0 auto; cursor:pointer; font-family:inherit; font-size:12px;
-    background:var(--card); color:var(--fg); border:1px solid var(--line);
-    border-radius:20px; padding:6px 12px; display:flex; align-items:center; gap:6px; white-space:nowrap}
-  .chip:active{transform:scale(.96)}
-  .chip.on{background:var(--fg); color:var(--on-accent); border-color:var(--fg); font-weight:700}
-  .chip .n{opacity:.7; font-size:11px}
-  .chip.on .n{opacity:.85}
-  /* ---------- guida in-app ---------- */
-  .guide{padding:16px; max-width:720px; margin:0 auto; color:var(--text); line-height:1.5}
-  .guide h3{color:var(--white); font-size:16px; margin:2px 0 10px}
-  .guide h4{color:var(--fg-dim); font-size:12px; text-transform:uppercase; letter-spacing:1.5px; margin:20px 0 8px}
-  .guide p{margin:0 0 10px; font-size:13.5px}
-  .guide ol,.guide ul{margin:0 0 12px; padding-left:20px; font-size:13.5px}
-  .guide li{margin:4px 0}
-  .guide code{background:var(--card2); border:1px solid var(--line); border-radius:6px;
-    padding:1px 6px; font-family:ui-monospace,monospace; font-size:12.5px; color:var(--white)}
-  .guide .tip{background:var(--card); border:1px solid var(--line); border-left:3px solid var(--fg);
-    border-radius:10px; padding:10px 12px; margin:12px 0; font-size:13px}
-  .guide .warn{border-left-color:var(--amber)}
-  .guide a{color:var(--fg-dim)}
-  .guide .b{color:var(--white); font-weight:600}
   /* ---------- grid ---------- */
   main{padding:12px; max-width:760px; margin:0 auto}
   h2{font-size:12px; color:var(--fg-dim); text-transform:uppercase; letter-spacing:2px;
@@ -121,7 +51,7 @@
   .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px}
   .tool{
     position:relative; text-align:left; cursor:pointer; font-family:inherit;
-    background:linear-gradient(180deg,var(--card),var(--card2));
+    background:linear-gradient(180deg,#0e140e,#0a0d0a);
     color:var(--fg); border:1px solid var(--line); border-radius:var(--radius);
     padding:13px; min-height:96px; display:flex; flex-direction:column; gap:6px;
     transition:transform .1s, border-color .1s, box-shadow .1s;
@@ -136,11 +66,11 @@
     align-self:flex-start; font-size:10px; letter-spacing:1px; padding:2px 7px; border-radius:20px;
     border:1px solid var(--line); color:var(--fg-dim);
   }
-  .tool .badge.term{color:var(--amber); border-color:var(--amber-bd)}
+  .tool .badge.term{color:var(--amber); border-color:#4a3a12}
   .empty{color:var(--muted); text-align:center; padding:40px 12px; font-size:13px}
   /* ---------- overlay generico ---------- */
   .overlay{position:fixed; inset:0; z-index:20; display:none; flex-direction:column;
-    background:var(--overlay)}
+    background:rgba(3,5,3,.97)}
   .overlay.open{display:flex}
   .obar{display:flex; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid var(--line)}
   .otitle{flex:1; font-size:14px; color:var(--white); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
@@ -167,29 +97,25 @@
     border-top-color:var(--fg); border-radius:50%; animation:sp .7s linear infinite; vertical-align:-2px}
   @keyframes sp{to{transform:rotate(360deg)}}
   /* ---------- modal target ---------- */
-  #modal,#pkgModal{position:fixed; inset:0; z-index:30; display:none; align-items:center; justify-content:center;
-    background:var(--scrim); padding:16px}
-  #modal.open,#pkgModal.open{display:flex}
-  .repo-row{display:flex; gap:8px; margin-top:12px}
-  .repo-row button{flex:1; padding:11px 6px; border-radius:10px; font-family:inherit; font-size:13px;
-    cursor:pointer; border:1px solid var(--line); background:var(--card); color:var(--fg)}
-  .repo-row button:active{transform:scale(.96)}
+  #modal{position:fixed; inset:0; z-index:30; display:none; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.7); padding:16px}
+  #modal.open{display:flex}
   .card-modal{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
     width:100%; max-width:420px; padding:18px}
   .card-modal h3{margin:0 0 4px; color:var(--white); font-size:15px}
   .card-modal p{margin:0 0 12px; color:var(--muted); font-size:12px; line-height:1.4}
-  .card-modal input{width:100%; background:var(--bg); color:var(--white); border:1px solid var(--line);
+  .card-modal input{width:100%; background:#050705; color:var(--white); border:1px solid var(--line);
     border-radius:10px; padding:11px 12px; font-family:inherit; font-size:14px; outline:none}
   .card-modal input:focus{border-color:var(--fg-dim)}
   .verr{color:var(--red); font-size:11px; min-height:14px; margin:6px 2px 0}
   .mrow{display:flex; gap:8px; margin-top:14px}
   .btn{flex:1; padding:11px; border-radius:10px; font-family:inherit; font-size:14px; cursor:pointer; border:1px solid var(--line)}
-  .btn.go{background:var(--fg); color:var(--on-accent); font-weight:700; border-color:var(--fg)}
+  .btn.go{background:var(--fg); color:#04160a; font-weight:700; border-color:var(--fg)}
   .btn.cancel{background:transparent; color:var(--muted)}
   .btn:disabled{opacity:.4; cursor:not-allowed}
   /* ---------- storico ---------- */
   .hist-item{padding:12px 14px; border-bottom:1px solid var(--line); cursor:pointer}
-  .hist-item:active{background:var(--card2)}
+  .hist-item:active{background:#0a0d0a}
   .hist-item .ht{color:var(--white); font-size:13px}
   .hist-item .hs{color:var(--muted); font-size:11px; margin-top:3px; display:flex; gap:12px; flex-wrap:wrap}
   .rc-ok{color:var(--fg-dim)} .rc-err{color:var(--red)}
@@ -202,11 +128,11 @@
   /* ---------- tool non installato ---------- */
   .tool.off{opacity:.5; filter:grayscale(.35)}
   .tool.off:hover{border-color:var(--line); box-shadow:none}
-  .tool .badge.off{color:var(--amber); border-color:var(--amber-bd)}
-  .tool .badge.nope{color:var(--red); border-color:var(--red-bd)}
+  .tool .badge.off{color:var(--amber); border-color:#4a3a12}
+  .tool .badge.nope{color:var(--red); border-color:#5a1e1e}
   /* ---------- banner profilo attivo ---------- */
   .pbanner{display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-    background:linear-gradient(180deg,var(--card),var(--card2)); border:1px solid var(--fg-dim);
+    background:linear-gradient(180deg,#0e1a12,#0a130d); border:1px solid var(--fg-dim);
     border-radius:12px; padding:11px 13px; margin:4px 4px 6px}
   .pbanner .pi{font-size:20px}
   .pbanner .pt{flex:1; min-width:120px}
@@ -214,11 +140,11 @@
   .pbanner .pt small{display:block; color:var(--muted); font-size:11px}
   .pbanner button{background:var(--card); color:var(--fg); border:1px solid var(--line);
     border-radius:9px; padding:8px 11px; font-family:inherit; font-size:12px; cursor:pointer}
-  .pbanner button.go{background:var(--fg); color:var(--on-accent); font-weight:700; border-color:var(--fg)}
+  .pbanner button.go{background:var(--fg); color:#04160a; font-weight:700; border-color:var(--fg)}
   /* ---------- menu: profili + sistema + recenti ---------- */
   .sm-prof{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px}
   .sm-pcard{text-align:left; cursor:pointer; font-family:inherit; color:var(--white);
-    background:linear-gradient(180deg,var(--card),var(--card2)); border:1px solid var(--line);
+    background:linear-gradient(180deg,#0e140e,#0a0d0a); border:1px solid var(--line);
     border-radius:12px; padding:11px}
   .sm-pcard:active{transform:scale(.97)}
   .sm-pcard .h{display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700}
@@ -239,16 +165,16 @@
     position:fixed; left:0; right:0; bottom:0; z-index:45; height:56px;
     display:flex; align-items:center; gap:8px; padding:0 10px;
     padding-bottom:env(safe-area-inset-bottom,0);
-    background:var(--glass); backdrop-filter:blur(10px);
+    background:rgba(6,10,7,.94); backdrop-filter:blur(10px);
     border-top:1px solid var(--line);
   }
   .tb-start{
     display:flex; align-items:center; gap:8px; cursor:pointer; font-family:inherit;
-    background:linear-gradient(180deg,var(--accent-a),var(--accent-b)); color:var(--white);
+    background:linear-gradient(180deg,#123020,#0b1c12); color:var(--white);
     border:1px solid var(--fg-dim); border-radius:11px; padding:9px 14px; font-size:13px; font-weight:700;
   }
   .tb-start:active{transform:scale(.96)}
-  .tb-start .dot{width:8px; height:8px; border-radius:50%; background:var(--fg); box-shadow:var(--glow)}
+  .tb-start .dot{width:8px; height:8px; border-radius:50%; background:var(--fg); box-shadow:0 0 8px var(--fg)}
   .tb-btn{
     background:var(--card); color:var(--fg); border:1px solid var(--line);
     border-radius:11px; padding:9px 11px; font-family:inherit; font-size:15px; cursor:pointer; line-height:1;
@@ -265,13 +191,13 @@
   .tb-win .nm{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .tray{display:flex; align-items:center; gap:10px; padding-left:4px}
   .tray .tdot{width:9px; height:9px; border-radius:50%; background:var(--muted)}
-  .tray .tdot.on{background:var(--fg); box-shadow:var(--glow)}
+  .tray .tdot.on{background:var(--fg); box-shadow:0 0 8px var(--fg)}
   .clock{font-size:12px; color:var(--fg-dim); font-variant-numeric:tabular-nums; min-width:42px; text-align:right}
   /* ---------- menu Applicazioni (bottom sheet) ---------- */
   .startmenu{
     position:fixed; left:0; right:0; bottom:0; z-index:50;
     transform:translateY(110%); transition:transform .22s ease;
-    background:var(--glass); backdrop-filter:blur(12px);
+    background:rgba(7,11,8,.98); backdrop-filter:blur(12px);
     border-top:1px solid var(--fg-dim); border-radius:18px 18px 0 0;
     max-height:76vh; display:flex; flex-direction:column;
     padding-bottom:calc(64px + env(safe-area-inset-bottom,0));
@@ -291,47 +217,11 @@
   .sm-app .ico{font-size:24px; line-height:1}
   .sm-app .lb{font-size:10.5px; text-align:center; line-height:1.15; color:var(--muted); word-break:break-word}
   .sm-empty{color:var(--muted); font-size:12px; padding:20px 8px; text-align:center}
-  .scrim{position:fixed; inset:0; z-index:48; background:var(--scrim); opacity:0; pointer-events:none; transition:.2s}
+  .scrim{position:fixed; inset:0; z-index:48; background:rgba(0,0,0,.5); opacity:0; pointer-events:none; transition:.2s}
   .scrim.open{opacity:1; pointer-events:auto}
-  /* ---------- selettore tema (bottom sheet) ---------- */
-  .themesheet{
-    position:fixed; left:0; right:0; bottom:0; z-index:50;
-    transform:translateY(110%); transition:transform .22s ease;
-    background:var(--glass); backdrop-filter:blur(12px);
-    border-top:1px solid var(--fg-dim); border-radius:18px 18px 0 0;
-    max-height:80vh; display:flex; flex-direction:column;
-    padding-bottom:calc(20px + env(safe-area-inset-bottom,0));
-  }
-  .themesheet.open{transform:translateY(0)}
-  .ts-head{display:flex; align-items:center; gap:10px; padding:14px 16px 8px}
-  .ts-head b{color:var(--white); font-size:15px; flex:1}
-  .ts-list{overflow:auto; padding:6px 12px 12px; display:grid;
-    grid-template-columns:1fr 1fr; gap:10px}
-  .ts-card{cursor:pointer; font-family:inherit; text-align:left; color:var(--white);
-    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:10px;
-    display:flex; flex-direction:column; gap:8px}
-  .ts-card:active{transform:scale(.97)}
-  .ts-card.active{border-color:var(--fg); box-shadow:0 0 0 1px var(--fg) inset}
-  .ts-prev{height:44px; border-radius:9px; border:1px solid rgba(255,255,255,.08);
-    display:flex; align-items:center; gap:6px; padding:0 10px; overflow:hidden}
-  .ts-prev .d{width:12px; height:12px; border-radius:50%}
-  .ts-prev .bar{flex:1; height:8px; border-radius:6px}
-  .ts-name{font-size:12.5px; font-weight:600; display:flex; align-items:center; gap:6px}
-  .ts-name .chk{color:var(--fg)}
 </style>
 </head>
 <body>
-<script>
-  // Applica il tema salvato PRIMA del render, per evitare il flash del default.
-  // ?theme=<id> forza (e memorizza) un tema: utile per link condivisibili/anteprime.
-  try{
-    var _q=new URLSearchParams(location.search).get("theme");
-    if(_q){ localStorage.setItem("nexus_theme",_q); }
-    var _t=localStorage.getItem("nexus_theme");
-    if(_t && _t!=="terminal") document.documentElement.setAttribute("data-theme",_t);
-    else if(_t==="terminal") document.documentElement.removeAttribute("data-theme");
-  }catch(e){}
-</script>
 
 <header>
   <div class="hrow">
@@ -339,12 +229,10 @@
     <span class="grow"></span>
     <button class="iconbtn" id="torBtn" title="Instrada il traffico via Tor">🧅 Tor: off</button>
     <button class="iconbtn" id="catBtn" title="Mostra i tool installabili dal catalogo">🧰</button>
-    <button class="iconbtn" id="themeBtn" title="Cambia tema">🎨</button>
     <button class="iconbtn" id="histBtn" title="Storico">🕘</button>
   </div>
   <input id="search" placeholder="cerca un tool…" autocomplete="off">
   <small id="status">caricamento…</small>
-  <div class="cats" id="cats"></div>
 </header>
 
 <main id="app"></main>
@@ -362,7 +250,6 @@
   <div class="obody">
     <pre id="output" hidden></pre>
     <pre id="streamOut" hidden></pre>
-    <div id="guide" class="guide" hidden></div>
     <iframe id="term" hidden></iframe>
     <div id="termHint" class="hint" hidden>Se il terminale resta vuoto, tocca <b>↗ Scheda</b> qui sopra: alcune versioni di ttyd non permettono l'incorporamento.</div>
   </div>
@@ -383,25 +270,6 @@
     <div class="mrow">
       <button class="btn cancel" id="mCancel">Annulla</button>
       <button class="btn go" id="mGo">Esegui ▸</button>
-    </div>
-  </div>
-</div>
-
-<!-- modal: installa un pacchetto qualsiasi -->
-<div id="pkgModal">
-  <div class="card-modal">
-    <h3>Installa un pacchetto</h3>
-    <p>Scrivi il nome (anche più di uno, separati da spazio) e scegli il repository.
-       Così puoi installare quasi tutto, oltre al catalogo. I nomi vengono validati.</p>
-    <input id="pkgInput" placeholder="es. hping3  netdiscover" autocomplete="off" spellcheck="false">
-    <div class="verr" id="pkgErr"></div>
-    <div class="repo-row">
-      <button data-repo="termux">📦 Termux</button>
-      <button data-repo="debian">🐧 Debian</button>
-      <button data-repo="kali">🐉 Kali</button>
-    </div>
-    <div class="mrow">
-      <button class="btn cancel" id="pkgCancel">Annulla</button>
     </div>
   </div>
 </div>
@@ -430,49 +298,6 @@
     <span class="clock" id="clock">--:--</span>
   </div>
 </nav>
-
-<!-- selettore tema (bottom sheet) -->
-<div class="scrim" id="themeScrim"></div>
-<div class="themesheet" id="themeSheet">
-  <div class="ts-head"><span>🎨</span><b>Tema</b><button class="iconbtn" id="themeClose">✕</button></div>
-  <div class="ts-list" id="themeList"></div>
-</div>
-
-<template id="guideTpl">
-  <h3>👋 Benvenuto in NexusSEC</h3>
-  <p>Questa app pilota strumenti di sicurezza dal telefono. Ecco l'essenziale per partire.</p>
-
-  <h4>Come lanciare uno strumento</h4>
-  <p>Ogni scheda ha un'etichetta che dice cosa succede al tocco:</p>
-  <ul>
-    <li><span class="b">» run</span> — esegue e mostra il risultato.</li>
-    <li><span class="b">▮ terminale</span> — apre un terminale interattivo.</li>
-    <li><span class="b">◈ flusso live</span> — output in diretta e puoi <span class="b">rispondere</span> alle domande (prova <span class="b">Recon demo</span>).</li>
-    <li><span class="b">＋ da installare</span> — non installato: tocca e premi <span class="b">⬇ Installa ora</span>.</li>
-    <li><span class="b">❌ non su stock</span> — non gira su telefono senza root (spiegato al tocco).</li>
-  </ul>
-
-  <h4>Navigare</h4>
-  <ul>
-    <li>Le <span class="b">chip in alto</span> mostrano un gruppo alla volta, o <span class="b">Tutte</span>.</li>
-    <li><span class="b">🧰</span> mostra anche i tool non ancora installati (catalogo).</li>
-    <li><span class="b">🎨</span> cambia il tema. <span class="b">🧅</span> instrada via Tor.</li>
-  </ul>
-
-  <h4>Fare tutto senza scrivere in Termux</h4>
-  <p>Dalla barra in basso, tocca <span class="b">NexusSEC</span>:</p>
-  <ul>
-    <li><span class="b">Profili</span> (Web, OSINT…): installa in blocco i tool di un tema.</li>
-    <li><span class="b">Manutenzione</span>: aggiorna Termux / l'app / il Debian, o riavvia il server.</li>
-  </ul>
-  <div class="tip">Dopo <span class="b">Aggiorna app</span> usa <span class="b">⏻ Riavvia server</span>, poi ricarica la pagina.</div>
-
-  <h4>Se qualcosa non va</h4>
-  <p>"Server non raggiungibile"? Torna in Termux e controlla che <code>python server.py</code> sia in esecuzione, poi riapri <code>http://127.0.0.1:8000</code>.</p>
-
-  <div class="tip warn">⚠️ <span class="b">Solo test autorizzati.</span> Usa questi strumenti unicamente su sistemi tuoi o per cui hai un permesso scritto.</div>
-  <p>Manuale completo: <a href="https://github.com/dPlusOS21/Termux-NexusSEC-OS/blob/master/MANUALE.md" target="_blank" rel="noopener">MANUALE.md su GitHub</a>.</p>
-</template>
 
 <div id="toast"></div>
 
@@ -516,7 +341,6 @@ const RUNTIME = {
 let ALL = {};          // categorie -> tool
 let PROFILES = [];     // profili (set di tool installabili insieme)
 let activeProfile = null; // profilo attivo che filtra la pagina
-let activeCategory = null; // categoria selezionata dalle chip (null = tutte)
 let anonMode = false;  // instrada via Tor i tool compatibili
 let showCatalog = false; // mostra anche i tool "da installare" del catalogo
 const HKEY = "nexussec-history";
@@ -558,15 +382,6 @@ function resetOverlay(){
   output.hidden=true; term.hidden=true;
   closeStream();
   $("#streamOut").hidden=true; $("#streamBar").classList.remove("on");
-  $("#guide").hidden=true;
-}
-function showGuide(){
-  resetOverlay();
-  $("#ovtitle").textContent="Guida rapida";
-  const g=$("#guide"); g.innerHTML=""; g.appendChild($("#guideTpl").content.cloneNode(true));
-  g.hidden=false;
-  overlay.classList.add("open");
-  const body=document.querySelector(".obody"); if(body) body.scrollTop=0;
 }
 function showOutput(title, text, meta){
   resetOverlay();
@@ -679,75 +494,39 @@ function streamAppend(text, cls){
   else out.appendChild(document.createTextNode(text));
   if(atBottom) out.scrollTop=out.scrollHeight;
 }
-// Pannello streaming generico: usato dai tool "flusso live" (con input) e
-// dalle azioni di sistema (aggiornamenti/installazioni, senza input).
-function runStream(url, title, opts){
-  opts=opts||{};
+function openStream(tool){
   closeStream();
   resetOverlay();
-  overlay.dataset.tool=title;
-  $("#ovtitle").textContent=title;
+  overlay.dataset.tool=tool.id;
+  $("#ovtitle").textContent=tool.name;
   const out=$("#streamOut"); out.textContent=""; out.hidden=false;
-  const bar=$("#streamBar"), inp=$("#streamIn"), send=$("#streamSend");
-  bar.classList.add("on");
-  inp.disabled=!opts.input; send.disabled=!opts.input;
-  inp.value=""; inp.placeholder = opts.input ? "scrivi e premi Invio per rispondere…" : "(nessun input richiesto)";
+  const bar=$("#streamBar"), inp=$("#streamIn");
+  bar.classList.add("on"); inp.disabled=false; inp.value="";
   overlay.classList.add("open");
-  streamAppend("· connessione…\n", "sys");
+  streamAppend("· connessione al flusso…\n", "sys");
 
   const proto = location.protocol==="https:" ? "wss:" : "ws:";
-  const ws = new WebSocket(proto+"//"+location.host+url);
+  const ws = new WebSocket(proto+"//"+location.host+"/api/stream/"+encodeURIComponent(tool.id));
   streamWS = ws;
   ws.onmessage=(ev)=>{
     let m; try{ m=JSON.parse(ev.data); }catch{ return; }
     if(m.type==="out")        streamAppend(m.data);
     else if(m.type==="start") streamAppend("$ "+m.data+"\n\n", "sys");
-    else if(m.type==="end"){  streamAppend("\n· terminato (uscita "+m.data+")\n", "end");
-                              inp.disabled=true; send.disabled=true; if(opts.onEnd) opts.onEnd(m.data); }
-    else if(m.type==="error"){streamAppend("\n[errore] "+m.data+"\n", "me"); inp.disabled=true; send.disabled=true; }
+    else if(m.type==="end"){  streamAppend("\n· processo terminato (uscita "+m.data+")\n", "end"); inp.disabled=true; }
+    else if(m.type==="error"){streamAppend("\n[errore] "+m.data+"\n", "me"); inp.disabled=true; }
   };
-  ws.onclose=()=>{ if(streamWS===ws){ inp.disabled=true; send.disabled=true; } };
-  ws.onerror=()=>{ streamAppend("\n[errore] impossibile aprire il flusso (server.py attivo?)\n","me"); };
-  function doSend(){
+  ws.onclose=()=>{ if(streamWS===ws){ inp.disabled=true; streamAppend("\n· connessione chiusa\n","end"); } };
+  ws.onerror=()=>{ streamAppend("\n[errore] impossibile aprire il flusso (il server reale server.py è attivo?)\n","me"); };
+  function send(){
     const v=inp.value; if(v==="" || !streamWS || streamWS.readyState!==1) return;
     streamAppend("> "+v+"\n", "me");
     streamWS.send(JSON.stringify({type:"in", data:v})); inp.value="";
   }
-  send.onclick=doSend;
-  inp.onkeydown=(e)=>{ if(e.key==="Enter"){ e.preventDefault(); doSend(); } };
+  $("#streamSend").onclick=send;
+  inp.onkeydown=(e)=>{ if(e.key==="Enter"){ e.preventDefault(); send(); } };
   $("#streamSig").onclick=()=>{ if(streamWS&&streamWS.readyState===1) streamWS.send(JSON.stringify({type:"sig",data:"int"})); };
-  if(opts.input) setTimeout(()=>inp.focus(),100);
+  setTimeout(()=>inp.focus(),100);
 }
-function openStream(tool){ runStream("/api/stream/"+encodeURIComponent(tool.id), tool.name, {input:true}); }
-function openSysStream(action, title, arg){
-  const q = arg ? ("?arg="+encodeURIComponent(arg)) : "";
-  runStream("/api/sysstream/"+encodeURIComponent(action)+q, title, {input:false,
-    onEnd:()=>{ setTimeout(()=>refreshTools().catch(()=>{}), 800); }});
-}
-async function restartServer(){
-  try{
-    await fetch("/api/system/restart",{method:"POST"});
-    toast("Riavvio in corso… ricarico tra poco");
-    setTimeout(()=>location.reload(), 3500);
-  }catch{ toast("Riavvio non riuscito"); }
-}
-
-/* ---------------- installa un pacchetto qualsiasi ---------------- */
-const pkgModal=$("#pkgModal");
-function openPkgInstall(){ $("#pkgInput").value=""; $("#pkgErr").textContent=""; pkgModal.classList.add("open"); setTimeout(()=>$("#pkgInput").focus(),80); }
-function closePkgInstall(){ pkgModal.classList.remove("open"); }
-$("#pkgCancel").onclick=closePkgInstall;
-pkgModal.addEventListener("click",(e)=>{ if(e.target===pkgModal) closePkgInstall(); });
-document.querySelectorAll('#pkgModal [data-repo]').forEach(b=>{
-  b.onclick=()=>{
-    const pkg=$("#pkgInput").value.trim();
-    if(!/^[A-Za-z0-9][A-Za-z0-9+._ -]*$/.test(pkg)){
-      $("#pkgErr").textContent="Nome non valido (lettere, numeri, + . _ - e spazi)."; return; }
-    const repo=b.getAttribute("data-repo");
-    closePkgInstall();
-    openSysStream("install-package","Installo: "+pkg+" ("+repo+")", repo+":"+pkg);
-  };
-});
 
 /* ---------------- storico (localStorage) ---------------- */
 function loadHistory(){ try{ return JSON.parse(localStorage.getItem(HKEY)||"[]"); }catch{ return []; } }
@@ -804,16 +583,9 @@ function installHint(tool){
   } else {
     body+="    proot-distro login debian -- apt install "+pkg+"\n";
   }
-  body+="\nOppure premi «Installa ora» qui sotto: lo faccio io, vedi il flusso live.";
+  body+="\nPoi riapri il menu ▤ Applicazioni e tocca ↻ per aggiornare l'elenco.";
   overlay.dataset.tool=tool.id;
-  resetOverlay();
-  $("#ovtitle").textContent=tool.name;
-  output.hidden=false; output.textContent=body;
-  const btn=document.createElement("button");
-  btn.className="btn go"; btn.style.margin="14px"; btn.textContent="⬇ Installa ora";
-  btn.onclick=()=>openSysStream("install-tool", "Installo "+tool.name, tool.id);
-  output.appendChild(btn);
-  overlay.classList.add("open");
+  showOutput(tool.name, body);
 }
 function showReason(tool){
   overlay.dataset.tool=tool.id;
@@ -884,42 +656,17 @@ function installProfile(prof){
   if(g.pip.length)    body+="\n# tool Python (pip)\n  pip install "+g.pip.join(" ")+"\n";
   if(g.debian.length) body+="\n# nel Debian (proot)\n  proot-distro login debian -- apt install "+g.debian.join(" ")+"\n";
   if(g.kali.length)   body+="\n# dal repo Kali (una volta sola: ENABLE_KALI_REPO=yes ./install.sh)\n  proot-distro login debian -- apt install "+g.kali.join(" ")+"\n";
-  body+="\nOppure premi «Installa ora»: installo io i tool mancanti (flusso live).";
+  body+="\nPoi tocca ↻ (menu ▤) per aggiornare l'elenco.";
   overlay.dataset.tool=prof.key;
-  resetOverlay();
-  $("#ovtitle").textContent="Installa profilo · "+prof.name;
-  output.hidden=false; output.textContent=body; $("#copyBtn").hidden=false;
-  const btn=document.createElement("button");
-  btn.className="btn go"; btn.style.margin="14px"; btn.textContent="⬇ Installa ora ("+tools.length+" tool)";
-  btn.onclick=()=>openSysStream("install-profile", "Installo profilo "+prof.name, prof.key);
-  output.appendChild(btn);
-  overlay.classList.add("open");
-}
-function renderCats(){
-  const bar=$("#cats"); if(!bar) return; bar.innerHTML="";
-  const cats=Object.keys(ALL);
-  if(activeCategory && !cats.includes(activeCategory)) activeCategory=null;
-  const mk=(key,label,icon)=>{
-    const b=document.createElement("button");
-    const on=(key===null && !activeCategory) || key===activeCategory;
-    b.className="chip"+(on?" on":"");
-    const n=(key===null)?"" : `<span class="n">${ALL[key].length}</span>`;
-    b.innerHTML=`<span>${icon||""}</span><span>${escapeHtml(label)}</span>${n}`;
-    b.onclick=()=>{ activeCategory=key; render($("#search").value); };
-    bar.appendChild(b);
-  };
-  mk(null,"Tutte","▦");
-  cats.forEach(c=>mk(c,c,CAT_ICON[c]||"•"));
+  showOutput("Installa profilo · "+prof.name, body); $("#copyBtn").hidden=false;
 }
 function render(filter=""){
   const app=$("#app"); app.innerHTML=""; filter=(filter||"").trim().toLowerCase();
   const prof=activeProfileObj();
   const inProf = prof ? new Set(prof.tools) : null;
   if(prof) app.appendChild(profileBanner(prof));
-  renderCats();
   let shown=0;
   for(const [cat,tools] of Object.entries(ALL)){
-    if(activeCategory && cat!==activeCategory) continue;
     const vis=tools.filter(t=>{
       if(inProf){ if(!inProf.has(t.id)) return false; }
       else if(!visibleInCatalog(t)) return false;
@@ -1007,25 +754,10 @@ function renderStartMenu(){
   mk("⌨️ Terminale",()=>{ closeStart(); const sh=findTool("shell"); if(sh) openTerminal(sh); });
   mk(anonMode?"🧅 Tor: ON":"🧅 Tor: off",()=>{ setTor(!anonMode).then(renderStartMenu); });
   mk(showCatalog?"🧰 Catalogo: ON":"🧰 Catalogo",()=>{ $("#catBtn").click(); renderStartMenu(); });
-  mk("↻ Rileva tool",async()=>{ await refreshTools(); renderStartMenu(); });
+  mk("↻ Aggiorna tool",async()=>{ await refreshTools(); renderStartMenu(); });
   mk("🕘 Storico",()=>{ closeStart(); $("#histBtn").click(); });
-  mk("📖 Guida",()=>{ closeStart(); showGuide(); });
   if(activeProfile) mk("✕ Nessun profilo",()=>{ closeStart(); clearProfile(); });
   body.appendChild(sys);
-
-  // --- MANUTENZIONE (tutto dalla PWA, senza toccare Termux) ---
-  cat("MANUTENZIONE");
-  const mnt=document.createElement("div"); mnt.className="sm-sys";
-  const mkm=(label,fn)=>{ const b=document.createElement("button"); b.textContent=label; b.onclick=fn; mnt.appendChild(b); };
-  mkm("＋ Installa pacchetto",()=>{ closeStart(); openPkgInstall(); });
-  mkm("⟳ Aggiorna Termux",()=>{ closeStart(); openSysStream("update-termux","Aggiorno Termux"); });
-  mkm("⬇ Aggiorna app",   ()=>{ closeStart(); openSysStream("update-app","Aggiorno l'app (git pull)"); });
-  mkm("🐧 Aggiorna Debian",()=>{ closeStart(); openSysStream("update-debian","Aggiorno il Debian (proot)"); });
-  mkm("🐉 Abilita repo Kali",()=>{ closeStart(); openSysStream("enable-kali","Abilito il repo Kali nel Debian"); });
-  mkm("🚀 Abilita autostart",()=>{ closeStart(); openSysStream("setup-autostart","Abilito l'autostart all'accensione"); });
-  mkm("🛑 Disabilita autostart",()=>{ closeStart(); openSysStream("disable-autostart","Disabilito l'autostart"); });
-  mkm("⏻ Riavvia server",  ()=>{ closeStart(); restartServer(); });
-  body.appendChild(mnt);
 
   // --- RECENTI ---
   const h=loadHistory().slice(0,5);
@@ -1059,44 +791,6 @@ function tickClock(){ const d=new Date();
   $("#clock").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
 tickClock(); setInterval(tickClock, 15000);
 
-/* ---------------- temi (desktop da cellulare) ---------------- */
-const THEMES=[
-  {id:"terminal",     name:"Terminale",     dot:"#3dff88", bg:"#050705", bar:"#16321f"},
-  {id:"glass",        name:"Glass",         dot:"#7fe7d0", bg:"#0a0d12", bar:"#2b3a4a"},
-  {id:"neon",         name:"Neon",          dot:"#39f5c8", bg:"#05060a", bar:"#1c2b4a"},
-  {id:"minimal-dark", name:"Minimal scuro", dot:"#5aa0ff", bg:"#131417", bar:"#2c2f36"},
-  {id:"minimal-light",name:"Minimal chiaro",dot:"#2563eb", bg:"#f4f6f9", bar:"#e3e6ec"},
-];
-const TKEY="nexus_theme";
-function applyTheme(id){
-  const t=THEMES.find(x=>x.id===id)||THEMES[0];
-  if(t.id==="terminal") document.documentElement.removeAttribute("data-theme");
-  else document.documentElement.setAttribute("data-theme",t.id);
-  try{ localStorage.setItem(TKEY,t.id); }catch{}
-  const mt=document.querySelector('meta[name="theme-color"]'); if(mt) mt.setAttribute("content",t.bg);
-  renderThemeList();
-}
-function renderThemeList(){
-  const cur=(()=>{try{return localStorage.getItem(TKEY)||"terminal";}catch{return "terminal";}})();
-  const list=$("#themeList"); if(!list) return; list.innerHTML="";
-  THEMES.forEach(t=>{
-    const c=document.createElement("button"); c.className="ts-card"+(t.id===cur?" active":"");
-    c.innerHTML=`<div class="ts-prev" style="background:${t.bg}">`
-      +`<span class="d" style="background:${t.dot}"></span>`
-      +`<span class="bar" style="background:${t.bar}"></span></div>`
-      +`<div class="ts-name">${t.name}${t.id===cur?' <span class="chk">✓</span>':""}</div>`;
-    c.onclick=()=>applyTheme(t.id);
-    list.appendChild(c);
-  });
-}
-function openThemes(){ renderThemeList(); $("#themeSheet").classList.add("open"); $("#themeScrim").classList.add("open"); }
-function closeThemes(){ $("#themeSheet").classList.remove("open"); $("#themeScrim").classList.remove("open"); }
-$("#themeBtn").onclick=openThemes;
-$("#themeClose").onclick=closeThemes;
-$("#themeScrim").onclick=closeThemes;
-// applica subito il tema salvato (prima del load dati)
-applyTheme((()=>{try{return localStorage.getItem(TKEY)||"terminal";}catch{return "terminal";}})());
-
 async function load(){
   try{
     ALL=await (await fetch("/api/tools")).json();
@@ -1107,8 +801,6 @@ async function load(){
     $("#status").textContent=ready+" tool installati · "+catN+" nel catalogo · "+PROFILES.length+" profili (▤)";
     render();
     syncTor();
-    // Al primissimo avvio mostra la guida (una volta sola).
-    try{ if(!localStorage.getItem("nexus_seen_guide")){ localStorage.setItem("nexus_seen_guide","1"); showGuide(); } }catch{}
   }catch(e){
     $("#status").textContent="server non raggiungibile — avvia python server.py";
     $("#app").innerHTML='<div class="empty">Backend offline.</div>';

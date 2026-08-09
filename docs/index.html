@@ -93,8 +93,8 @@
     <b>arm64-v8a</b>. Se non sei sicuro, usa <b>universal</b> (va bene ovunque, ma pesa di più).</p>
     <a class="btn reco" href="https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_arm64-v8a.apk" rel="noopener">
       <span class="e">📱</span>
-      <span class="t">arm64-v8a<small>la scelta giusta per la maggior parte dei telefoni</small></span>
-      <span class="tag">GIUSTO PER TE?</span>
+      <span class="t">arm64-v8a<small id="arm64Note">la scelta giusta per la maggior parte dei telefoni</small></span>
+      <span class="tag" id="arm64Tag">GIUSTO PER TE?</span>
     </a>
     <div class="grid" style="margin-top:8px">
       <a class="btn" href="https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_universal.apk" rel="noopener">
@@ -127,6 +127,20 @@ python server.py</pre>
       minimale): meglio sotto Wi-Fi.</p>
   </div>
 
+  <h2><span class="n">3</span> Comodità (opzionale)</h2>
+  <div class="card">
+    <p><b>Avvio automatico all'accensione.</b> Installa <b>Termux:Boot</b>: poi
+      dall'app NexusSEC (menu → Manutenzione → <b>Abilita autostart</b>) il server
+      partirà da solo. Utile anche <b>Termux:API</b>.</p>
+    <a class="btn" href="https://f-droid.org/en/packages/com.termux.boot/" rel="noopener">
+      <span class="e">🚀</span><span class="t">Termux:Boot<small>avvia il server all'accensione (F-Droid)</small></span></a>
+    <a class="btn" href="https://f-droid.org/en/packages/com.termux.api/" rel="noopener">
+      <span class="e">🔌</span><span class="t">Termux:API<small>notifiche, appunti, apri-URL… (F-Droid)</small></span></a>
+    <p class="muted" style="margin-top:10px">L'interfaccia si apre nel <b>browser</b> del
+      telefono. Puoi anche <b>aggiungerla alla schermata Home</b> per usarla a schermo
+      intero come un'app.</p>
+  </div>
+
   <footer>
     Progetto: <a href="https://github.com/dPlusOS21/Termux-NexusSEC-OS" rel="noopener">github.com/dPlusOS21/Termux-NexusSEC-OS</a><br>
     Solo per test autorizzati / apprendimento. Termux © termux.dev (link ufficiali).
@@ -146,6 +160,32 @@ python server.py</pre>
       });
   });
   function show(m){t.textContent=m; t.classList.add("show"); setTimeout(function(){t.classList.remove("show")},1800)}
+
+  // Rileva l'architettura del telefono (quando il browser lo permette) e conferma
+  // quale APK scaricare, evidenziando la scelta giusta.
+  (function detectArch(){
+    var tag=document.getElementById("arm64Tag"), note=document.getElementById("arm64Note");
+    function apply(arch,bits){
+      if(!arch) return;
+      var a=(arch+"").toLowerCase(), is64=(bits==="64"||bits===64);
+      if(a.indexOf("arm")>=0){
+        if(is64){ tag.textContent="✓ RILEVATO"; note.textContent="rilevato sul tuo telefono: scarica questo"; }
+        else{ note.textContent="il tuo telefono sembra ARM 32-bit: usa armeabi-v7a qui sotto"; }
+      } else if(a.indexOf("x86")>=0){
+        note.textContent="il tuo telefono/emulatore sembra Intel/x86: usa "+(is64?"x86_64":"x86")+" qui sotto";
+      }
+    }
+    try{
+      if(navigator.userAgentData&&navigator.userAgentData.getHighEntropyValues){
+        navigator.userAgentData.getHighEntropyValues(["architecture","bitness"])
+          .then(function(v){ apply(v.architecture, v.bitness); }).catch(function(){});
+      } else {
+        var ua=(navigator.userAgent||"").toLowerCase();
+        if(ua.indexOf("aarch64")>=0||ua.indexOf("arm64")>=0) apply("arm","64");
+        else if(ua.indexOf("x86_64")>=0) apply("x86","64");
+      }
+    }catch(e){}
+  })();
 </script>
 </body>
 </html>
