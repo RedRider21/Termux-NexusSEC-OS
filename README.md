@@ -59,7 +59,26 @@ In alternativa, i link diretti:
 
 ---
 
-## Installazione rapida (tutti i comandi, in Termux)
+## Installazione in un colpo solo (consigliata)
+
+Da un Termux appena installato, **una riga** fa tutto (aggiorna, scarica, installa,
+avvia il server e apre l'app):
+
+```bash
+pkg install -y curl && curl -fsSL https://raw.githubusercontent.com/dPlusOS21/Termux-NexusSEC-OS/master/nexussec-setup.sh | bash
+```
+
+Opzioni: `AUTOSTART=1` configura l'avvio automatico, `KALI=1` abilita il repo Kali,
+`NOSTART=1` non avvia il server. Es.: `AUTOSTART=1 KALI=1 bash nexussec-setup.sh`.
+
+### 📱 App con icona (launcher WebView)
+
+C'è anche un **launcher Android** (WebView a schermo intero, nome *NexusSEC*): apre
+l'interfaccia come un'app. Vedi [`android-launcher/`](android-launcher/) — l'APK si
+scarica dagli **Actions** del repo (o dalle Release). Il motore resta `server.py` in
+Termux (idealmente in autostart).
+
+## Installazione manuale (passo per passo)
 
 Da un Termux appena installato (da **F-Droid**, non dal Play Store). Copia-incolla
 questi comandi in ordine:

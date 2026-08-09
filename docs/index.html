@@ -113,7 +113,16 @@
 
   <h2><span class="n">2</span> Installa NexusSEC-OS</h2>
   <div class="card">
-    <p>Apri <b>Termux</b> appena installato e incolla questi comandi (tieni premuto per incollare):</p>
+    <p><b>Modo facile — una riga sola.</b> Apri <b>Termux</b> appena installato e
+      incolla questa (tieni premuto per incollare): fa tutto e avvia l'app.</p>
+    <pre id="one">pkg install -y curl &amp;&amp; curl -fsSL https://raw.githubusercontent.com/dPlusOS21/Termux-NexusSEC-OS/master/nexussec-setup.sh | bash</pre>
+    <button class="copy" id="copyOne">📋 Copia il comando</button>
+    <p class="muted" style="margin-top:10px">Poi apri <b>http://127.0.0.1:8000</b> nel
+      browser. Scarica ~700 MB–1 GB (tool + Debian minimale): meglio sotto Wi-Fi.</p>
+  </div>
+
+  <div class="card">
+    <p><b>Modo manuale</b> (se preferisci vedere ogni passaggio):</p>
     <pre id="cmd">pkg update -y &amp;&amp; pkg upgrade -y
 termux-setup-storage
 pkg install -y git python
@@ -122,9 +131,6 @@ cd Termux-NexusSEC-OS
 bash install.sh
 python server.py</pre>
     <button class="copy" id="copyBtn">📋 Copia i comandi</button>
-    <p class="muted" style="margin-top:10px">Poi apri <b>http://127.0.0.1:8000</b> nel
-      browser del telefono. <code>install.sh</code> scarica ~700 MB–1 GB (tool + Debian
-      minimale): meglio sotto Wi-Fi.</p>
   </div>
 
   <h2><span class="n">3</span> Comodità (opzionale)</h2>
@@ -149,16 +155,18 @@ python server.py</pre>
 <div id="toast"></div>
 <script>
   var t=document.getElementById("toast");
-  document.getElementById("copyBtn").addEventListener("click",function(){
-    var txt=document.getElementById("cmd").innerText;
+  function copyFrom(id){
+    var el=document.getElementById(id); if(!el) return;
+    var txt=el.innerText;
     (navigator.clipboard&&navigator.clipboard.writeText(txt)||Promise.reject())
-      .then(function(){show("Comandi copiati")},function(){
-        // fallback selezione
-        var r=document.createRange(); r.selectNode(document.getElementById("cmd"));
+      .then(function(){show("Copiato")},function(){
+        var r=document.createRange(); r.selectNode(el);
         var s=getSelection(); s.removeAllRanges(); s.addRange(r);
-        try{document.execCommand("copy"); show("Comandi copiati")}catch(e){show("Copia manuale: selezione pronta")}
+        try{document.execCommand("copy"); show("Copiato")}catch(e){show("Copia manuale: selezione pronta")}
       });
-  });
+  }
+  var cO=document.getElementById("copyOne"); if(cO) cO.addEventListener("click",function(){copyFrom("one")});
+  var cB=document.getElementById("copyBtn"); if(cB) cB.addEventListener("click",function(){copyFrom("cmd")});
   function show(m){t.textContent=m; t.classList.add("show"); setTimeout(function(){t.classList.remove("show")},1800)}
 
   // Rileva l'architettura del telefono (quando il browser lo permette) e conferma

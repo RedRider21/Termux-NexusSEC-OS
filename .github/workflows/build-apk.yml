@@ -1,0 +1,53 @@
+name: build-launcher-apk
+
+# Compila l'APK del launcher WebView e lo pubblica come artifact scaricabile.
+# - ad ogni push su master che tocca il launcher
+# - a mano (workflow_dispatch)
+# - quando pubblichi una Release: allega l'APK alla release stessa
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'android-launcher/**'
+      - '.github/workflows/build-apk.yml'
+  workflow_dispatch:
+  release:
+    types: [ published ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Build debug APK
+        working-directory: android-launcher
+        run: |
+          gradle wrapper --gradle-version 8.7
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexusSEC-launcher-debug
+          path: android-launcher/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Attach APK to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: android-launcher/app/build/outputs/apk/debug/app-debug.apk
