@@ -35,6 +35,14 @@ non esistono in Termux, o come **richieste HTTP dirette** quando basta un'API.
   live: quasi zero comandi a mano in Termux.
 - **🚀 Autostart.** Con Termux:Boot il server parte da solo all'accensione; si
   attiva/disattiva dal menu (`boot/start-nexussec.sh`).
+- **⌨️ Shell nel pannello.** Una shell dentro l'app (pulsante **⌨️** in basso o menu):
+  scrivi un comando, l'output scorre live e `cd`/variabili **restano** tra un comando
+  e l'altro. Il campo è della web-app: **niente auto-maiuscola** della tastiera (a
+  differenza del terminale ttyd, che resta disponibile come *▮ Terminale ttyd*).
+- **📱 Launcher che avvia tutto.** L'app *NexusSEC* mostra uno **splash** (logo +
+  *NexusSEC x Android* + **avviso d'uso legale**, si entra col tocco) e **avvia da
+  sola il server** in Termux via `com.termux.RUN_COMMAND`. Icona a scudo esagonale,
+  distinta da Termux.
 
 ---
 
@@ -73,10 +81,21 @@ Opzioni: `AUTOSTART=1` configura l'avvio automatico, `KALI=1` abilita il repo Ka
 
 ### 📱 App con icona (launcher WebView)
 
-C'è anche un **launcher Android** (WebView a schermo intero, nome *NexusSEC*): apre
-l'interfaccia come un'app. Vedi [`android-launcher/`](android-launcher/) — l'APK si
-scarica dagli **Actions** del repo (o dalle Release). Il motore resta `server.py` in
-Termux (idealmente in autostart).
+C'è anche un **launcher Android** (nome *NexusSEC*, icona a scudo esagonale) che apre
+l'interfaccia come un'app a schermo intero. All'avvio mostra uno **splash** con logo
+**NexusSEC x Android** e un **avviso d'uso legale**: si entra con un **tocco su
+«Entra»**. Nel frattempo l'app **avvia da sola il server** dentro Termux (intent
+ufficiale `com.termux.RUN_COMMAND`), così non devi più aprire Termux a mano; se il
+server non risponde, offre **Apri Termux** / **Riprova**.
+
+> Requisito: aver eseguito `install.sh` almeno una volta (abilita
+> `allow-external-apps=true` in `~/.termux/termux.properties`). Se avevi Termux già
+> aperto, chiudilo e riaprilo (o `termux-reload-settings`).
+
+**Scarica l'APK** dall'ultima release:
+[**NexusSEC-x-Android.apk**](https://github.com/dPlusOS21/Termux-NexusSEC-OS/releases/latest)
+· sorgenti in [`android-launcher/`](android-launcher/). Il motore resta `server.py`
+in Termux (idealmente in autostart). Vedi anche [`MANUALE.md`](MANUALE.md).
 
 ## Installazione manuale (passo per passo)
 
@@ -124,17 +143,30 @@ Interfaccia reale, catturata a dimensioni da telefono:
 <table>
 <tr>
 <td align="center" width="33%"><img src="docs/screens/01-home.png" width="210"><br><sub><b>Home</b> — tool per categoria, con badge di runtime</sub></td>
-<td align="center" width="33%"><img src="docs/screens/02-catalogo.png" width="210"><br><sub><b>Catalogo (🧰)</b> — i ~100 tool «＋ da installare»</sub></td>
-<td align="center" width="33%"><img src="docs/screens/03-menu.png" width="210"><br><sub><b>Menu ▤</b> — hub: profili, sistema, recenti</sub></td>
+<td align="center" width="33%"><img src="docs/screens/02-catalogo.png" width="210"><br><sub><b>Catalogo (🧰)</b> — i tool «＋ da installare»</sub></td>
+<td align="center" width="33%"><img src="docs/screens/03-menu.png" width="210"><br><sub><b>Menu</b> — hub: profili + Sistema (⌨️ Shell, Terminale ttyd…)</sub></td>
 </tr>
 <tr>
-<td align="center"><img src="docs/screens/04-profilo.png" width="210"><br><sub><b>Profilo Web</b> — pagina filtrata + banner</sub></td>
-<td align="center"><img src="docs/screens/05-installa-profilo.png" width="210"><br><sub><b>Installa profilo</b> — comando in blocco</sub></td>
+<td align="center"><img src="docs/screens/10-manutenzione.png" width="210"><br><sub><b>Manutenzione dalla PWA</b> — aggiorna/installa/autostart/riavvia</sub></td>
+<td align="center"><img src="docs/screens/04-profilo.png" width="210"><br><sub><b>Profilo Web</b> — pagina filtrata + «Installa profilo»</sub></td>
 <td align="center"><img src="docs/screens/06-da-installare.png" width="210"><br><sub><b>Da installare</b> — il comando esatto del tool</sub></td>
 </tr>
 <tr>
-<td align="center"><img src="docs/screens/07-terminale.png" width="210"><br><sub><b>Terminale</b> — ttyd per i tool interattivi</sub></td>
-<td></td><td></td>
+<td align="center"><img src="docs/screens/08-temi.png" width="210"><br><sub><b>Selettore temi (🎨)</b> — 5 temi selezionabili</sub></td>
+<td align="center"><img src="docs/screens/09-guida.png" width="210"><br><sub><b>Guida in-app</b> — apre al primo avvio, poi dal menu</sub></td>
+<td></td>
+</tr>
+</table>
+
+### I 5 temi (🎨)
+
+<table>
+<tr>
+<td align="center" width="20%"><img src="docs/screens/theme-terminal.png" width="150"><br><sub><b>Terminale</b></sub></td>
+<td align="center" width="20%"><img src="docs/screens/theme-glass.png" width="150"><br><sub><b>Glass</b></sub></td>
+<td align="center" width="20%"><img src="docs/screens/theme-neon.png" width="150"><br><sub><b>Neon</b></sub></td>
+<td align="center" width="20%"><img src="docs/screens/theme-minimal-dark.png" width="150"><br><sub><b>Minimal scuro</b></sub></td>
+<td align="center" width="20%"><img src="docs/screens/theme-minimal-light.png" width="150"><br><sub><b>Minimal chiaro</b></sub></td>
 </tr>
 </table>
 
@@ -201,7 +233,10 @@ All'utente sembra una app; sotto, gira il minimo indispensabile.
 - **`stream`** ◈ — output **live** in un pannello nativo dell'app via **WebSocket**,
   con **campo input** per rispondere alle domande dello script. Il server lancia il
   comando con pipe (`PYTHONUNBUFFERED`), spedisce l'output riga per riga e scrive le
-  risposte sullo `stdin`. Ideale per script Python interattivi (vedi `recon_demo.py`).
+  risposte sullo `stdin`. Ideale per script Python interattivi (`recon_demo.py`) e per
+  la **⌨️ Shell (pannello)** (`shell_live` / `shell_live_anon` via Tor): una shell
+  `bash` a comandi, senza auto-maiuscola. Non è un PTY (niente frecce/tab): per quello
+  c'è `interactive`/ttyd.
 - **`native`** — nessun binario: il server Python fa direttamente una **richiesta
   HTTP a un'API pubblica** (es. `rdap` → whois via RDAP). Leggero, istantaneo,
   funziona anche prima di installare qualsiasi cosa e persino sul PC.

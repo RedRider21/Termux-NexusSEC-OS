@@ -50,7 +50,10 @@ public class MainActivity extends Activity {
     private WebView web;
     private TextView status;
     private LinearLayout buttons;
+    private Button enterBtn;
     private boolean loaded = false;
+    private boolean serverReady = false;
+    private boolean pendingEnter = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,9 +105,36 @@ public class MainActivity extends Activity {
         status.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams stp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        stp.topMargin = dp(28);
+        stp.topMargin = dp(24);
         status.setLayoutParams(stp);
         root.addView(status);
+
+        // Avviso d'uso legale (obbligatorio prima di entrare).
+        TextView warn = new TextView(this);
+        warn.setText("⚠  Solo per test di sicurezza AUTORIZZATI: usa questi strumenti "
+                + "esclusivamente su sistemi tuoi o per cui hai un permesso scritto. "
+                + "L'uso non autorizzato è illegale.");
+        warn.setTextColor(0xFFE0B341);
+        warn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        warn.setGravity(Gravity.CENTER);
+        warn.setLineSpacing(dp(2), 1f);
+        warn.setPadding(dp(16), dp(12), dp(16), dp(12));
+        warn.setBackgroundColor(0x1FE0B341);
+        LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(dp(300),
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        wp.topMargin = dp(26);
+        warn.setLayoutParams(wp);
+        root.addView(warn);
+
+        // Pulsante "Entra" (tocco per accedere all'interfaccia).
+        enterBtn = makeButton("Entra  ▸", true, v -> enterApp());
+        enterBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+        enterBtn.setPadding(dp(30), dp(14), dp(30), dp(14));
+        LinearLayout.LayoutParams ep = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        ep.topMargin = dp(26);
+        enterBtn.setLayoutParams(ep);
+        root.addView(enterBtn);
 
         buttons = new LinearLayout(this);
         buttons.setOrientation(LinearLayout.HORIZONTAL);
@@ -136,22 +166,43 @@ public class MainActivity extends Activity {
     }
 
     // ------------------------------------------------------------- BOOTSTRAP --
-    /** Se il server e' gia' su, carica subito; altrimenti prova ad avviarlo in Termux. */
+    /**
+     * Prepara il server IN BACKGROUND mentre l'utente legge l'avviso. Non entra da
+     * solo: quando il server e' pronto lo segnala; si accede col tocco su "Entra"
+     * (o subito, se l'utente ha gia' toccato: vedi pendingEnter).
+     */
     private void bootstrap() {
-        if (ping()) { showWeb(); return; }
-        setStatus("avvio di Termux e del server…");
+        if (ping()) { onServerReady(); return; }
+        setStatus("preparo il server (avvio Termux)…");
         boolean asked = startServerViaTermux();
-        if (!asked) setStatus("Termux non raggiunto: aprilo a mano, poi Riprova.");
+        if (!asked) setStatus("tocca “Apri Termux”, poi “Entra”.");
 
         long deadline = SystemClock.elapsedRealtime() + POLL_TIMEOUT_MS;
         while (SystemClock.elapsedRealtime() < deadline) {
             sleep(900);
-            if (ping()) { showWeb(); return; }
+            if (ping()) { onServerReady(); return; }
         }
         runOnUiThread(() -> {
             setStatus("Il server non risponde ancora.\nApri Termux (o attendi l'autostart), poi Riprova.");
             buttons.setVisibility(View.VISIBLE);
         });
+    }
+
+    /** Il server locale risponde: sblocca l'ingresso (o entra se gia' richiesto). */
+    private void onServerReady() {
+        serverReady = true;
+        setStatus("server pronto ✓  —  tocca Entra");
+        if (pendingEnter) showWeb();
+    }
+
+    /** Tocco su "Entra": accede subito se pronto, altrimenti appena lo sara'. */
+    private void enterApp() {
+        if (serverReady) {
+            showWeb();
+        } else {
+            pendingEnter = true;
+            setStatus("attendo il server… entro appena è pronto");
+        }
     }
 
     /** True se http://127.0.0.1:8000 risponde con un qualunque codice HTTP. */
