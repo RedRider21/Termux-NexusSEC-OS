@@ -34,10 +34,24 @@ sconosciute": **accetta**. Poi apri **Termux**.
 
 ---
 
-## Passo 2 — Installa NexusSEC-OS (una volta sola)
+## Passo 2 — Installa NexusSEC-OS
 
-Apri Termux e **incolla queste righe** (tieni premuto nello schermo → *Incolla*).
-Premi Invio dopo l'ultima. Scarica ~700 MB–1 GB: **meglio sotto Wi-Fi**.
+### Modo facile: una riga sola (consigliato)
+
+Apri Termux e incolla **questa unica riga** (tieni premuto → *Incolla*, poi Invio).
+Fa tutto da sola: aggiorna, scarica, installa, avvia il server e apre l'app.
+Scarica ~700 MB–1 GB: **meglio sotto Wi-Fi**.
+
+```bash
+pkg install -y curl && curl -fsSL https://raw.githubusercontent.com/dPlusOS21/Termux-NexusSEC-OS/master/nexussec-setup.sh | bash
+```
+
+> Vuoi anche l'avvio automatico all'accensione? Usa:
+> `pkg install -y curl && curl -fsSL https://raw.githubusercontent.com/dPlusOS21/Termux-NexusSEC-OS/master/nexussec-setup.sh | AUTOSTART=1 bash`
+
+Quando finisce, sei già pronto: salta al **Passo 4** (l'app è su `http://127.0.0.1:8000`).
+
+### Modo manuale (se preferisci vedere ogni passaggio)
 
 ```bash
 pkg update -y && pkg upgrade -y
@@ -48,8 +62,8 @@ cd Termux-NexusSEC-OS
 bash install.sh
 ```
 
-`install.sh` fa tutto da solo: installa gli strumenti base, prepara il piccolo
-Debian di supporto e Tor. Aspetta che finisca (qualche minuto).
+`install.sh` installa gli strumenti base, prepara il piccolo Debian di supporto e
+Tor. Aspetta che finisca (qualche minuto).
 
 ---
 
