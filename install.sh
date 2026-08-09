@@ -162,6 +162,20 @@ else
     warn "Metasploit NON installato. Per aggiungerlo: INSTALL_METASPLOIT=yes ./install.sh"
 fi
 
+# --- 6b. Consenti al launcher APK di avviare il server (intent RUN_COMMAND) --
+# L'app NexusSEC (WebView) chiede a Termux di eseguire server.py: serve
+# "allow-external-apps=true" in ~/.termux/termux.properties.
+log "Abilito allow-external-apps in termux.properties (per l'APK launcher)..."
+mkdir -p "$HOME/.termux"
+TP="$HOME/.termux/termux.properties"
+touch "$TP"
+if grep -qE '^[[:space:]]*#?[[:space:]]*allow-external-apps' "$TP"; then
+    sed -i 's/^[[:space:]]*#\?[[:space:]]*allow-external-apps.*/allow-external-apps=true/' "$TP"
+else
+    printf '\nallow-external-apps=true\n' >> "$TP"
+fi
+command -v termux-reload-settings >/dev/null 2>&1 && termux-reload-settings || true
+
 # --- 7. Fine ----------------------------------------------------------------
 log "Installazione completata."
 if [ -n "${MISSING# }" ]; then
@@ -171,3 +185,7 @@ echo
 echo "Per avviare l'interfaccia:"
 echo "    python server.py"
 echo "Poi apri nel browser del telefono:  http://127.0.0.1:8000"
+echo
+echo "Se usi l'app NexusSEC (launcher APK): ora puo' avviare il server da sola"
+echo "(allow-external-apps abilitato). Se avevi Termux gia' aperto prima di questo"
+echo "install, chiudilo e riaprilo una volta perche' l'impostazione abbia effetto."

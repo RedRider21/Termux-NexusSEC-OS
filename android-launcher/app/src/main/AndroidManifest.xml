@@ -2,6 +2,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Necessario per chiedere a Termux di eseguire server.py (intent RUN_COMMAND).
+         Va abbinato a "allow-external-apps=true" in ~/.termux/termux.properties. -->
+    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
+
+    <!-- Android 11+: rende visibile il package Termux (per intent e launch). -->
+    <queries>
+        <package android:name="com.termux" />
+    </queries>
 
     <application
         android:allowBackup="true"
