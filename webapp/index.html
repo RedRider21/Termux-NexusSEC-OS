@@ -342,7 +342,7 @@
     <button class="iconbtn" id="themeBtn" title="Cambia tema">🎨</button>
     <button class="iconbtn" id="histBtn" title="Storico">🕘</button>
   </div>
-  <input id="search" placeholder="cerca un tool…" autocomplete="off">
+  <input id="search" placeholder="cerca un tool…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
   <small id="status">caricamento…</small>
   <div class="cats" id="cats"></div>
 </header>
@@ -364,10 +364,10 @@
     <pre id="streamOut" hidden></pre>
     <div id="guide" class="guide" hidden></div>
     <iframe id="term" hidden></iframe>
-    <div id="termHint" class="hint" hidden>Se il terminale resta vuoto, tocca <b>↗ Scheda</b> qui sopra: alcune versioni di ttyd non permettono l'incorporamento.</div>
+    <div id="termHint" class="hint" hidden>Se il terminale resta vuoto, tocca <b>↗ Scheda</b> qui sopra: alcune versioni di ttyd non permettono l'incorporamento.<br>Se la tastiera mette la <b>maiuscola</b> ai comandi (es. <code>Cd</code> invece di <code>cd</code>), disattiva l'auto-maiuscola della tastiera (Gboard → Impostazioni → Correzione testo → <b>Maiuscole automatiche: OFF</b>): il terminale è di ttyd e non possiamo forzarlo dall'app.</div>
   </div>
   <div id="streamBar" hidden>
-    <input id="streamIn" placeholder="scrivi e premi Invio per rispondere…" autocomplete="off" spellcheck="false">
+    <input id="streamIn" placeholder="scrivi e premi Invio per rispondere…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
     <button id="streamSend" class="iconbtn">Invia ▸</button>
     <button id="streamSig" class="iconbtn" title="Interrompi lo script (Ctrl-C)">■</button>
   </div>
@@ -378,7 +378,7 @@
   <div class="card-modal">
     <h3 id="mTitle"></h3>
     <p id="mHelp"></p>
-    <input id="mInput" autocomplete="off" spellcheck="false">
+    <input id="mInput" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
     <div class="verr" id="mErr"></div>
     <div class="mrow">
       <button class="btn cancel" id="mCancel">Annulla</button>
@@ -393,7 +393,7 @@
     <h3>Installa un pacchetto</h3>
     <p>Scrivi il nome (anche più di uno, separati da spazio) e scegli il repository.
        Così puoi installare quasi tutto, oltre al catalogo. I nomi vengono validati.</p>
-    <input id="pkgInput" placeholder="es. hping3  netdiscover" autocomplete="off" spellcheck="false">
+    <input id="pkgInput" placeholder="es. hping3  netdiscover" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
     <div class="verr" id="pkgErr"></div>
     <div class="repo-row">
       <button data-repo="termux">📦 Termux</button>
