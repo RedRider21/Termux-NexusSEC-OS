@@ -102,20 +102,23 @@ fi
 log "Aggiorno gli indici dei pacchetti dentro Debian..."
 proot-distro login "$DISTRO" -- apt-get update -y
 
-log "Installo whatweb + nikto (Ruby/Perl, non nativi in Termux)..."
-# proxychains4 anche dentro Debian: permette l'anonimato per whatweb/nikto.
-proot-distro login "$DISTRO" -- apt-get install -y --no-install-recommends \
-    whatweb nikto proxychains4 ca-certificates curl
-
-# Tool Debian "extra" (best-effort: se un pacchetto non c'e', avvisa e prosegue).
-log "Installo i tool Debian extra (dnsrecon, wafw00f, wfuzz)..."
-for t in dnsrecon wafw00f wfuzz; do
-    if proot-distro login "$DISTRO" -- apt-get install -y --no-install-recommends "$t" >/dev/null 2>&1; then
-        log "  ok: $t"
+# Best-effort per un SINGOLO pacchetto Debian: avvisa ma NON interrompe lo script
+# (fondamentale: con set -e un "unable to locate package X" abortirebbe tutto).
+proot_pkg_try() {
+    if proot-distro login "$DISTRO" -- apt-get install -y --no-install-recommends "$1" >/dev/null 2>&1; then
+        log "  ok: $1"
     else
-        warn "  non installato: $t (non nei repo Debian di questa versione)"
-        MISSING="${MISSING:-} $t"
+        warn "  non installato: $1 (non nei repo Debian di questa versione)"
+        MISSING="${MISSING:-} $1"
     fi
+}
+
+# whatweb/nikto (Ruby/Perl, non nativi in Termux) + proxychains4 (anonimato via Tor)
+# + i tool extra. TUTTI best-effort e uno per uno: se nikto/whatweb non sono nei repo
+# di questa versione di Debian, il resto viene installato lo stesso.
+log "Installo i tool di supporto in Debian (whatweb, nikto, proxychains4, dnsrecon, wafw00f, wfuzz)..."
+for t in ca-certificates curl proxychains4 whatweb nikto dnsrecon wafw00f wfuzz; do
+    proot_pkg_try "$t"
 done
 
 log "Configuro proxychains dentro Debian..."
