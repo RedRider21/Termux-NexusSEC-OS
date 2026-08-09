@@ -138,8 +138,11 @@ Termux (non devi più aprire Termux a mano). Perché funzioni:
    `allow-external-apps=true`, il permesso che consente all'app di avviare il server).
 2. Se avevi Termux **già aperto** prima di quell'install, **chiudilo e riaprilo** una
    volta (o esegui `termux-reload-settings`).
-3. Apri l'app **NexusSEC**: vedrai lo splash e, dopo qualche secondo, l'interfaccia.
-   Se il server non parte, l'app mostra **Apri Termux** e **↻ Riprova**.
+3. Apri l'app **NexusSEC**: vedrai lo **splash** con il logo *NexusSEC x Android* e un
+   **avviso d'uso legale**. Intanto l'app avvia il server in background; quando compare
+   *"server pronto ✓"* tocca **Entra ▸** per accedere all'interfaccia. (Se tocchi
+   *Entra* prima che sia pronto, l'app entra da sola appena lo è.)
+4. Se il server non parte, l'app mostra **Apri Termux** e **↻ Riprova**.
 
 > La prima volta Android potrebbe chiederti di consentire l'esecuzione: accetta.
 
