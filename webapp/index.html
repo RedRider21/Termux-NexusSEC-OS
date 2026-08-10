@@ -337,7 +337,7 @@
   <div class="hrow">
     <span class="brand">&gt;_ <b>NexusSEC</b></span>
     <span class="grow"></span>
-    <button class="iconbtn" id="torBtn" title="Instrada il traffico via Tor">🧅 Tor: off</button>
+    <button class="iconbtn" id="torBtn" title="Tor: off — instrada il traffico via Tor">🧅</button>
     <button class="iconbtn" id="catBtn" title="Mostra i tool installabili dal catalogo">🧰</button>
     <button class="iconbtn" id="themeBtn" title="Cambia tema">🎨</button>
     <button class="iconbtn" id="histBtn" title="Storico">🕘</button>
@@ -525,14 +525,14 @@ const HKEY = "nexussec-history";
 /* ---------------- modalita' anonima (Tor) ---------------- */
 function paintTor(){
   const on=anonMode, b=$("#torBtn");
-  b.textContent = on ? "🧅 Tor: ON" : "🧅 Tor: off";
+  b.title = on ? "Tor: ON — traffico instradato via Tor" : "Tor: off — instrada il traffico via Tor";
   b.style.borderColor = on ? "var(--amber)" : "var(--line)";
   b.style.color = on ? "var(--amber)" : "var(--fg)";
   $("#trayTor").classList.toggle("on", on);
   $("#tbTor").style.borderColor = on ? "var(--amber)" : "var(--line)";
 }
 async function setTor(on){
-  $("#torBtn").textContent = on ? "🧅 Tor: avvio…" : "🧅 Tor: off";
+  $("#torBtn").title = on ? "Tor: avvio…" : "Tor: off";
   try{
     const r=await fetch("/api/tor/"+(on?"start":"stop"),{method:"POST"});
     const d=await r.json();
@@ -1013,6 +1013,9 @@ function renderStartMenu(){
   mk("🕘 Storico",()=>{ closeStart(); $("#histBtn").click(); });
   mk("📖 Guida",()=>{ closeStart(); showGuide(); });
   if(activeProfile) mk("✕ Nessun profilo",()=>{ closeStart(); clearProfile(); });
+  // "Esci" chiude l'app: disponibile solo dentro il launcher APK (ponte NexusHost).
+  if(window.NexusHost && window.NexusHost.exit)
+    mk("⏻ Esci dall'app",()=>{ try{ window.NexusHost.exit(); }catch(e){} });
   body.appendChild(sys);
 
   // --- MANUTENZIONE (tutto dalla PWA, senza toccare Termux) ---
@@ -1076,6 +1079,8 @@ function applyTheme(id){
   else document.documentElement.setAttribute("data-theme",t.id);
   try{ localStorage.setItem(TKEY,t.id); }catch{}
   const mt=document.querySelector('meta[name="theme-color"]'); if(mt) mt.setAttribute("content",t.bg);
+  // Comunica il tema al launcher APK: lo splash userà la stessa palette.
+  try{ if(window.NexusHost && window.NexusHost.setTheme) window.NexusHost.setTheme(t.id); }catch{}
   renderThemeList();
 }
 function renderThemeList(){
