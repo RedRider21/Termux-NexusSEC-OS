@@ -312,6 +312,8 @@ public class MainActivity extends Activity {
             s.setDatabaseEnabled(true);
             s.setMediaPlaybackRequiresUserGesture(false);
             s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            // Server locale: niente cache stantia, così gli aggiornamenti si vedono subito.
+            s.setCacheMode(WebSettings.LOAD_NO_CACHE);
             web.setWebChromeClient(new WebChromeClient());
             web.setWebViewClient(new WebViewClient() {
                 @Override
