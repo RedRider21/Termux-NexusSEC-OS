@@ -54,6 +54,22 @@ TOOLS: dict[str, dict] = {
         "cmd": ["nmap", "-sT", "-T4", "-F"],   # -sT = connect scan: instradabile via Tor
         "anon_ok": True,
         "help": "Porte comuni di un host o range (es. 192.168.1.1 o 192.168.1.0/24)",
+        "params": [
+            {"type": "toggle", "flag": "-Pn", "label": "No ping (-Pn)",
+             "help": "Tratta l'host come attivo, salta il discovery"},
+            {"type": "toggle", "flag": "-sV", "label": "Versioni servizi (-sV)"},
+            {"type": "toggle", "flag": "-O", "label": "OS detection (-O)",
+             "help": "Richiede privilegi: su Android senza root può fallire"},
+            {"type": "toggle", "flag": "-A", "label": "Aggressivo (-A)",
+             "help": "-sV + -O + script + traceroute"},
+            {"type": "text", "flag": "-p", "label": "Porte (-p)",
+             "placeholder": "es. 22,80,443 o 1-1000",
+             "help": "Sovrascrive le porte comuni (-F)"},
+            {"type": "text", "flag": "--script", "join": "eq", "label": "Script NSE (--script)",
+             "placeholder": "es. vuln, http-title"},
+        ],
+        "hints": ["-v", "--reason", "--open", "-p-", "--top-ports 100",
+                  "-sC", "--traceroute"],
     },
     "nmap_ping": {
         "name": "Nmap · host attivi (ping sweep)",
@@ -78,12 +94,14 @@ TOOLS: dict[str, dict] = {
         "category": "Network", "mode": "oneshot", "runtime": "termux", "target": "host",
         "cmd": ["dig", "+noall", "+answer", "+nocmd"],
         "help": "Record DNS (A) di un dominio. Nativo Termux (dnsutils).",
+        "hints": ["-t MX", "-t TXT", "-t NS", "-t AAAA", "-t ANY", "+short", "+trace"],
     },
     "dnsrecon": {
         "name": "DNSRecon · enumerazione DNS",
         "category": "Network", "mode": "oneshot", "runtime": "proot", "target": "host",
         "cmd": ["dnsrecon", "-d"],
         "help": "Enumera record e prova zone transfer di un dominio (via Debian).",
+        "hints": ["-t std", "-t axfr", "-t brt", "-a", "-s", "--threads 10"],
     },
     # --- Web ---------------------------------------------------------------
     "whatweb": {
@@ -91,12 +109,14 @@ TOOLS: dict[str, dict] = {
         "category": "Web", "mode": "oneshot", "runtime": "proot", "target": "url",
         "cmd": ["whatweb", "--color=never"], "anon_ok": True,
         "help": "Tecnologie usate da un sito (es. https://esempio.it)",
+        "hints": ["-v", "-a 1", "-a 3", "--no-errors", "--follow-redirect=always"],
     },
     "nikto": {
         "name": "Nikto · scanner web",
         "category": "Web", "mode": "oneshot", "runtime": "proot", "target": "url",
         "cmd": ["nikto", "-nointeractive", "-h"], "anon_ok": True,
         "help": "Vulnerabilita' note di un web server (es. https://esempio.it)",
+        "hints": ["-ssl", "-Tuning 1", "-Tuning x 6", "-maxtime 120s", "-Display V"],
     },
     "wafw00f": {
         "name": "wafw00f · rileva WAF",
@@ -301,19 +321,47 @@ TOOLS: dict[str, dict] = {
 }
 
 
-def inner_command(tool_id: str, target: str | None, anon: bool) -> list[str]:
+# Limiti difensivi sui parametri extra passati dall'utente. Non c'e' rischio di
+# shell injection (i comandi sono liste argv, mai passate a una shell), ma teniamo
+# comunque i valori entro limiti ragionevoli e senza caratteri di controllo.
+_MAX_ARGS = 40
+_MAX_ARG_LEN = 256
+
+
+def validate_args(args: list | None) -> list[str]:
+    """Ripulisce e valida i parametri extra (argv). Solleva ValueError se anomali."""
+    if not args:
+        return []
+    if len(args) > _MAX_ARGS:
+        raise ValueError(f"Troppi parametri (max {_MAX_ARGS}).")
+    out: list[str] = []
+    for a in args:
+        if not isinstance(a, str):
+            raise ValueError("Parametro non valido.")
+        if len(a) > _MAX_ARG_LEN:
+            raise ValueError(f"Parametro troppo lungo (max {_MAX_ARG_LEN}).")
+        if any(c in a for c in ("\x00", "\n", "\r")):
+            raise ValueError("Parametro con caratteri non consentiti.")
+        if a != "":
+            out.append(a)
+    return out
+
+
+def inner_command(tool_id: str, target: str | None, anon: bool,
+                  args: list | None = None) -> list[str]:
     """Costruisce il comando "interno" del tool (senza il prefisso di runtime).
 
-    Aggiunge il target validato e, se richiesto e supportato, il prefisso
-    proxychains per instradare il traffico via Tor. Il prefisso di runtime
-    (nulla per Termux, proot per Debian) lo aggiunge exec_prefix() nel server.
-    Solleva ValueError su input non valido o richieste incoerenti.
+    Ordine: comando base + parametri extra (validati come argv) + target validato.
+    Se richiesto e supportato, antepone proxychains per instradare via Tor. Il
+    prefisso di runtime (nulla per Termux, proot per Debian) lo aggiunge exec_prefix()
+    nel server. Solleva ValueError su input non valido o richieste incoerenti.
     """
     tool = TOOLS.get(tool_id)
     if tool is None:
         raise ValueError("Tool sconosciuto.")
 
     cmd = list(tool["cmd"])
+    cmd += validate_args(args)          # parametri extra scelti dall'utente (argv)
     if tool.get("target"):
         cmd.append(validate_target(tool["target"], target or ""))
 
@@ -863,6 +911,9 @@ def tools_by_category() -> dict[str, list]:
              "works": t.get("works", True),         # False = non usabile su stock
              "reason": t.get("reason"),             # perche' non funziona (se works False)
              "target": t["target"], "help": t.get("help", ""),
+             "params": t.get("params"),             # schema opzioni grafiche (opzionale)
+             "hints": t.get("hints"),               # suggerimenti di flag (chip tappabili)
+             "cmdline": " ".join(t.get("cmd", [])),  # comando base per l'anteprima
              "anon_ok": t.get("anon_ok", False), "force_anon": t.get("force_anon", False)}
         )
     return out

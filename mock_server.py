@@ -162,8 +162,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(400, {"detail": "Tool interattivo."})
             anon = bool(payload.get("anon"))
             try:
-                # valida target e coerenza della richiesta anon (stessa logica del reale)
-                inner_command(tid, payload.get("target"), anon)
+                # valida target/args e coerenza della richiesta anon (come il reale)
+                inner_command(tid, payload.get("target"), anon, payload.get("args"))
             except ValueError as e:
                 return self._json(400, {"detail": str(e)})
             out = mock_output(tid, payload.get("target"))
