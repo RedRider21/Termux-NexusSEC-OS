@@ -140,7 +140,7 @@ public class MainActivity extends Activity {
         buttons = new LinearLayout(this);
         buttons.setOrientation(LinearLayout.HORIZONTAL);
         buttons.setGravity(Gravity.CENTER);
-        buttons.setVisibility(View.GONE);
+        buttons.setVisibility(View.VISIBLE);   // "Apri Termux" sempre disponibile nello splash
         LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         bp.topMargin = dp(22);
