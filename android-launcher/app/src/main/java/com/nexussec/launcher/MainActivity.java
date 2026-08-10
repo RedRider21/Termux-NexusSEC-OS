@@ -1,9 +1,15 @@
 package com.nexussec.launcher;
 
 import android.app.Activity;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
+import android.content.SharedPreferences;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -12,6 +18,7 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -22,6 +29,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -30,11 +38,11 @@ import java.net.URL;
 /**
  * Launcher WebView di Termux-NexusSEC-OS.
  *
- * All'avvio mostra uno SPLASH (logo + "NexusSEC x Android") e prova a far partire
- * il server locale dentro Termux tramite l'intent ufficiale com.termux.RUN_COMMAND
- * (richiede allow-external-apps=true in ~/.termux/termux.properties, impostato da
- * install.sh). Quando http://127.0.0.1:8000 risponde, carica l'interfaccia PWA a
- * schermo intero. Se Termux non risponde, offre "Apri Termux" e "Riprova".
+ * A schermo intero (niente barre di sistema). Splash con logo, avviso d'uso legale e
+ * un pannello di comandi in basso (Apri Termux, Installa Termux da F-Droid,
+ * Installa/Aggiorna NexusSEC). Prova ad avviare il server locale in Termux (intent
+ * com.termux.RUN_COMMAND); con "Entra" si accede alla PWA. Lo splash usa la palette
+ * del TEMA scelto nella PWA (salvato via ponte JS). "Esci" (dal menu PWA) chiude l'app.
  *
  * Nessuna dipendenza AndroidX: solo il framework Android.
  */
@@ -42,153 +50,257 @@ public class MainActivity extends Activity {
 
     private static final String URL = "http://127.0.0.1:8000";
     private static final String TERMUX_PKG = "com.termux";
-    private static final long   POLL_TIMEOUT_MS = 30000;   // attesa massima avvio server
-    private static final int    ACCENT = 0xFF3DFF88;       // verde terminale
-    private static final int    BG     = 0xFF050705;
-    private static final int    DIM    = 0xFF5A7A63;
+    private static final String PREFS = "nexus";
+    private static final String SETUP_CMD =
+            "pkg install -y curl && curl -fsSL "
+          + "https://raw.githubusercontent.com/dPlusOS21/Termux-NexusSEC-OS/master/"
+          + "nexussec-setup.sh | bash";
+    private static final String UPDATE_CMD =
+            "cd ~/Termux-NexusSEC-OS && git pull && bash install.sh";
+    private static final long POLL_TIMEOUT_MS = 30000;   // attesa massima avvio server
+
+    // Palette dello splash: rispecchia il tema scelto nella PWA.
+    private int cBg = 0xFF050705, cAccent = 0xFF3DFF88, cDim = 0xFF5A7A63,
+                cCard = 0xFF0D120D, cBorder = 0xFF16321F, cOnAccent = 0xFF04160A,
+                cAmber = 0xFFFFB454;
 
     private WebView web;
     private TextView status;
-    private LinearLayout buttons;
-    private Button enterBtn;
     private boolean loaded = false;
     private boolean serverReady = false;
     private boolean pendingEnter = false;
     private boolean wasPaused = false;
+    private volatile boolean bootstrapping = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        loadTheme();
+        hideSystemBars();
         setContentView(buildSplash());
-        // Parti in background: prima controlla se e' gia' su, altrimenti avvia Termux.
         new Thread(this::bootstrap).start();
+    }
+
+    /** Carica la palette dal tema salvato dalla PWA (SharedPreferences). */
+    private void loadTheme() {
+        String t = getSharedPreferences(PREFS, MODE_PRIVATE).getString("theme", "terminal");
+        switch (t) {
+            case "glass":
+                cBg = 0xFF0A0D12; cAccent = 0xFF7FE7D0; cDim = 0xFF93A6BB;
+                cCard = 0xFF18202C; cBorder = 0xFF2E3A48; cOnAccent = 0xFF06222A;
+                cAmber = 0xFFF4C06A; break;
+            case "neon":
+                cBg = 0xFF05060A; cAccent = 0xFF39F5C8; cDim = 0xFF6A7BA0;
+                cCard = 0xFF0C1120; cBorder = 0xFF1C2B4A; cOnAccent = 0xFF04121A;
+                cAmber = 0xFFFFCF5C; break;
+            case "minimal-dark":
+                cBg = 0xFF131417; cAccent = 0xFF5AA0FF; cDim = 0xFF8B95A3;
+                cCard = 0xFF1C1E23; cBorder = 0xFF2C2F36; cOnAccent = 0xFFFFFFFF;
+                cAmber = 0xFFE0A63A; break;
+            case "minimal-light":
+                cBg = 0xFFF4F6F9; cAccent = 0xFF2563EB; cDim = 0xFF5B6675;
+                cCard = 0xFFFFFFFF; cBorder = 0xFFE3E6EC; cOnAccent = 0xFFFFFFFF;
+                cAmber = 0xFFB7791F; break;
+            default: // terminal
+                cBg = 0xFF050705; cAccent = 0xFF3DFF88; cDim = 0xFF5A7A63;
+                cCard = 0xFF0D120D; cBorder = 0xFF16321F; cOnAccent = 0xFF04160A;
+                cAmber = 0xFFFFB454; break;
+        }
+    }
+
+    // -------------------------------------------------- schermo intero --------
+    private void hideSystemBars() {
+        getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+              | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+              | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+              | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+              | View.SYSTEM_UI_FLAG_FULLSCREEN
+              | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) hideSystemBars();
     }
 
     // ---------------------------------------------------------------- SPLASH --
     private View buildSplash() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setGravity(Gravity.CENTER);
-        root.setBackgroundColor(BG);
-        root.setPadding(dp(28), dp(28), dp(28), dp(28));
+        root.setGravity(Gravity.CENTER_HORIZONTAL);
+        root.setBackgroundColor(cBg);
+        root.setPadding(dp(22), dp(22), dp(22), dp(20));
+
+        root.addView(spacer());
 
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.nexus_logo);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(120), dp(120));
-        lp.bottomMargin = dp(18);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(108), dp(108));
+        lp.bottomMargin = dp(14);
         logo.setLayoutParams(lp);
         root.addView(logo);
 
         TextView title = new TextView(this);
         title.setText("NexusSEC");
-        title.setTextColor(ACCENT);
+        title.setTextColor(cAccent);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
         title.setGravity(Gravity.CENTER);
-        title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
+        title.setTypeface(title.getTypeface(), Typeface.BOLD);
         root.addView(title);
 
         TextView sub = new TextView(this);
         sub.setText("x Android");
-        sub.setTextColor(DIM);
+        sub.setTextColor(cDim);
         sub.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         sub.setGravity(Gravity.CENTER);
         sub.setLetterSpacing(0.25f);
-        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        sp.topMargin = dp(2);
-        sub.setLayoutParams(sp);
         root.addView(sub);
 
         status = new TextView(this);
         status.setText("avvio in corso…");
-        status.setTextColor(DIM);
+        status.setTextColor(cDim);
         status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         status.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams stp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        stp.topMargin = dp(24);
+        LinearLayout.LayoutParams stp = wrap();
+        stp.topMargin = dp(20);
         status.setLayoutParams(stp);
         root.addView(status);
 
-        // Avviso d'uso legale (obbligatorio prima di entrare).
+        // Avviso d'uso legale.
         TextView warn = new TextView(this);
         warn.setText("⚠  Solo per test di sicurezza AUTORIZZATI: usa questi strumenti "
                 + "esclusivamente su sistemi tuoi o per cui hai un permesso scritto. "
                 + "L'uso non autorizzato è illegale.");
-        warn.setTextColor(0xFFE0B341);
+        warn.setTextColor(cAmber);
         warn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         warn.setGravity(Gravity.CENTER);
         warn.setLineSpacing(dp(2), 1f);
-        warn.setPadding(dp(16), dp(12), dp(16), dp(12));
-        warn.setBackgroundColor(0x1FE0B341);
-        LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(dp(300),
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        wp.topMargin = dp(26);
+        warn.setPadding(dp(16), dp(11), dp(16), dp(11));
+        GradientDrawable warnBg = new GradientDrawable();
+        warnBg.setColor((cAmber & 0x00FFFFFF) | 0x22000000);
+        warnBg.setCornerRadius(dp(12));
+        warn.setBackground(warnBg);
+        LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        wp.topMargin = dp(20);
         warn.setLayoutParams(wp);
         root.addView(warn);
 
-        // Pulsante "Entra" (tocco per accedere all'interfaccia).
-        enterBtn = makeButton("Entra  ▸", true, v -> enterApp());
-        enterBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
-        enterBtn.setPadding(dp(30), dp(14), dp(30), dp(14));
-        LinearLayout.LayoutParams ep = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        ep.topMargin = dp(26);
-        enterBtn.setLayoutParams(ep);
-        root.addView(enterBtn);
+        // Pulsante primario "Entra".
+        Button enter = styledButton("Entra  ▸", true, v -> enterApp());
+        LinearLayout.LayoutParams ep = wrap();
+        ep.topMargin = dp(22);
+        enter.setLayoutParams(ep);
+        root.addView(enter);
 
-        buttons = new LinearLayout(this);
-        buttons.setOrientation(LinearLayout.HORIZONTAL);
-        buttons.setGravity(Gravity.CENTER);
-        buttons.setVisibility(View.VISIBLE);   // "Apri Termux" sempre disponibile nello splash
-        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        bp.topMargin = dp(22);
-        buttons.setLayoutParams(bp);
-        buttons.addView(makeButton("Apri Termux", true, v -> openTermux()));
-        buttons.addView(makeButton("↻ Riprova", false, v -> retry()));
-        root.addView(buttons);
+        root.addView(spacer());
 
+        // Pannello comandi in basso (griglia 2x2), stile "desktop".
+        root.addView(commandGrid());
         return root;
     }
 
-    private Button makeButton(String label, boolean filled, View.OnClickListener cl) {
-        Button b = new Button(this);
-        b.setText(label);
-        b.setAllCaps(false);
-        b.setOnClickListener(cl);
-        b.setTextColor(filled ? BG : ACCENT);
-        b.setBackgroundColor(filled ? ACCENT : 0x22000000);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(dp(6), 0, dp(6), 0);
+    /** Griglia 2x2 di comandi in stile pulsante NexusSEC. */
+    private View commandGrid() {
+        LinearLayout grid = new LinearLayout(this);
+        grid.setOrientation(LinearLayout.VERTICAL);
+        grid.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        LinearLayout row1 = row();
+        row1.addView(cell("⌨  Apri Termux", v -> openTermux()));
+        row1.addView(cell("⬇  Installa Termux", v -> installTermux()));
+
+        LinearLayout row2 = row();
+        LinearLayout.LayoutParams r2p = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        r2p.topMargin = dp(10);
+        row2.setLayoutParams(r2p);
+        row2.addView(cell("⇩  Installa NexusSEC",
+                v -> runInTermux(SETUP_CMD, "Comando copiato. In Termux: tieni premuto → Incolla → Invio.")));
+        row2.addView(cell("↻  Aggiorna NexusSEC",
+                v -> runInTermux(UPDATE_CMD, "Comando copiato. In Termux: tieni premuto → Incolla → Invio.")));
+
+        grid.addView(row1);
+        grid.addView(row2);
+        return grid;
+    }
+
+    private LinearLayout row() {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.HORIZONTAL);
+        r.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        return r;
+    }
+
+    /** Un pulsante di comando a larghezza uguale nella riga. */
+    private Button cell(String label, View.OnClickListener cl) {
+        Button b = styledButton(label, false, cl);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        lp.setMargins(dp(4), 0, dp(4), 0);
         b.setLayoutParams(lp);
         return b;
     }
 
-    // ------------------------------------------------------------- BOOTSTRAP --
-    /**
-     * Prepara il server IN BACKGROUND mentre l'utente legge l'avviso. Non entra da
-     * solo: quando il server e' pronto lo segnala; si accede col tocco su "Entra"
-     * (o subito, se l'utente ha gia' toccato: vedi pendingEnter).
-     */
-    private void bootstrap() {
-        if (ping()) { onServerReady(); return; }
-        setStatus("preparo il server (avvio Termux)…");
-        boolean asked = startServerViaTermux();
-        if (!asked) setStatus("tocca “Apri Termux”, poi “Entra”.");
-
-        long deadline = SystemClock.elapsedRealtime() + POLL_TIMEOUT_MS;
-        while (SystemClock.elapsedRealtime() < deadline) {
-            sleep(900);
-            if (ping()) { onServerReady(); return; }
+    /** Bottone in stile "NexusSEC": primario = verde pieno, altrimenti pill scura. */
+    private Button styledButton(String label, boolean primary, View.OnClickListener cl) {
+        Button b = new Button(this);
+        b.setText(label);
+        b.setAllCaps(false);
+        b.setOnClickListener(cl);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, primary ? 17 : 13);
+        b.setTextColor(primary ? cOnAccent : cAccent);
+        b.setTypeface(b.getTypeface(), primary ? Typeface.BOLD : Typeface.NORMAL);
+        b.setMinHeight(0);
+        b.setMinimumHeight(0);
+        b.setPadding(dp(primary ? 28 : 12), dp(primary ? 13 : 11),
+                     dp(primary ? 28 : 12), dp(primary ? 13 : 11));
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(primary ? 13 : 11));
+        if (primary) {
+            g.setColor(cAccent);
+        } else {
+            g.setColor(cCard);
+            g.setStroke(dp(1), cBorder);
         }
-        runOnUiThread(() -> {
-            setStatus("Il server non parte da solo su questo telefono.\n"
-                    + "Tocca «Apri Termux»: il server parte all'apertura;\n"
-                    + "poi torna qui e tocca «Entra».");
-            buttons.setVisibility(View.VISIBLE);
-        });
+        b.setBackground(g);
+        return b;
+    }
+
+    private View spacer() {
+        View v = new View(this);
+        v.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        return v;
+    }
+
+    private LinearLayout.LayoutParams wrap() {
+        return new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+    }
+
+    // ------------------------------------------------------------- BOOTSTRAP --
+    /** Prepara il server in background; l'accesso avviene col tocco su "Entra". */
+    private void bootstrap() {
+        bootstrapping = true;
+        try {
+            if (ping()) { onServerReady(); return; }
+            setStatus("preparo il server (avvio Termux)…");
+            startServerViaTermux();
+            long deadline = SystemClock.elapsedRealtime() + POLL_TIMEOUT_MS;
+            while (SystemClock.elapsedRealtime() < deadline) {
+                sleep(900);
+                if (ping()) { onServerReady(); return; }
+            }
+            setStatus("Il server non è ancora attivo.\n"
+                    + "Tocca «Apri Termux» (parte all'apertura), poi «Entra».");
+        } finally {
+            bootstrapping = false;
+        }
     }
 
     @Override
@@ -197,7 +309,7 @@ public class MainActivity extends Activity {
         wasPaused = true;
     }
 
-    /** Al ritorno nell'app (es. dopo aver aperto Termux) ricontrolla il server per ~12s. */
+    /** Al ritorno nell'app (es. dopo aver aperto Termux) ricontrolla il server ~12s. */
     @Override
     protected void onResume() {
         super.onResume();
@@ -213,20 +325,20 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Il server locale risponde: sblocca l'ingresso (o entra se gia' richiesto). */
     private void onServerReady() {
         serverReady = true;
         setStatus("server pronto ✓  —  tocca Entra");
         if (pendingEnter) showWeb();
     }
 
-    /** Tocco su "Entra": accede subito se pronto, altrimenti appena lo sara'. */
+    /** Tocco su "Entra": entra se pronto, altrimenti riprova ad avviare e attende. */
     private void enterApp() {
         if (serverReady) {
             showWeb();
         } else {
             pendingEnter = true;
-            setStatus("attendo il server… entro appena è pronto");
+            setStatus("avvio del server… entro appena è pronto");
+            if (!bootstrapping) new Thread(this::bootstrap).start();
         }
     }
 
@@ -246,12 +358,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    /**
-     * Chiede a Termux di eseguire server.py in background (intent RUN_COMMAND).
-     * Ritorna false se Termux non c'e' o l'intent viene rifiutato (permesso o
-     * allow-external-apps mancante).
-     */
-    private boolean startServerViaTermux() {
+    /** Chiede a Termux di eseguire il server in background (intent RUN_COMMAND). */
+    private void startServerViaTermux() {
         try {
             Intent i = new Intent();
             i.setComponent(new ComponentName(TERMUX_PKG, "com.termux.app.RunCommandService"));
@@ -260,7 +368,6 @@ public class MainActivity extends Activity {
                     "/data/data/com.termux/files/usr/bin/bash");
             i.putExtra("com.termux.RUN_COMMAND_ARGUMENTS", new String[]{
                     "-lc",
-                    // Usa il comando 'nexussec' (idempotente) se presente, con fallback.
                     "command -v nexussec >/dev/null 2>&1 && nexussec || "
                   + "(cd \"$HOME/Termux-NexusSEC-OS\" 2>/dev/null && "
                   + "(pgrep -f 'server\\.py' >/dev/null || "
@@ -275,26 +382,43 @@ public class MainActivity extends Activity {
             } else {
                 startService(i);
             }
-            return true;
-        } catch (Exception e) {
-            return false;
+        } catch (Exception ignored) {
         }
     }
 
-    /** Porta Termux in primo piano (fallback se l'avvio automatico non e' permesso). */
+    /** Porta Termux in primo piano. */
     private void openTermux() {
         Intent i = getPackageManager().getLaunchIntentForPackage(TERMUX_PKG);
         if (i != null) {
             startActivity(i);
         } else {
-            setStatus("Termux non installato. Installalo da F-Droid.");
+            setStatus("Termux non è installato. Tocca «Installa Termux».");
+            toast("Termux non installato: installalo da F-Droid.");
         }
     }
 
-    private void retry() {
-        buttons.setVisibility(View.GONE);
-        setStatus("nuovo tentativo…");
-        new Thread(this::bootstrap).start();
+    /** Apre la pagina F-Droid di Termux per installarlo. */
+    private void installTermux() {
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://f-droid.org/packages/com.termux/")));
+        } catch (Exception e) {
+            toast("Apri: f-droid.org/packages/com.termux");
+        }
+    }
+
+    /**
+     * Copia il comando negli appunti e apre Termux: l'utente lo incolla ed esegue.
+     * Metodo affidabile su tutti i telefoni (non dipende da allow-external-apps).
+     */
+    private void runInTermux(String cmd, String msg) {
+        try {
+            ClipboardManager cb = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            if (cb != null) cb.setPrimaryClip(ClipData.newPlainText("NexusSEC", cmd));
+        } catch (Exception ignored) {
+        }
+        openTermux();
+        toast(msg);
     }
 
     // ------------------------------------------------------------- WEBVIEW ----
@@ -312,18 +436,17 @@ public class MainActivity extends Activity {
             s.setDatabaseEnabled(true);
             s.setMediaPlaybackRequiresUserGesture(false);
             s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-            // Server locale: niente cache stantia, così gli aggiornamenti si vedono subito.
             s.setCacheMode(WebSettings.LOAD_NO_CACHE);
+            // Ponte JS: window.NexusHost.exit() chiude l'app; setTheme() salva il tema.
+            web.addJavascriptInterface(new JsBridge(), "NexusHost");
             web.setWebChromeClient(new WebChromeClient());
             web.setWebViewClient(new WebViewClient() {
                 @Override
                 public void onReceivedError(WebView v, WebResourceRequest req, WebResourceError err) {
                     if (req != null && req.isForMainFrame()) {
-                        // Il server e' caduto: torna allo splash con Riprova.
                         loaded = false;
                         setContentView(buildSplash());
-                        buttons.setVisibility(View.VISIBLE);
-                        setStatus("Connessione persa col server.\nApri Termux, poi Riprova.");
+                        setStatus("Connessione persa col server.\nApri Termux, poi Entra.");
                     }
                 }
             });
@@ -332,9 +455,27 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** Interfaccia JS esposta alla PWA (solo dentro l'APK). */
+    private class JsBridge {
+        @JavascriptInterface
+        public void exit() {
+            runOnUiThread(() -> finishAndRemoveTask());
+        }
+
+        @JavascriptInterface
+        public void setTheme(String id) {
+            if (id == null) return;
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString("theme", id).apply();
+        }
+    }
+
     // -------------------------------------------------------------- UTILS -----
     private void setStatus(String t) {
         runOnUiThread(() -> { if (status != null) status.setText(t); });
+    }
+
+    private void toast(String t) {
+        runOnUiThread(() -> Toast.makeText(this, t, Toast.LENGTH_LONG).show());
     }
 
     private int dp(int v) {
