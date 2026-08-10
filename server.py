@@ -481,9 +481,19 @@ def _cleanup() -> None:
         _tor_proc.terminate()
 
 
+# StaticFiles che aggiunge "Cache-Control: no-cache": il client rivalida sempre
+# (via ETag -> 304 se invariato, contenuto nuovo se cambiato). Evita che WebView o
+# browser servano una index.html/JS vecchi dopo un aggiornamento (git pull).
+class NoCacheStatic(StaticFiles):
+    async def get_response(self, path, scope):
+        resp = await super().get_response(path, scope)
+        resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+
 # La PWA (static). Montata per ultima cosi' le rotte /api/* hanno precedenza.
 if WEBAPP_DIR.is_dir():
-    app.mount("/", StaticFiles(directory=str(WEBAPP_DIR), html=True), name="webapp")
+    app.mount("/", NoCacheStatic(directory=str(WEBAPP_DIR), html=True), name="webapp")
 
 
 if __name__ == "__main__":
