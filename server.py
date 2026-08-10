@@ -30,7 +30,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
@@ -67,6 +67,7 @@ class RunRequest(BaseModel):
     tool: str
     target: Optional[str] = None
     anon: bool = False          # instrada il traffico via Tor (se il tool lo supporta)
+    args: Optional[List[str]] = None   # parametri extra scelti dall'utente (argv)
 
 
 def _require(*bins: str) -> None:
@@ -223,7 +224,7 @@ def run_oneshot(req: RunRequest):
         raise HTTPException(400, "Questo tool e' interattivo: usa /api/terminal.")
 
     try:
-        inner = inner_command(req.tool, req.target, req.anon)
+        inner = inner_command(req.tool, req.target, req.anon, req.args)
     except ValueError as e:
         raise HTTPException(400, str(e))
 

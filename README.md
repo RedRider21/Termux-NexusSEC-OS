@@ -23,6 +23,11 @@ non esistono in Termux, o come **richieste HTTP dirette** quando basta un'API.
 
 ### Novità
 
+- **⚙️ Parametri e opzioni per ogni tool.** La finestra di esecuzione ora ha un
+  campo **«parametri extra» (riga di comando)** — accodati in sicurezza come *argv*,
+  mai passati a una shell — più, per i tool di punta (es. **nmap**), **controlli
+  grafici** (toggle/menu/campi) che compongono i flag, **suggerimenti tappabili** e
+  un'**anteprima live** del comando che verrà eseguito.
 - **◈ Flusso live (WebSocket).** Alcuni strumenti (es. *Recon demo*) mostrano
   l'output **in diretta** in un pannello nativo dell'app e ti fanno **rispondere
   alle domande** — interazione bidirezionale, non solo un terminale incorporato.
@@ -154,7 +159,7 @@ Interfaccia reale, catturata a dimensioni da telefono:
 <tr>
 <td align="center"><img src="docs/screens/08-temi.png" width="210"><br><sub><b>Selettore temi (🎨)</b> — 5 temi selezionabili</sub></td>
 <td align="center"><img src="docs/screens/09-guida.png" width="210"><br><sub><b>Guida in-app</b> — apre al primo avvio, poi dal menu</sub></td>
-<td></td>
+<td align="center"><img src="docs/screens/11-parametri.png" width="210"><br><sub><b>Parametri &amp; opzioni</b> — flag grafici, suggerimenti e anteprima del comando</sub></td>
 </tr>
 </table>
 

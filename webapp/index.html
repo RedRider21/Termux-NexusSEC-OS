@@ -175,7 +175,7 @@
     cursor:pointer; border:1px solid var(--line); background:var(--card); color:var(--fg)}
   .repo-row button:active{transform:scale(.96)}
   .card-modal{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
-    width:100%; max-width:420px; padding:18px}
+    width:100%; max-width:420px; padding:18px; max-height:88vh; overflow-y:auto}
   .card-modal h3{margin:0 0 4px; color:var(--white); font-size:15px}
   .card-modal p{margin:0 0 12px; color:var(--muted); font-size:12px; line-height:1.4}
   .card-modal input{width:100%; background:var(--bg); color:var(--white); border:1px solid var(--line);
@@ -187,6 +187,27 @@
   .btn.go{background:var(--fg); color:var(--on-accent); font-weight:700; border-color:var(--fg)}
   .btn.cancel{background:transparent; color:var(--muted)}
   .btn:disabled{opacity:.4; cursor:not-allowed}
+  /* ---------- opzioni tool (modale) ---------- */
+  .mparams{display:flex; flex-direction:column; gap:8px; margin-top:10px}
+  .mparams:empty{margin-top:0}
+  .mp-row{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+  .mp-toggle{display:flex; align-items:center; gap:9px; cursor:pointer; color:var(--text); font-size:13px}
+  .mp-toggle input{width:auto; accent-color:var(--fg)}
+  .mp-lbl{color:var(--muted); font-size:11px; margin:2px 2px 0}
+  .mp-help{color:var(--muted); font-size:10.5px; opacity:.8}
+  .mparams .mp-text{width:100%}
+  .mparams select{width:100%; background:var(--bg); color:var(--white); border:1px solid var(--line);
+    border-radius:10px; padding:10px 12px; font-family:inherit; font-size:14px}
+  .margs-lbl{display:block; color:var(--muted); font-size:11px; margin:12px 2px 5px}
+  .mhints{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+  .mhints:empty{margin:0}
+  .mhints .mh-lbl{width:100%; color:var(--muted); font-size:10.5px; margin:2px 0 -1px}
+  .hint-chip{background:var(--card); color:var(--fg); border:1px dashed var(--fg-dim);
+    border-radius:20px; padding:5px 11px; font-family:var(--font); font-size:12px; cursor:pointer}
+  .hint-chip:active{transform:scale(.95)}
+  .cmd-preview{background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    color:var(--fg); font-family:var(--font); font-size:12px; padding:10px 12px; margin:10px 0 0;
+    white-space:pre-wrap; word-break:break-all; overflow-x:auto; line-height:1.5}
   /* ---------- storico ---------- */
   .hist-item{padding:12px 14px; border-bottom:1px solid var(--line); cursor:pointer}
   .hist-item:active{background:var(--card2)}
@@ -380,6 +401,12 @@
     <p id="mHelp"></p>
     <input id="mInput" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
     <div class="verr" id="mErr"></div>
+    <div id="mParams" class="mparams"></div>
+    <label id="mArgsLbl" class="margs-lbl">Parametri extra (riga di comando)</label>
+    <input id="mArgs" placeholder="es. -Pn --script vuln  (opzionale)" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <div class="verr" id="mArgsErr"></div>
+    <div id="mHints" class="mhints"></div>
+    <pre id="mPreview" class="cmd-preview"></pre>
     <div class="mrow">
       <button class="btn cancel" id="mCancel">Annulla</button>
       <button class="btn go" id="mGo">Esegui ▸</button>
@@ -607,33 +634,131 @@ function validTarget(kind,v){
 }
 
 /* ---------------- modal target ---------------- */
-let modalResolve=null;
-function askTarget(tool){
-  return new Promise((resolve)=>{
-    modalResolve=resolve;
-    $("#mTitle").textContent=tool.name;
-    $("#mHelp").textContent=tool.help||"Inserisci il target.";
-    mInput.value=""; mErr.textContent=""; mGo.disabled=true;
-    mInput.placeholder = tool.target==="url" ? "https://esempio.it" : "192.168.1.0/24";
-    modal.classList.add("open"); setTimeout(()=>mInput.focus(),50);
-    mInput.dataset.kind=tool.target;
+let modalResolve=null, curTool=null;
+const mArgs=$("#mArgs"), mParams=$("#mParams"), mPreview=$("#mPreview"), mArgsErr=$("#mArgsErr");
+
+// Divide una stringa in argomenti (rispetta apici singoli/doppi).
+function tokenizeArgs(str){
+  const out=[]; const re=/"([^"]*)"|'([^']*)'|(\S+)/g; let m;
+  while((m=re.exec(str||""))!==null) out.push(m[1]!==undefined?m[1]:(m[2]!==undefined?m[2]:m[3]));
+  return out;
+}
+// Quota un token solo per l'ANTEPRIMA (non per l'esecuzione, che usa argv).
+function shellQuote(t){ return /^[A-Za-z0-9_@%+=:,.\/-]+$/.test(t) ? t : "'"+String(t).replace(/'/g,"'\\''")+"'"; }
+
+// Costruisce i controlli grafici dal tool.params.
+function renderParams(tool){
+  mParams.innerHTML="";
+  (tool.params||[]).forEach(p=>{
+    if(p.type==="toggle"){
+      const l=document.createElement("label"); l.className="mp-toggle mp-ctl";
+      l.dataset.type="toggle"; l.dataset.flag=p.flag;
+      l.innerHTML=`<input type="checkbox"><span>${escapeHtml(p.label)}</span>`;
+      if(p.help){ const h=document.createElement("span"); h.className="mp-help"; h.textContent="· "+p.help; l.appendChild(h); }
+      l.querySelector("input").addEventListener("change",updatePreview);
+      mParams.appendChild(l);
+    } else if(p.type==="text"){
+      const d=document.createElement("div"); d.className="mp-ctl"; d.dataset.type="text";
+      d.dataset.flag=p.flag||""; d.dataset.join=p.join||"space";
+      d.innerHTML=`<label class="mp-lbl">${escapeHtml(p.label)}</label>`
+        +`<input class="mp-text" placeholder="${escapeHtml(p.placeholder||"")}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">`
+        +(p.help?`<div class="mp-help">${escapeHtml(p.help)}</div>`:"");
+      d.querySelector("input").addEventListener("input",updatePreview);
+      mParams.appendChild(d);
+    } else if(p.type==="select"){
+      const d=document.createElement("div"); d.className="mp-ctl"; d.dataset.type="select";
+      d.dataset.flag=p.flag||""; d.dataset.join=p.join||"flag";
+      const opts=(p.options||[]).map(o=>`<option value="${escapeHtml(o.value!==undefined?o.value:(o.flag||""))}">${escapeHtml(o.label)}</option>`).join("");
+      d.innerHTML=`<label class="mp-lbl">${escapeHtml(p.label)}</label><select>${opts}</select>`
+        +(p.help?`<div class="mp-help">${escapeHtml(p.help)}</div>`:"");
+      d.querySelector("select").addEventListener("change",updatePreview);
+      mParams.appendChild(d);
+    }
   });
 }
-function closeModal(val){ modal.classList.remove("open"); if(modalResolve){ modalResolve(val); modalResolve=null; } }
-mInput.addEventListener("input",()=>{
-  const err=validTarget(mInput.dataset.kind, mInput.value);
-  mErr.textContent = mInput.value ? err : "";
-  mGo.disabled = !!err;
-});
+// Chip di suggerimento: al tocco aggiungono il flag al campo "parametri extra".
+function renderHints(tool){
+  const box=$("#mHints"); box.innerHTML="";
+  const hs=tool.hints||[]; if(!hs.length) return;
+  const lbl=document.createElement("div"); lbl.className="mh-lbl"; lbl.textContent="suggerimenti (tocca per aggiungere):";
+  box.appendChild(lbl);
+  hs.forEach(h=>{
+    const b=document.createElement("button"); b.type="button"; b.className="hint-chip"; b.textContent=h;
+    b.onclick=()=>{ mArgs.value=(mArgs.value.trim()+" "+h).trim()+" "; mArgs.focus(); updatePreview(); };
+    box.appendChild(b);
+  });
+}
+// Raccoglie gli argomenti (grafici + campo libero) come array di token argv.
+function collectArgs(){
+  const args=[];
+  mParams.querySelectorAll(".mp-ctl").forEach(el=>{
+    const type=el.dataset.type;
+    if(type==="toggle"){ if(el.querySelector("input").checked) args.push(el.dataset.flag); }
+    else if(type==="text"){
+      const v=el.querySelector("input").value.trim(); if(!v) return;
+      const flag=el.dataset.flag, join=el.dataset.join;
+      if(!flag){ tokenizeArgs(v).forEach(t=>args.push(t)); }
+      else if(join==="eq"){ args.push(flag+"="+v); }
+      else { args.push(flag); tokenizeArgs(v).forEach(t=>args.push(t)); }
+    } else if(type==="select"){
+      const v=el.querySelector("select").value; if(!v) return;
+      const flag=el.dataset.flag, join=el.dataset.join;
+      if(join==="flag"||!flag){ args.push(v); }
+      else if(join==="eq"){ args.push(flag+"="+v); }
+      else { args.push(flag); args.push(v); }
+    }
+  });
+  tokenizeArgs(mArgs.value).forEach(t=>args.push(t));
+  return args;
+}
+function updatePreview(){
+  const t=curTool; if(!t) return;
+  const tv = t.target ? mInput.value.trim() : "";
+  const terr = (t.target && tv) ? validTarget(t.target, tv) : "";
+  mErr.textContent = (t.target && tv) ? terr : "";
+  const args=collectArgs();
+  mArgsErr.textContent = args.length>40 ? "Troppi parametri (max 40)." : "";
+  const parts=[t.cmdline||t.id];
+  if(args.length) parts.push(args.map(shellQuote).join(" "));
+  if(t.target) parts.push(tv?shellQuote(tv):"<target>");
+  mPreview.textContent="$ "+parts.filter(Boolean).join(" ");
+  mGo.disabled = (!!t.target && (!tv || !!terr)) || args.length>40;
+}
+function askRun(tool){
+  return new Promise((resolve)=>{
+    modalResolve=resolve; curTool=tool;
+    $("#mTitle").textContent=tool.name;
+    $("#mHelp").textContent=tool.help||"Imposta ed esegui.";
+    const hasT=!!tool.target;
+    mInput.style.display = hasT ? "" : "none";
+    mErr.style.display = hasT ? "" : "none";
+    mInput.value=""; mErr.textContent="";
+    if(hasT){ mInput.placeholder = tool.target==="url" ? "https://esempio.it" : "192.168.1.0/24"; mInput.dataset.kind=tool.target; }
+    renderParams(tool);
+    renderHints(tool);
+    mArgs.value=""; mArgsErr.textContent="";
+    updatePreview();
+    modal.classList.add("open");
+    setTimeout(()=>{ (hasT?mInput:mArgs).focus(); },50);
+  });
+}
+function closeModal(val){ modal.classList.remove("open"); if(modalResolve){ modalResolve(val); modalResolve=null; } curTool=null; }
+mInput.addEventListener("input",updatePreview);
+mArgs.addEventListener("input",updatePreview);
 mInput.addEventListener("keydown",(e)=>{ if(e.key==="Enter" && !mGo.disabled) mGo.click(); });
-mGo.onclick=()=>closeModal(mInput.value.trim());
+mArgs.addEventListener("keydown",(e)=>{ if(e.key==="Enter" && !mGo.disabled) mGo.click(); });
+mGo.onclick=()=>{ const t=curTool; closeModal({target: t&&t.target ? mInput.value.trim() : null, args: collectArgs()}); };
 $("#mCancel").onclick=()=>closeModal(null);
 modal.addEventListener("click",(e)=>{ if(e.target===modal) closeModal(null); });
 
 /* ---------------- esecuzione ---------------- */
 async function runOneshot(tool){
-  let target=null;
-  if(tool.target){ target=await askTarget(tool); if(target===null) return; }
+  let target=null, args=null;
+  const wantModal = tool.target || (tool.params && tool.params.length);
+  if(wantModal){
+    const res=await askRun(tool); if(res===null) return;
+    target=res.target; args=res.args;
+  }
   const anon=anonFor(tool);
   overlay.dataset.tool=tool.id;
   showOutput(tool.name, "");
@@ -641,7 +766,7 @@ async function runOneshot(tool){
   const t0=performance.now();
   try{
     const r=await fetch("/api/run",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({tool:tool.id,target,anon})});
+      body:JSON.stringify({tool:tool.id,target,anon,args})});
     const d=await r.json();
     const ms=Math.round(performance.now()-t0);
     if(!r.ok){ showOutput(tool.name,"Errore: "+(d.detail||r.status)); return; }
