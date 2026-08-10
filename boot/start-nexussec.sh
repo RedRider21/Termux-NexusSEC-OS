@@ -12,14 +12,13 @@
 # Tiene la CPU sveglia così il server resta attivo (richiede termux-api opzionale).
 termux-wake-lock 2>/dev/null
 
-# Vai nella cartella del progetto (adatta il percorso se l'hai clonato altrove).
-cd "$HOME/Termux-NexusSEC-OS" 2>/dev/null || exit 1
-
-# Avvia il server solo se non è già in esecuzione.
-if ! pgrep -f "python server.py" >/dev/null 2>&1; then
-  nohup python server.py >"$HOME/nexussec.log" 2>&1 &
+# Usa il comando "nexussec" (creato da install.sh): avvia il server in modo
+# idempotente da qualunque cartella. Fallback se il comando non c'è ancora.
+if command -v nexussec >/dev/null 2>&1; then
+  nexussec
+else
+  cd "$HOME/Termux-NexusSEC-OS" 2>/dev/null || exit 1
+  if ! pgrep -f "server\.py" >/dev/null 2>&1; then
+    nohup python server.py >"$HOME/nexussec.log" 2>&1 &
+  fi
 fi
-
-# Opzionale: apri l'app nel browser all'accensione (scommenta se lo vuoi).
-# sleep 3
-# termux-open-url http://127.0.0.1:8000

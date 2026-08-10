@@ -176,16 +176,60 @@ else
 fi
 command -v termux-reload-settings >/dev/null 2>&1 && termux-reload-settings || true
 
+# --- 6c. Comando "nexussec" + avvio automatico all'apertura di Termux --------
+# Cartella reale del progetto (dove si trova questo install.sh).
+REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+log "Creo il comando 'nexussec' (avvia il server da qualunque cartella)..."
+cat > "$PREFIX/bin/nexussec" <<'NEXX'
+#!/data/data/com.termux/files/usr/bin/bash
+# nexussec - avvia (una sola volta) il server NexusSEC. Idempotente.
+REPO="__REPO_DIR__"
+[ -d "$REPO" ] || REPO="$HOME/Termux-NexusSEC-OS"
+if pgrep -f "server\.py" >/dev/null 2>&1; then
+    echo "NexusSEC: server gia' attivo -> http://127.0.0.1:8000"
+    exit 0
+fi
+PY="$(command -v python || command -v python3)"
+[ -n "$PY" ] || { echo "NexusSEC: python non installato (pkg install python)"; exit 1; }
+command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock 2>/dev/null
+cd "$REPO" 2>/dev/null || { echo "NexusSEC: cartella $REPO non trovata"; exit 1; }
+nohup "$PY" server.py >"$HOME/nexussec.log" 2>&1 &
+sleep 1
+echo "NexusSEC: server avviato -> http://127.0.0.1:8000  (log: ~/nexussec.log)"
+NEXX
+sed -i "s|__REPO_DIR__|$REPO_DIR|" "$PREFIX/bin/nexussec"
+chmod +x "$PREFIX/bin/nexussec"
+
+# Avvia il server quando apri Termux (idempotente: niente se e' gia' attivo).
+BRC="$HOME/.bashrc"
+if ! grep -q "NexusSEC autostart" "$BRC" 2>/dev/null; then
+    log "Aggiungo l'avvio automatico all'apertura di Termux (~/.bashrc)..."
+    cat >> "$BRC" <<'BRCEOF'
+
+# >>> NexusSEC autostart >>>
+# Avvia il server NexusSEC all'apertura di Termux (non fa nulla se e' gia' attivo).
+# Per disattivarlo: rimuovi questo blocco, oppure  export NEXUSSEC_NO_AUTOSTART=1
+if [ -z "$NEXUSSEC_NO_AUTOSTART" ] && command -v nexussec >/dev/null 2>&1; then
+    nexussec >/dev/null 2>&1
+fi
+# <<< NexusSEC autostart <<<
+BRCEOF
+fi
+
 # --- 7. Fine ----------------------------------------------------------------
 log "Installazione completata."
 if [ -n "${MISSING# }" ]; then
     warn "Tool Termux non installati:${MISSING}. Il resto funziona lo stesso."
 fi
 echo
-echo "Per avviare l'interfaccia:"
-echo "    python server.py"
+echo "Per avviare l'interfaccia, da QUALSIASI cartella, scrivi:"
+echo "    nexussec"
 echo "Poi apri nel browser del telefono:  http://127.0.0.1:8000"
 echo
-echo "Se usi l'app NexusSEC (launcher APK): ora puo' avviare il server da sola"
-echo "(allow-external-apps abilitato). Se avevi Termux gia' aperto prima di questo"
-echo "install, chiudilo e riaprilo una volta perche' l'impostazione abbia effetto."
+echo "D'ora in poi il server parte DA SOLO quando apri Termux (e resta attivo)."
+echo "L'app NexusSEC (launcher APK) puo' avviarlo da sola; in ogni caso, se tocchi"
+echo "'Apri Termux' dall'app, il server parte all'apertura e l'app si collega."
+echo
+echo "NOTA: se avevi Termux gia' aperto, CHIUDILO e riaprilo una volta (l'avvio"
+echo "automatico e allow-external-apps hanno effetto dalla nuova sessione)."

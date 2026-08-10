@@ -54,6 +54,7 @@ public class MainActivity extends Activity {
     private boolean loaded = false;
     private boolean serverReady = false;
     private boolean pendingEnter = false;
+    private boolean wasPaused = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -183,9 +184,33 @@ public class MainActivity extends Activity {
             if (ping()) { onServerReady(); return; }
         }
         runOnUiThread(() -> {
-            setStatus("Il server non risponde ancora.\nApri Termux (o attendi l'autostart), poi Riprova.");
+            setStatus("Il server non parte da solo su questo telefono.\n"
+                    + "Tocca «Apri Termux»: il server parte all'apertura;\n"
+                    + "poi torna qui e tocca «Entra».");
             buttons.setVisibility(View.VISIBLE);
         });
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        wasPaused = true;
+    }
+
+    /** Al ritorno nell'app (es. dopo aver aperto Termux) ricontrolla il server per ~12s. */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (wasPaused && !loaded && !serverReady) {
+            wasPaused = false;
+            new Thread(() -> {
+                long deadline = SystemClock.elapsedRealtime() + 12000;
+                while (SystemClock.elapsedRealtime() < deadline) {
+                    if (ping()) { onServerReady(); return; }
+                    sleep(900);
+                }
+            }).start();
+        }
     }
 
     /** Il server locale risponde: sblocca l'ingresso (o entra se gia' richiesto). */
@@ -235,8 +260,11 @@ public class MainActivity extends Activity {
                     "/data/data/com.termux/files/usr/bin/bash");
             i.putExtra("com.termux.RUN_COMMAND_ARGUMENTS", new String[]{
                     "-lc",
-                    "cd \"$HOME/Termux-NexusSEC-OS\" 2>/dev/null && "
-                  + "(pgrep -f 'python .*server.py' >/dev/null || exec python server.py)"
+                    // Usa il comando 'nexussec' (idempotente) se presente, con fallback.
+                    "command -v nexussec >/dev/null 2>&1 && nexussec || "
+                  + "(cd \"$HOME/Termux-NexusSEC-OS\" 2>/dev/null && "
+                  + "(pgrep -f 'server\\.py' >/dev/null || "
+                  + "nohup python server.py >\"$HOME/nexussec.log\" 2>&1 &))"
             });
             i.putExtra("com.termux.RUN_COMMAND_WORKDIR",
                     "/data/data/com.termux/files/home");
