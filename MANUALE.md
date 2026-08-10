@@ -142,9 +142,13 @@ Termux (non devi più aprire Termux a mano). Perché funzioni:
    **avviso d'uso legale**. Intanto l'app avvia il server in background; quando compare
    *"server pronto ✓"* tocca **Entra ▸** per accedere all'interfaccia. (Se tocchi
    *Entra* prima che sia pronto, l'app entra da sola appena lo è.)
-4. Se il server non parte, l'app mostra **Apri Termux** e **↻ Riprova**.
+4. Se il server non parte da solo (alcuni telefoni bloccano l'avvio in background),
+   l'app mostra **Apri Termux** e **↻ Riprova**: tocca **Apri Termux** — il server
+   parte **all'apertura di Termux** — poi torna all'app: si collega da solo (o tocca
+   **Entra**).
 
 > La prima volta Android potrebbe chiederti di consentire l'esecuzione: accetta.
+> Da ora il server parte **automaticamente ogni volta che apri Termux** e resta attivo.
 
 - **Icona in Home (alternativa senza APK):** nel browser, menu → *"Aggiungi a schermata
   Home"*. Così apri NexusSEC come un'app a schermo intero (ma il server lo avvii tu).
@@ -187,8 +191,19 @@ Per i pacchetti Kali, la prima volta usa **🐉 Abilita repo Kali**.
 ## Domande frequenti
 
 - **La pagina non si apre / "server non raggiungibile".**
-  Torna in Termux: è ancora in esecuzione `python server.py`? Se l'hai chiuso,
-  rilancialo. Controlla di aver scritto **http://127.0.0.1:8000**.
+  Apri **Termux**: il server dovrebbe partire da solo (vedrai una riga *"NexusSEC:
+  server avviato"*). Se non parte, scrivi da qualunque cartella:
+  ```bash
+  nexussec
+  ```
+  (è il comando che avvia il server; sostituisce `python server.py` e funziona anche
+  se non sei nella cartella del progetto). Controlla di aver aperto **http://127.0.0.1:8000**.
+- **Scrivo `python server.py` e dice che non lo trova.**
+  Succede se non sei dentro la cartella del progetto. Usa invece **`nexussec`**: parte
+  da qualsiasi cartella. In alternativa: `cd ~/Termux-NexusSEC-OS && python server.py`.
+- **Voglio disattivare l'avvio automatico del server quando apro Termux.**
+  Apri `~/.bashrc` e togli il blocco fra `# >>> NexusSEC autostart >>>` e
+  `# <<< NexusSEC autostart <<<`, oppure metti `export NEXUSSEC_NO_AUTOSTART=1`.
 - **Ho aggiornato l'app ma non vedo le novità.**
   Menu → **⏻ Riavvia server**, poi ricarica la pagina (a volte serve ricaricare
   due volte per via della cache).
