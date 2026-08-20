@@ -302,20 +302,29 @@ public class MainActivity extends Activity {
                 return;
             }
 
-            // 1) Tentativo silenzioso (Termux già in memoria).
+            // 1) Tentativo SILENZIOSO (Termux già in memoria): parte in background,
+            //    Termux non viene mostrato. Dal secondo avvio in poi è questo a bastare.
             setStatus("avvio del server in corso…");
             startServerViaTermux();
             if (waitServer(6000)) { onServerReady(); return; }
 
-            // 2) Fallback: apri Termux una sola volta per far partire il server.
+            // 2) Fallback (solo primo avvio a freddo): apri Termux un istante per
+            //    accendere il server, poi riporta QUESTA app davanti da sola —
+            //    Termux resta vivo IN BACKGROUND, dietro.
             if (!triedForegroundLaunch) {
                 triedForegroundLaunch = true;
                 pendingEnter = true;   // appena pronto, entro senza altri tocchi
-                setStatus("apro Termux per accendere il server…\n"
-                        + "Lascia fare: torno da solo appena è pronto.");
+                setStatus("apro Termux un istante per accendere il server…");
                 openTermux();
+                if (waitServer(POLL_TIMEOUT_MS)) {
+                    bringToFront();    // l'app torna davanti; Termux prosegue in background
+                    onServerReady();
+                    return;
+                }
+            } else if (waitServer(POLL_TIMEOUT_MS)) {
+                onServerReady();
+                return;
             }
-            if (waitServer(POLL_TIMEOUT_MS)) { onServerReady(); return; }
 
             setStatus("Server non ancora attivo.\n"
                     + "Torna qui e tocca «Entra».");
@@ -420,6 +429,19 @@ public class MainActivity extends Activity {
             }
         } catch (Exception ignored) {
         }
+    }
+
+    /** Riporta questa app in primo piano (Termux resta vivo, ma dietro). */
+    private void bringToFront() {
+        runOnUiThread(() -> {
+            try {
+                Intent i = new Intent(this, MainActivity.class);
+                i.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                         | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                startActivity(i);
+            } catch (Exception ignored) {
+            }
+        });
     }
 
     /** Porta Termux in primo piano. */
