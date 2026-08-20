@@ -71,6 +71,7 @@ public class MainActivity extends Activity {
     private boolean pendingEnter = false;
     private boolean wasPaused = false;
     private volatile boolean bootstrapping = false;
+    private volatile boolean triedForegroundLaunch = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -284,23 +285,58 @@ public class MainActivity extends Activity {
     }
 
     // ------------------------------------------------------------- BOOTSTRAP --
-    /** Prepara il server in background; l'accesso avviene col tocco su "Entra". */
+    /**
+     * Avvia il server in autonomia. Strategia a due stadi:
+     *   1) tentativo SILENZIOSO via intent RUN_COMMAND (background), ~6 s;
+     *   2) FALLBACK affidabile: apre Termux in primo piano — così parte l'hook
+     *      .bashrc (comando `nexussec`) che accende il server. Al rientro nell'app
+     *      il server viene rilevato ed entro da solo.
+     */
     private void bootstrap() {
         bootstrapping = true;
         try {
             if (ping()) { onServerReady(); return; }
-            setStatus("preparo il server (avvio Termux)…");
-            startServerViaTermux();
-            long deadline = SystemClock.elapsedRealtime() + POLL_TIMEOUT_MS;
-            while (SystemClock.elapsedRealtime() < deadline) {
-                sleep(900);
-                if (ping()) { onServerReady(); return; }
+
+            if (!termuxInstalled()) {
+                setStatus("Termux non è installato.\nTocca «Installa Termux» per iniziare.");
+                return;
             }
-            setStatus("Il server non è ancora attivo.\n"
-                    + "Tocca «Apri Termux» (parte all'apertura), poi «Entra».");
+
+            // 1) Tentativo silenzioso (Termux già in memoria).
+            setStatus("avvio del server in corso…");
+            startServerViaTermux();
+            if (waitServer(6000)) { onServerReady(); return; }
+
+            // 2) Fallback: apri Termux una sola volta per far partire il server.
+            if (!triedForegroundLaunch) {
+                triedForegroundLaunch = true;
+                pendingEnter = true;   // appena pronto, entro senza altri tocchi
+                setStatus("apro Termux per accendere il server…\n"
+                        + "Lascia fare: torno da solo appena è pronto.");
+                openTermux();
+            }
+            if (waitServer(POLL_TIMEOUT_MS)) { onServerReady(); return; }
+
+            setStatus("Server non ancora attivo.\n"
+                    + "Torna qui e tocca «Entra».");
         } finally {
             bootstrapping = false;
         }
+    }
+
+    /** Attende fino a {@code ms} che il server risponda; true se è salito. */
+    private boolean waitServer(long ms) {
+        long deadline = SystemClock.elapsedRealtime() + ms;
+        while (SystemClock.elapsedRealtime() < deadline) {
+            if (ping()) return true;
+            sleep(900);
+        }
+        return false;
+    }
+
+    /** True se il pacchetto Termux è installato sul dispositivo. */
+    private boolean termuxInstalled() {
+        return getPackageManager().getLaunchIntentForPackage(TERMUX_PKG) != null;
     }
 
     @Override
