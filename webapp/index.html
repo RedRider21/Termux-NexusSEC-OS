@@ -130,7 +130,9 @@
   .tool:hover{border-color:var(--fg-dim); box-shadow:0 0 0 1px var(--fg-dim) inset}
   .tool .top{display:flex; align-items:center; gap:8px}
   .tool .emoji{font-size:20px; line-height:1}
-  .tool .nm{font-size:13px; font-weight:600; color:var(--white); line-height:1.2}
+  .tool .nm{font-size:13px; font-weight:600; color:var(--white); line-height:1.2; flex:1}
+  .tool .fav{margin-left:auto; font-size:16px; color:var(--muted); line-height:1; padding:2px 2px}
+  .tool .fav.on{color:var(--amber)}
   .tool .desc{font-size:11px; color:var(--muted); line-height:1.35; flex:1}
   .tool .badge{
     align-self:flex-start; font-size:10px; letter-spacing:1px; padding:2px 7px; border-radius:20px;
@@ -211,7 +213,10 @@
   /* ---------- storico ---------- */
   .hist-item{padding:12px 14px; border-bottom:1px solid var(--line); cursor:pointer}
   .hist-item:active{background:var(--card2)}
-  .hist-item .ht{color:var(--white); font-size:13px}
+  .hist-item .ht{color:var(--white); font-size:13px; display:flex; align-items:center; gap:8px}
+  .hist-item .hrun{margin-left:auto; background:var(--card2); color:var(--fg); border:1px solid var(--line);
+    border-radius:8px; font-size:14px; padding:2px 9px; cursor:pointer}
+  .hist-item .hrun:active{background:var(--line)}
   .hist-item .hs{color:var(--muted); font-size:11px; margin-top:3px; display:flex; gap:12px; flex-wrap:wrap}
   .rc-ok{color:var(--fg-dim)} .rc-err{color:var(--red)}
   /* ---------- toast ---------- */
@@ -284,9 +289,12 @@
   }
   .tb-win .x{color:var(--muted); font-size:13px}
   .tb-win .nm{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-  .tray{display:flex; align-items:center; gap:10px; padding-left:4px}
-  .tray .tdot{width:9px; height:9px; border-radius:50%; background:var(--muted)}
+  .tray{display:flex; align-items:center; gap:8px; padding-left:4px}
+  .tray .tdot{display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--muted); vertical-align:middle}
   .tray .tdot.on{background:var(--fg); box-shadow:var(--glow)}
+  .tray .tdot.ok{background:#3ddc84}
+  .tray .tdot.bad{background:#ff5a5a}
+  .tray .stat{display:flex; align-items:center; gap:3px; font-size:10px; color:var(--fg-dim)}
   .clock{font-size:12px; color:var(--fg-dim); font-variant-numeric:tabular-nums; min-width:42px; text-align:right}
   /* ---------- menu Applicazioni (bottom sheet) ---------- */
   .startmenu{
@@ -388,6 +396,8 @@
     <div id="termHint" class="hint" hidden>Se il terminale resta vuoto, tocca <b>↗ Scheda</b> qui sopra: alcune versioni di ttyd non permettono l'incorporamento.<br>Se la tastiera mette la <b>maiuscola</b> ai comandi (es. <code>Cd</code> invece di <code>cd</code>), disattiva l'auto-maiuscola della tastiera (Gboard → Impostazioni → Correzione testo → <b>Maiuscole automatiche: OFF</b>): il terminale è di ttyd e non possiamo forzarlo dall'app.</div>
   </div>
   <div id="streamBar" hidden>
+    <button id="streamPrev" class="iconbtn" title="Comando precedente">↑</button>
+    <button id="streamNext" class="iconbtn" title="Comando successivo">↓</button>
     <input id="streamIn" placeholder="scrivi e premi Invio per rispondere…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
     <button id="streamSend" class="iconbtn">Invia ▸</button>
     <button id="streamSig" class="iconbtn" title="Interrompi lo script (Ctrl-C)">■</button>
@@ -453,7 +463,9 @@
   <button class="tb-btn" id="tbTor" title="Modalità anonima Tor">🧅</button>
   <div class="tb-open" id="tbOpen"></div>
   <div class="tray">
-    <span class="tdot" id="trayTor" title="Stato Tor"></span>
+    <span class="stat" id="statSrv" title="Server locale"><i class="tdot"></i>srv</span>
+    <span class="stat" id="statProot" title="Debian (proot)"><i class="tdot"></i>🐧</span>
+    <span class="stat" title="Tor"><i class="tdot" id="trayTor"></i>🧅</span>
     <span class="clock" id="clock">--:--</span>
   </div>
 </nav>
@@ -548,6 +560,11 @@ let activeCategory = null; // categoria selezionata dalle chip (null = tutte)
 let anonMode = false;  // instrada via Tor i tool compatibili
 let showCatalog = false; // mostra anche i tool "da installare" del catalogo
 const HKEY = "nexussec-history";
+const FKEY = "nexussec-fav";
+function loadFav(){ try{ return new Set(JSON.parse(localStorage.getItem(FKEY)||"[]")); }catch{ return new Set(); } }
+let FAV = loadFav();
+function saveFav(){ try{ localStorage.setItem(FKEY, JSON.stringify([...FAV])); }catch{} }
+function toggleFav(id){ if(FAV.has(id)) FAV.delete(id); else FAV.add(id); saveFav(); }
 
 /* ---------------- modalita' anonima (Tor) ---------------- */
 function paintTor(){
@@ -613,12 +630,28 @@ function showTerminal(title, url){
 }
 $("#tabBtn").onclick=()=>{ if(termUrl) window.open(termUrl, "_blank", "noopener"); };
 $("#copyBtn").onclick=async()=>{ try{ await navigator.clipboard.writeText(output.textContent); toast("Copiato"); }catch{ toast("Copia non riuscita"); } };
-$("#dlBtn").onclick=()=>{
-  const blob=new Blob([output.textContent],{type:"text/plain"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download=(overlay.dataset.tool||"output")+"-"+Date.now()+".txt"; a.click();
-  URL.revokeObjectURL(a.href);
+// Salva l'output come FILE VERO lato server (in ~/nexussec-reports/): in WebView
+// Android il download via blob non funziona, quindi lo scrive il server. Se il
+// server non risponde (es. browser sul PC) ripiega sul download blob.
+$("#dlBtn").onclick=async()=>{
+  const text=output.textContent||"";
+  const tool=overlay.dataset.tool||"output";
+  try{
+    const r=await fetch("/api/save",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({tool,text})});
+    const d=await r.json();
+    if(r.ok && d.path){ toast("Salvato: "+d.path); return; }
+    throw new Error(d.detail||"errore");
+  }catch(e){
+    try{
+      const blob=new Blob([text],{type:"text/plain"});
+      const a=document.createElement("a");
+      a.href=URL.createObjectURL(blob);
+      a.download=tool+"-"+Date.now()+".txt"; a.click();
+      URL.revokeObjectURL(a.href);
+      toast("Scaricato");
+    }catch(_){ toast("Salvataggio non riuscito"); }
+  }
 };
 
 /* ---------------- validazione client (specchio del server) ---------------- */
@@ -805,6 +838,27 @@ function streamAppend(text, cls){
   else out.appendChild(document.createTextNode(text));
   if(atBottom) out.scrollTop=out.scrollHeight;
 }
+/* ---- storico comandi della shell del pannello (↑/↓, niente frecce su telefono) ---- */
+const SHKEY="nexussec-shell-hist";
+let shellHist=(()=>{try{return JSON.parse(localStorage.getItem(SHKEY)||"[]");}catch{return [];}})();
+let shellIdx=shellHist.length;
+function shellHistPush(cmd){
+  cmd=(cmd||"").trim(); if(!cmd){ shellIdx=shellHist.length; return; }
+  if(shellHist[shellHist.length-1]!==cmd){
+    shellHist.push(cmd); if(shellHist.length>100) shellHist=shellHist.slice(-100);
+    try{ localStorage.setItem(SHKEY, JSON.stringify(shellHist)); }catch{}
+  }
+  shellIdx=shellHist.length;
+}
+function shellHistNav(dir){
+  const inp=$("#streamIn"); if(!shellHist.length) return;
+  shellIdx=Math.max(0, Math.min(shellHist.length, shellIdx+dir));
+  inp.value = shellIdx>=shellHist.length ? "" : shellHist[shellIdx];
+  inp.focus(); const n=inp.value.length; try{ inp.setSelectionRange(n,n); }catch{}
+}
+$("#streamPrev").onclick=()=>shellHistNav(-1);
+$("#streamNext").onclick=()=>shellHistNav(1);
+
 // Pannello streaming generico: usato dai tool "flusso live" (con input) e
 // dalle azioni di sistema (aggiornamenti/installazioni, senza input).
 function runStream(url, title, opts){
@@ -817,6 +871,8 @@ function runStream(url, title, opts){
   const bar=$("#streamBar"), inp=$("#streamIn"), send=$("#streamSend");
   bar.classList.add("on");
   inp.disabled=!opts.input; send.disabled=!opts.input;
+  $("#streamPrev").disabled=!opts.input; $("#streamNext").disabled=!opts.input;
+  shellIdx=shellHist.length;   // riparti dal fondo dello storico
   inp.value=""; inp.placeholder = opts.input ? "scrivi e premi Invio per rispondere…" : "(nessun input richiesto)";
   overlay.classList.add("open");
   streamAppend("· connessione…\n", "sys");
@@ -838,9 +894,14 @@ function runStream(url, title, opts){
     const v=inp.value; if(v==="" || !streamWS || streamWS.readyState!==1) return;
     streamAppend("> "+v+"\n", "me");
     streamWS.send(JSON.stringify({type:"in", data:v})); inp.value="";
+    shellHistPush(v);
   }
   send.onclick=doSend;
-  inp.onkeydown=(e)=>{ if(e.key==="Enter"){ e.preventDefault(); doSend(); } };
+  inp.onkeydown=(e)=>{
+    if(e.key==="Enter"){ e.preventDefault(); doSend(); }
+    else if(e.key==="ArrowUp"){ e.preventDefault(); shellHistNav(-1); }
+    else if(e.key==="ArrowDown"){ e.preventDefault(); shellHistNav(1); }
+  };
   $("#streamSig").onclick=()=>{ if(streamWS&&streamWS.readyState===1) streamWS.send(JSON.stringify({type:"sig",data:"int"})); };
   if(opts.input) setTimeout(()=>inp.focus(),100);
 }
@@ -891,7 +952,8 @@ $("#histBtn").onclick=()=>{
   h.forEach((it,i)=>{
     const el=document.createElement("div"); el.className="hist-item";
     const rc = it.rc===0?'<span class="rc-ok">ok</span>':`<span class="rc-err">rc ${it.rc}</span>`;
-    el.innerHTML=`<div class="ht">${ICON[it.tool]||"▸"} ${escapeHtml(it.name)}</div>`
+    el.innerHTML=`<div class="ht">${ICON[it.tool]||"▸"} ${escapeHtml(it.name)}`
+      +`<button class="hrun" title="Ri-esegui">↻</button></div>`
       +`<div class="hs"><span>${it.target?escapeHtml(it.target):"—"}</span>`
       +`<span>${rc}</span><span>${new Date(it.ts).toLocaleString()}</span></div>`;
     el.onclick=()=>{
@@ -899,6 +961,13 @@ $("#histBtn").onclick=()=>{
       const meta=`<span>${it.target?`<b>target</b> ${escapeHtml(it.target)}`:""}</span>`
                +`<span><b>uscita</b> ${it.rc}</span><span><b>${new Date(it.ts).toLocaleString()}</b></span>`;
       showOutput(it.name, it.text, meta); $("#copyBtn").hidden=false; $("#dlBtn").hidden=false;
+    };
+    el.querySelector(".hrun").onclick=(e)=>{
+      e.stopPropagation();
+      const t=findTool(it.tool);
+      if(!t){ toast("Tool non disponibile"); return; }
+      overlay.classList.remove("open");
+      t.mode==="stream"?openStream(t):(t.mode==="interactive"?openTerminal(t):runOneshot(t));
     };
     wrap.appendChild(el);
   });
@@ -964,12 +1033,18 @@ function toolCard(tool){
   else if(off) mainBadge=`<span class="badge off" title="tocca per l'istruzione di installazione">＋ da installare</span>`;
   else if(stream) mainBadge=`<span class="badge term">${tool.id.startsWith("shell_live")?"⌨️ shell":"◈ flusso live"}</span>`;
   else mainBadge=`<span class="badge ${interactive?"term":""}">${interactive?"▮ terminale":"» run"}</span>`;
+  const fav=FAV.has(tool.id);
   b.innerHTML=`<div class="top"><span class="emoji">${ICON[tool.id]||"▸"}</span>`
-    +`<span class="nm">${escapeHtml(tool.name)}</span></div>`
+    +`<span class="nm">${escapeHtml(tool.name)}</span>`
+    +`<span class="fav${fav?" on":""}" title="Preferito">${fav?"★":"☆"}</span></div>`
     +`<span class="desc">${escapeHtml(tool.help||"")}</span>`
     +`<div style="display:flex;gap:6px;flex-wrap:wrap">${mainBadge}${rt}${live}${onion}</div>`;
   b.onclick=()=> broken ? showReason(tool) : (off ? installHint(tool)
     : (stream?openStream(tool) : (interactive?openTerminal(tool):runOneshot(tool))));
+  b.querySelector(".fav").onclick=(e)=>{
+    e.stopPropagation(); toggleFav(tool.id); render($("#search").value);
+    toast(FAV.has(tool.id)?"Aggiunto ai preferiti":"Rimosso dai preferiti");
+  };
   return b;
 }
 function visibleInCatalog(t){
@@ -1024,17 +1099,20 @@ function installProfile(prof){
 function renderCats(){
   const bar=$("#cats"); if(!bar) return; bar.innerHTML="";
   const cats=Object.keys(ALL);
-  if(activeCategory && !cats.includes(activeCategory)) activeCategory=null;
+  if(activeCategory && activeCategory!=="__fav__" && !cats.includes(activeCategory)) activeCategory=null;
   const mk=(key,label,icon)=>{
     const b=document.createElement("button");
     const on=(key===null && !activeCategory) || key===activeCategory;
     b.className="chip"+(on?" on":"");
-    const n=(key===null)?"" : `<span class="n">${ALL[key].length}</span>`;
+    let n="";
+    if(key==="__fav__") n=`<span class="n">${FAV.size}</span>`;
+    else if(key!==null) n=`<span class="n">${ALL[key].length}</span>`;
     b.innerHTML=`<span>${icon||""}</span><span>${escapeHtml(label)}</span>${n}`;
     b.onclick=()=>{ activeCategory=key; render($("#search").value); };
     bar.appendChild(b);
   };
   mk(null,"Tutte","▦");
+  if(FAV.size) mk("__fav__","Preferiti","★");
   cats.forEach(c=>mk(c,c,CAT_ICON[c]||"•"));
 }
 function render(filter=""){
@@ -1043,6 +1121,22 @@ function render(filter=""){
   const inProf = prof ? new Set(prof.tools) : null;
   if(prof) app.appendChild(profileBanner(prof));
   renderCats();
+
+  // Sezione PREFERITI: attraversa tutte le categorie, mostra solo i preferiti.
+  if(activeCategory==="__fav__"){
+    const favs=Object.values(ALL).flat().filter(t=>FAV.has(t.id)
+      && (!filter || (t.name+" "+(t.help||"")).toLowerCase().includes(filter)));
+    const h=document.createElement("h2");
+    h.innerHTML=`<span class="ic">★</span>Preferiti <span class="count">${favs.length}</span>`;
+    app.appendChild(h);
+    if(!favs.length){ const e=document.createElement("div"); e.className="empty";
+      e.textContent="Nessun preferito. Tocca la ☆ su una scheda per aggiungerlo."; app.appendChild(e); return; }
+    const g=document.createElement("div"); g.className="grid";
+    favs.forEach(t=>g.appendChild(toolCard(t)));
+    app.appendChild(g);
+    return;
+  }
+
   let shown=0;
   for(const [cat,tools] of Object.entries(ALL)){
     if(activeCategory && cat!==activeCategory) continue;
@@ -1082,6 +1176,15 @@ async function syncTor(){
     const d=await (await fetch("/api/tor/status")).json();
     anonMode=!!d.up; paintTor();
   }catch(e){/* backend offline */}
+}
+// Barra di stato: server locale (verde/rosso) e Debian in proot (verde=pronto).
+async function syncHealth(){
+  const srv=$("#statSrv").firstElementChild, pr=$("#statProot").firstElementChild;
+  try{
+    const d=await (await fetch("/api/health")).json();
+    srv.className="tdot ok";
+    pr.className=d.proot?"tdot ok":"tdot";
+  }catch(e){ srv.className="tdot bad"; pr.className="tdot"; }
 }
 /* ---------------- taskbar + menu Applicazioni (stile desktop) ---------------- */
 function findTool(id){ for(const arr of Object.values(ALL)) for(const t of arr) if(t.id===id) return t; return null; }
@@ -1239,6 +1342,7 @@ async function load(){
     $("#status").textContent=ready+" tool installati · "+catN+" nel catalogo · "+PROFILES.length+" profili (▤)";
     render();
     syncTor();
+    syncHealth(); setInterval(syncHealth, 20000);
     // Al primissimo avvio mostra la guida (una volta sola).
     try{ if(!localStorage.getItem("nexus_seen_guide")){ localStorage.setItem("nexus_seen_guide","1"); showGuide(); } }catch{}
   }catch(e){

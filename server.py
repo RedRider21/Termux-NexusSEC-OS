@@ -23,12 +23,14 @@ from __future__ import annotations
 import asyncio
 import atexit
 import os
+import re
 import shutil
 import signal
 import socket
 import subprocess
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -52,6 +54,8 @@ PORT = 8000
 ONESHOT_TIMEOUT = 180          # secondi max per un comando one-shot
 TTYD_BASE_PORT = 7681          # le istanze ttyd partono da qui
 WEBAPP_DIR = Path(__file__).parent / "webapp"
+REPORTS_DIR = Path.home() / "nexussec-reports"   # dove salviamo gli output su file
+_SAFE_ID = re.compile(r"[^A-Za-z0-9_.-]+")        # per un nome file pulito
 
 # --------------------------------------------------------------------------- #
 # App
@@ -68,6 +72,11 @@ class RunRequest(BaseModel):
     target: Optional[str] = None
     anon: bool = False          # instrada il traffico via Tor (se il tool lo supporta)
     args: Optional[List[str]] = None   # parametri extra scelti dall'utente (argv)
+
+
+class SaveRequest(BaseModel):
+    tool: str = "output"        # id del tool (per comporre il nome file)
+    text: str = ""              # contenuto da salvare
 
 
 def _require(*bins: str) -> None:
@@ -455,6 +464,34 @@ async def sys_stream(ws: WebSocket, action: str) -> None:
     # Dopo un'installazione, invalida la cache cosi' il tool risulta subito attivo.
     if action in ("install-tool", "install-profile", "install-package"):
         _INSTALLED["ids"] = None
+
+
+@app.get("/api/health")
+def health():
+    """Stato veloce per la barra di stato della PWA: server/proot/Tor."""
+    return {"ok": True,
+            "proot": shutil.which("proot-distro") is not None,
+            "tor": tor_is_up()}
+
+
+@app.post("/api/save")
+def save_output(req: SaveRequest):
+    """Salva l'output di una scansione come file VERO in ~/nexussec-reports/.
+
+    In WebView Android il download via blob non funziona: qui scriviamo un file
+    sul filesystem di Termux e restituiamo il percorso, così l'utente lo ritrova.
+    """
+    text = req.text or ""
+    if len(text) > 5_000_000:
+        raise HTTPException(400, "Output troppo grande da salvare (max ~5 MB).")
+    tool = (_SAFE_ID.sub("_", req.tool or "output")[:40]).strip("_.-") or "output"
+    try:
+        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        name = f"{tool}-{datetime.now():%Y%m%d-%H%M%S}.txt"
+        (REPORTS_DIR / name).write_text(text, encoding="utf-8")
+    except OSError as e:
+        raise HTTPException(500, f"Salvataggio non riuscito: {e}")
+    return {"path": str(REPORTS_DIR / name), "name": name}
 
 
 class RestartResp(BaseModel):

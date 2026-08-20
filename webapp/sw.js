@@ -3,7 +3,7 @@
 // - HTML/navigazioni -> RETE-first (l'aggiornamento si vede subito; cache solo
 //   come fallback offline). Evita di restare "incastrati" su una pagina vecchia.
 // - altri asset   -> cache-first (avvio rapido/offline).
-const CACHE = "nexussec-v15";
+const CACHE = "nexussec-v16";
 const SHELL = ["./", "index.html", "manifest.json"];
 
 self.addEventListener("install", (e) => {

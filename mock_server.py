@@ -114,6 +114,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, profiles_list())
         if path == "/api/tor/status":
             return self._json(200, {"up": _MOCK_TOR["up"]})
+        if path == "/api/health":
+            return self._json(200, {"ok": True, "proot": True, "tor": _MOCK_TOR["up"]})
         if path.startswith("/mock/term/"):
             tid = path.rsplit("/", 1)[-1]
             tool = TOOLS.get(tid)
@@ -142,6 +144,11 @@ class Handler(BaseHTTPRequestHandler):
         if path in ("/api/tor/start", "/api/tor/stop"):
             _MOCK_TOR["up"] = path.endswith("start")
             return self._json(200, {"up": _MOCK_TOR["up"]})
+
+        if path == "/api/save":
+            name = "%s-mock.txt" % (payload.get("tool") or "output")
+            return self._json(200, {"path": "/home/utente/nexussec-reports/" + name,
+                                    "name": name})
 
         if path == "/api/run":
             tid = payload.get("tool")

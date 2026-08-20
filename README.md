@@ -23,6 +23,21 @@ non esistono in Termux, o come **richieste HTTP dirette** quando basta un'API.
 
 ### Novità
 
+- **💾 Risultati salvabili + storico.** Ogni scansione si può **copiare** o **salvare
+  come file vero** in `~/nexussec-reports/` (il salvataggio lo fa il server: in WebView
+  Android il download del browser non funziona). Lo **storico** (ultime 50 esecuzioni)
+  è rivedibile e ha un pulsante **↻ ri-esegui**.
+- **★ Preferiti + ricerca.** Barra di ricerca fra tutti i tool e **stella** su ogni
+  scheda: i preferiti finiscono in un filtro dedicato **★ Preferiti** in cima.
+- **⌨️ Shell con storico comandi.** Nella shell del pannello i comandi precedenti si
+  richiamano con i tasti **↑ / ↓** (o le frecce fisiche) — comodo senza tastiera con
+  frecce — e c'è il pulsante **■ Stop** (Ctrl-C) per interrompere.
+- **● Barra di stato.** In basso, indicatori sempre visibili: **server** locale
+  (verde/rosso), **Debian in proot** (🐧) e **Tor** (🧅).
+- **📱 Launcher: avvio server in autonomia.** Al primo avvio a freddo apre Termux un
+  istante per accendere il server, poi **torna in primo piano da solo** (Termux resta
+  in background); dagli avvii successivi parte in modo silenzioso. Per un avvio sempre
+  invisibile: **Termux:Boot**.
 - **⚙️ Parametri e opzioni per ogni tool.** La finestra di esecuzione ora ha un
   campo **«parametri extra» (riga di comando)** — accodati in sicurezza come *argv*,
   mai passati a una shell — più, per i tool di punta (es. **nmap**), **controlli
