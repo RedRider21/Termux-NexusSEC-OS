@@ -176,6 +176,10 @@ Interfaccia reale, catturata a dimensioni da telefono:
 <td align="center"><img src="docs/screens/09-guida.png" width="210"><br><sub><b>Guida in-app</b> — apre al primo avvio, poi dal menu</sub></td>
 <td align="center"><img src="docs/screens/11-parametri.png" width="210"><br><sub><b>Parametri &amp; opzioni</b> — flag grafici, suggerimenti e anteprima del comando</sub></td>
 </tr>
+<tr>
+<td align="center"><img src="docs/screens/12-preferiti.png" width="210"><br><sub><b>Preferiti (★)</b> — i tool che usi di più, filtrati in cima</sub></td>
+<td align="center" colspan="2"><img src="docs/screens/13-barra-stato.png" width="440"><br><sub><b>Barra di stato</b> — server, Debian (proot) e Tor sempre sott'occhio nel tray</sub></td>
+</tr>
 </table>
 
 ### I 5 temi (🎨)
