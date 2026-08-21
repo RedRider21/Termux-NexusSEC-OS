@@ -460,7 +460,6 @@
 <nav class="taskbar">
   <button class="tb-start" id="startBtn"><span class="dot"></span>NexusSEC</button>
   <button class="tb-btn" id="tbTerm" title="Terminale (shell)">⌨️</button>
-  <button class="tb-btn" id="tbTor" title="Modalità anonima Tor">🧅</button>
   <div class="tb-open" id="tbOpen"></div>
   <div class="tray">
     <span class="stat" id="statSrv" title="Server locale"><i class="tdot"></i>srv</span>
@@ -573,7 +572,6 @@ function paintTor(){
   b.style.borderColor = on ? "var(--amber)" : "var(--line)";
   b.style.color = on ? "var(--amber)" : "var(--fg)";
   $("#trayTor").classList.toggle("on", on);
-  $("#tbTor").style.borderColor = on ? "var(--amber)" : "var(--line)";
 }
 async function setTor(on){
   $("#torBtn").title = on ? "Tor: avvio…" : "Tor: off";
@@ -1284,7 +1282,6 @@ $("#startBtn").onclick=openStart;
 $("#smClose").onclick=closeStart;
 $("#scrim").onclick=closeStart;
 $("#tbTerm").onclick=()=>{ const sh=findTool("shell_live"); if(sh) openStream(sh); else toast("Shell non disponibile"); };
-$("#tbTor").onclick=()=>setTor(!anonMode);
 $("#smRefresh").onclick=async()=>{ await refreshTools(); renderStartMenu(); };
 
 // orologio della tray
