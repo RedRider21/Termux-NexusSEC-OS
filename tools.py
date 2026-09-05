@@ -828,6 +828,15 @@ PROFILES: dict[str, dict] = {
                   "netexec", "evil_winrm", "bloodhound_py", "routersploit", "set",
                   "naabu", "socat", "ncat", "sipvicious", "nuclei"],
     },
+    "pentest_lite": {
+        "name": "Pen Testing Lite", "icon": "⚡",
+        "desc": "Essenziale e leggero: recon, scan, injection, brute, cracking, "
+                "SMB. Senza Metasploit/Exploit-DB.",
+        # john sostituisce hashcat (CPU, niente OpenCL); hashid identifica gli hash.
+        "tools": ["nmap_quick", "nmap_ping", "dig", "naabu", "sqlmap", "nuclei",
+                  "hydra", "john", "hashid", "enum4linux", "smbmap", "netexec",
+                  "ncat", "socat"],
+    },
     "web": {
         "name": "Web", "icon": "🕸️",
         "desc": "Sicurezza di siti e applicazioni web.",
