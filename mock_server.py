@@ -115,7 +115,10 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/tor/status":
             return self._json(200, {"up": _MOCK_TOR["up"]})
         if path == "/api/health":
-            return self._json(200, {"ok": True, "proot": True, "tor": _MOCK_TOR["up"]})
+            # Sul PC di test non c'è root: così la UI mostra le spunte "(solo root)"
+            # disabilitate, come su un telefono no-root.
+            return self._json(200, {"ok": True, "proot": True,
+                                    "tor": _MOCK_TOR["up"], "root": False})
         if path.startswith("/mock/term/"):
             tid = path.rsplit("/", 1)[-1]
             tool = TOOLS.get(tid)
@@ -170,9 +173,14 @@ class Handler(BaseHTTPRequestHandler):
             anon = bool(payload.get("anon"))
             try:
                 # valida target/args e coerenza della richiesta anon (come il reale)
-                inner_command(tid, payload.get("target"), anon, payload.get("args"))
+                inner = inner_command(tid, payload.get("target"), anon, payload.get("args"))
             except ValueError as e:
                 return self._json(400, {"detail": str(e)})
+            # Blocco "(solo root)" come nel server reale (PC di test = no root).
+            root_flags = set(tool.get("root_flags", []) or [])
+            if root_flags and any(tok in root_flags for tok in inner):
+                return self._json(400, {"detail": "Questa opzione è «(solo root)»: "
+                                        "usa raw socket, non disponibile senza root."})
             out = mock_output(tid, payload.get("target"))
             if anon or tool.get("force_anon"):
                 out = "[via Tor] " + out

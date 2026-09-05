@@ -207,6 +207,12 @@
   .hint-chip{background:var(--card); color:var(--fg); border:1px dashed var(--fg-dim);
     border-radius:20px; padding:5px 11px; font-family:var(--font); font-size:12px; cursor:pointer}
   .hint-chip:active{transform:scale(.95)}
+  .hint-chip.root{border-color:var(--amber); color:var(--amber)}
+  .hint-chip:disabled{opacity:.45; cursor:not-allowed}
+  /* marcatura "(solo root)" su spunte/chip: raw socket -> serve un telefono rootato */
+  .rootbadge{color:var(--amber); font-size:10.5px; font-weight:600; white-space:nowrap}
+  .mp-toggle.needroot{opacity:.6; cursor:not-allowed}
+  .mp-toggle.needroot input{cursor:not-allowed}
   .cmd-preview{background:var(--bg); border:1px solid var(--line); border-radius:10px;
     color:var(--fg); font-family:var(--font); font-size:12px; padding:10px 12px; margin:10px 0 0;
     white-space:pre-wrap; word-break:break-all; overflow-x:auto; line-height:1.5}
@@ -557,7 +563,14 @@ let PROFILES = [];     // profili (set di tool installabili insieme)
 let activeProfile = null; // profilo attivo che filtra la pagina
 let activeCategory = null; // categoria selezionata dalle chip (null = tutte)
 let anonMode = false;  // instrada via Tor i tool compatibili
+let HAS_ROOT = false;  // telefono rootato? (da /api/health) -> abilita "(solo root)"
 let showCatalog = false; // mostra anche i tool "da installare" del catalogo
+// True se il flag (o il suo primo token, es. "-PS22,80,443") richiede root.
+function isRootFlag(tool, flag){
+  const set=tool&&tool.root_flags; if(!set||!flag) return false;
+  const head=String(flag).trim().split(/\s+/)[0];   // "-PS22,80,443" -> "-PS22,80,443"
+  return set.includes(head);
+}
 const HKEY = "nexussec-history";
 const FKEY = "nexussec-fav";
 function loadFav(){ try{ return new Set(JSON.parse(localStorage.getItem(FKEY)||"[]")); }catch{ return new Set(); } }
@@ -684,8 +697,15 @@ function renderParams(tool){
     if(p.type==="toggle"){
       const l=document.createElement("label"); l.className="mp-toggle mp-ctl";
       l.dataset.type="toggle"; l.dataset.flag=p.flag;
-      l.innerHTML=`<input type="checkbox"><span>${escapeHtml(p.label)}</span>`;
+      const rootf=isRootFlag(tool,p.flag);
+      const tag=rootf?` <span class="rootbadge">(solo root)</span>`:"";
+      l.innerHTML=`<input type="checkbox"><span>${escapeHtml(p.label)}${tag}</span>`;
       if(p.help){ const h=document.createElement("span"); h.className="mp-help"; h.textContent="· "+p.help; l.appendChild(h); }
+      if(rootf && !HAS_ROOT){        // no-root: spunta visibile ma disattivata
+        l.classList.add("needroot");
+        l.querySelector("input").disabled=true;
+        l.title="Richiede un telefono rootato (usa raw socket)";
+      }
       l.querySelector("input").addEventListener("change",updatePreview);
       mParams.appendChild(l);
     } else if(p.type==="text"){
@@ -714,8 +734,11 @@ function renderHints(tool){
   const lbl=document.createElement("div"); lbl.className="mh-lbl"; lbl.textContent="suggerimenti (tocca per aggiungere):";
   box.appendChild(lbl);
   hs.forEach(h=>{
-    const b=document.createElement("button"); b.type="button"; b.className="hint-chip"; b.textContent=h;
-    b.onclick=()=>{ mArgs.value=(mArgs.value.trim()+" "+h).trim()+" "; mArgs.focus(); updatePreview(); };
+    const b=document.createElement("button"); b.type="button"; b.className="hint-chip";
+    const rootf=isRootFlag(tool,h);
+    b.textContent=h; if(rootf){ b.classList.add("root"); b.append(" (solo root)"); }
+    if(rootf && !HAS_ROOT){ b.disabled=true; b.title="Richiede un telefono rootato (raw socket)"; }
+    else b.onclick=()=>{ mArgs.value=(mArgs.value.trim()+" "+h).trim()+" "; mArgs.focus(); updatePreview(); };
     box.appendChild(b);
   });
 }
@@ -1027,7 +1050,8 @@ function toolCard(tool){
   const live=native?`<span class="badge" title="API esterna, gira anche senza proot">🌐 live</span>`:"";
   const rt=broken?"":(RUNTIME[tool.runtime]||"");
   let mainBadge;
-  if(broken) mainBadge=`<span class="badge nope" title="tocca per sapere perché">❌ non su stock</span>`;
+  if(broken && tool.root_only) mainBadge=`<span class="badge nope" title="tocca per sapere perché">🔒 solo root</span>`;
+  else if(broken) mainBadge=`<span class="badge nope" title="tocca per sapere perché">❌ non su stock</span>`;
   else if(off) mainBadge=`<span class="badge off" title="tocca per l'istruzione di installazione">＋ da installare</span>`;
   else if(stream) mainBadge=`<span class="badge term">${tool.id.startsWith("shell_live")?"⌨️ shell":"◈ flusso live"}</span>`;
   else mainBadge=`<span class="badge ${interactive?"term":""}">${interactive?"▮ terminale":"» run"}</span>`;
@@ -1182,6 +1206,7 @@ async function syncHealth(){
     const d=await (await fetch("/api/health")).json();
     srv.className="tdot ok";
     pr.className=d.proot?"tdot ok":"tdot";
+    if(!!d.root!==HAS_ROOT){ HAS_ROOT=!!d.root; render($("#search").value); } // aggiorna i badge "(solo root)"
   }catch(e){ srv.className="tdot bad"; pr.className="tdot"; }
 }
 /* ---------------- taskbar + menu Applicazioni (stile desktop) ---------------- */

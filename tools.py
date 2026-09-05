@@ -31,6 +31,19 @@ PROXYCHAINS = ["proxychains4", "-q"]
 # Porta SOCKS locale aperta da Tor (girato nativamente in Termux).
 TOR_SOCKS_PORT = 9050
 
+# Flag di nmap che costruiscono/leggono pacchetti TCP/IP grezzi (raw socket):
+# il kernel Android li riserva a root, quindi su telefono NON rootato falliscono
+# sempre con "requires root privileges. QUITTING!". La UI li marca "(solo root)"
+# e il server, se rileva root (su), esegue il comando via `su -c`.
+#   -O/-A       OS detection (fingerprinting dello stack)
+#   -sS/-sU/-sA/-sW/-sM/-sN/-sF/-sX/-sO   scansioni con pacchetti grezzi
+#   --traceroute                          traceroute a pacchetti grezzi
+#   -PE/-PP/-PM/-PO/-PR                    ping discovery ICMP/IP/ARP
+NMAP_ROOT_FLAGS = [
+    "-O", "-A", "-sS", "-sU", "-sA", "-sW", "-sM", "-sN", "-sF", "-sX", "-sO",
+    "--traceroute", "-PE", "-PP", "-PM", "-PO", "-PR",
+]
+
 # --------------------------------------------------------------------------- #
 # Registry dei tool
 # --------------------------------------------------------------------------- #
@@ -54,19 +67,24 @@ TOOLS: dict[str, dict] = {
         "cmd": ["nmap", "-sT", "-T4", "-F"],   # -sT = connect scan: instradabile via Tor
         "anon_ok": True,
         "help": "Porte comuni di un host o range (es. 192.168.1.1 o 192.168.1.0/24)",
+        # OS detection (-O), scansione aggressiva (-A) e --traceroute usano raw
+        # socket: la UI li marca "(solo root)" e girano solo se il telefono è
+        # rootato (il server li esegue via `su`). La scansione base è -sT.
+        "root_flags": NMAP_ROOT_FLAGS,
         "params": [
             {"type": "toggle", "flag": "-Pn", "label": "No ping (-Pn)",
              "help": "Tratta l'host come attivo, salta il discovery"},
-            {"type": "toggle", "flag": "-sV", "label": "Versioni servizi (-sV)"},
+            {"type": "toggle", "flag": "-sV", "label": "Versioni servizi (-sV)",
+             "help": "Rileva il servizio/versione sulle porte aperte"},
             {"type": "toggle", "flag": "-O", "label": "OS detection (-O)",
-             "help": "Richiede privilegi: su Android senza root può fallire"},
+             "help": "Riconosce il sistema operativo (raw socket)"},
             {"type": "toggle", "flag": "-A", "label": "Aggressivo (-A)",
-             "help": "-sV + -O + script + traceroute"},
+             "help": "-sV + -O + script + traceroute (raw socket)"},
             {"type": "text", "flag": "-p", "label": "Porte (-p)",
              "placeholder": "es. 22,80,443 o 1-1000",
              "help": "Sovrascrive le porte comuni (-F)"},
             {"type": "text", "flag": "--script", "join": "eq", "label": "Script NSE (--script)",
-             "placeholder": "es. vuln, http-title"},
+             "placeholder": "es. http-title, banner"},
         ],
         "hints": ["-v", "--reason", "--open", "-p-", "--top-ports 100",
                   "-sC", "--traceroute"],
@@ -76,6 +94,9 @@ TOOLS: dict[str, dict] = {
         "category": "Network", "mode": "oneshot", "runtime": "termux", "target": "host",
         "cmd": ["nmap", "-sn"],
         "help": "Elenca gli host vivi in una rete (es. 192.168.1.0/24). NB: usa ICMP/ARP, non passa da Tor.",
+        # -PE/-PR (ping ICMP/ARP) e --traceroute usano raw socket -> "(solo root)".
+        # -PS (ping TCP) funziona anche no-root: nmap lo degrada a connect().
+        "root_flags": NMAP_ROOT_FLAGS,
         "params": [
             {"type": "toggle", "flag": "-n", "label": "No DNS (-n)",
              "help": "Non risolve i nomi: più veloce"},
@@ -83,7 +104,7 @@ TOOLS: dict[str, dict] = {
             {"type": "text", "flag": "--exclude", "join": "eq", "label": "Escludi host (--exclude)",
              "placeholder": "es. 192.168.1.1,192.168.1.5"},
         ],
-        "hints": ["-PR", "-PE", "-PS22,80,443", "--traceroute", "-R", "--reason"],
+        "hints": ["-PS22,80,443", "-PE", "-PR", "--traceroute", "-R", "--reason"],
     },
     "whois": {
         "name": "Whois",
@@ -1029,6 +1050,10 @@ def tools_by_category() -> dict[str, list]:
              "target": t["target"], "help": t.get("help", ""),
              "params": t.get("params"),             # schema opzioni grafiche (opzionale)
              "hints": t.get("hints"),               # suggerimenti di flag (chip tappabili)
+             "root_flags": t.get("root_flags"),     # flag che richiedono root ("(solo root)")
+             # tool bloccato specificamente perche' richiede root (badge "(solo root)")
+             "root_only": t.get("works", True) is False
+                          and "root" in (t.get("reason") or "").lower(),
              "cmdline": " ".join(t.get("cmd", [])),  # comando base per l'anteprima
              "anon_ok": t.get("anon_ok", False), "force_anon": t.get("force_anon", False)}
         )

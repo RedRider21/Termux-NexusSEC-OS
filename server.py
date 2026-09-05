@@ -22,8 +22,10 @@ from __future__ import annotations
 
 import asyncio
 import atexit
+import functools
 import os
 import re
+import shlex
 import shutil
 import signal
 import socket
@@ -84,6 +86,44 @@ def _require(*bins: str) -> None:
     for b in bins:
         if shutil.which(b) is None:
             raise HTTPException(500, f"Binario '{b}' non trovato. Hai lanciato install.sh?")
+
+
+# --------------------------------------------------------------------------- #
+# Rilevamento root (opzionale): se il telefono è rootato, i tool/opzioni che
+# usano raw socket (nmap -O/-A, --traceroute, ecc.) possono girare via `su`.
+# Il risultato è in cache: il test si fa una volta sola (può mostrare il prompt
+# di Magisk). "Aggiorna" (refresh_tools) azzera la cache per riprovare.
+# --------------------------------------------------------------------------- #
+
+@functools.lru_cache(maxsize=1)
+def su_bin() -> Optional[str]:
+    """Percorso del binario `su`, se presente (Magisk & co.), altrimenti None."""
+    su = shutil.which("su")
+    if su:
+        return su
+    for p in ("/system/bin/su", "/system/xbin/su", "/sbin/su", "/debug_ramdisk/su"):
+        if os.path.exists(p):
+            return p
+    return None
+
+
+@functools.lru_cache(maxsize=1)
+def has_root() -> bool:
+    """True solo se `su` esiste E concede davvero root (id -u == 0)."""
+    su = su_bin()
+    if not su:
+        return False
+    try:
+        r = subprocess.run([su, "-c", "id -u"], capture_output=True,
+                           text=True, timeout=6)
+        return r.returncode == 0 and r.stdout.strip() == "0"
+    except (subprocess.SubprocessError, OSError):
+        return False
+
+
+def _reset_root_cache() -> None:
+    su_bin.cache_clear()
+    has_root.cache_clear()
 
 
 # --------------------------------------------------------------------------- #
@@ -200,6 +240,7 @@ def list_tools():
 def refresh_tools():
     """Forza un nuovo rilevamento (utile subito dopo aver installato un tool)."""
     _INSTALLED["ids"] = None
+    _reset_root_cache()      # riprova a rilevare root (es. dopo aver dato il permesso)
     return list_tools()
 
 
@@ -237,6 +278,22 @@ def run_oneshot(req: RunRequest):
     except ValueError as e:
         raise HTTPException(400, str(e))
 
+    # Opzioni che richiedono root (raw socket): es. nmap -O/-A/--traceroute.
+    # Le rileviamo dal comando già costruito, così valgono sia se scelte con le
+    # spunte sia se digitate a mano nei parametri extra.
+    root_flags = set(tool.get("root_flags", []) or [])
+    needs_root = bool(root_flags) and any(tok in root_flags for tok in inner)
+    if needs_root:
+        if req.anon or tool.get("force_anon"):
+            raise HTTPException(400, "Le opzioni con raw socket (es. -O, -A, "
+                                     "--traceroute) non passano da Tor: "
+                                     "disattiva la modalità anonima.")
+        if not has_root():
+            raise HTTPException(400, "Questa opzione è «(solo root)»: usa raw "
+                                     "socket, che il telefono senza root non "
+                                     "consente. Togli le spunte segnate «(solo "
+                                     "root)».")
+
     # Se il comando esce via Tor, assicurati che Tor sia attivo.
     if req.anon or tool.get("force_anon"):
         ensure_tor()
@@ -246,6 +303,12 @@ def run_oneshot(req: RunRequest):
     if prefix:
         _require("proot-distro")
     argv = prefix + inner
+
+    # Telefono rootato + opzione "(solo root)": esegui il comando tramite `su`,
+    # così i raw socket funzionano. argv è tutto validato (argv, non shell); lo
+    # ricompongo con shlex.quote per passarlo alla shell di `su -c`.
+    if needs_root:
+        argv = [su_bin(), "-c", shlex.join(argv)]
 
     try:
         proc = subprocess.run(
@@ -468,10 +531,11 @@ async def sys_stream(ws: WebSocket, action: str) -> None:
 
 @app.get("/api/health")
 def health():
-    """Stato veloce per la barra di stato della PWA: server/proot/Tor."""
+    """Stato veloce per la barra di stato della PWA: server/proot/Tor/root."""
     return {"ok": True,
             "proot": shutil.which("proot-distro") is not None,
-            "tor": tor_is_up()}
+            "tor": tor_is_up(),
+            "root": has_root()}
 
 
 @app.post("/api/save")
