@@ -889,10 +889,13 @@ function closeStream(){
 }
 function streamAppend(text, cls){
   const out=$("#streamOut");
-  const atBottom = out.scrollTop+out.clientHeight >= out.scrollHeight-30;
+  // Il contenitore che scorre è .obody, non il <pre>: l'auto-scroll va fatto su
+  // quello. Segue il fondo solo se l'utente non ha scrollato su a leggere.
+  const box=out.closest(".obody")||out.parentElement;
+  const atBottom = box.scrollTop+box.clientHeight >= box.scrollHeight-40;
   if(cls){ const s=document.createElement("span"); s.className=cls; s.textContent=text; out.appendChild(s); }
   else out.appendChild(document.createTextNode(text));
-  if(atBottom) out.scrollTop=out.scrollHeight;
+  if(atBottom) box.scrollTop=box.scrollHeight;
 }
 /* ---- storico comandi della shell del pannello (↑/↓, niente frecce su telefono) ---- */
 const SHKEY="nexussec-shell-hist";
