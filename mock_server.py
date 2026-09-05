@@ -119,6 +119,10 @@ class Handler(BaseHTTPRequestHandler):
             # disabilitate, come su un telefono no-root.
             return self._json(200, {"ok": True, "proot": True,
                                     "tor": _MOCK_TOR["up"], "root": False})
+        if path == "/api/update":
+            # Simula un aggiornamento disponibile per vedere l'indicatore in anteprima.
+            return self._json(200, {"ok": True, "behind": 2,
+                                    "current": "abc1234", "remote": "def5678"})
         if path.startswith("/mock/term/"):
             tid = path.rsplit("/", 1)[-1]
             tool = TOOLS.get(tid)

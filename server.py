@@ -527,6 +527,9 @@ async def sys_stream(ws: WebSocket, action: str) -> None:
     # Dopo un'installazione, invalida la cache cosi' il tool risulta subito attivo.
     if action in ("install-tool", "install-profile", "install-package"):
         _INSTALLED["ids"] = None
+    # Dopo "Aggiorna app" (git pull), azzera la cache dello stato aggiornamenti.
+    if action == "update-app":
+        _UPDATE_CACHE.update(ts=0.0, data=None)
 
 
 @app.get("/api/health")
@@ -536,6 +539,46 @@ def health():
             "proot": shutil.which("proot-distro") is not None,
             "tor": tor_is_up(),
             "root": has_root()}
+
+
+# Stato aggiornamenti: quanti commit è indietro il repo locale rispetto a
+# origin. Il risultato è in cache (evita un `git fetch` a ogni apertura).
+_UPDATE_CACHE: dict = {"ts": 0.0, "data": None}
+_UPDATE_TTL = 1800  # 30 minuti
+
+
+def _compute_update() -> dict:
+    repo = str(Path(__file__).parent)
+    data = {"ok": False, "behind": 0, "current": None, "remote": None}
+
+    def git(*a, t=8):
+        return subprocess.run(["git", "-C", repo, *a],
+                              capture_output=True, text=True, timeout=t)
+    try:
+        git("fetch", "--quiet", "origin", t=12)   # aggiorna origin/* (se online)
+        cur = git("rev-parse", "--short", "HEAD")
+        rem = git("rev-parse", "--short", "origin/master")
+        beh = git("rev-list", "--count", "HEAD..origin/master")
+        if beh.returncode == 0:
+            data = {"ok": True,
+                    "behind": int((beh.stdout or "0").strip() or 0),
+                    "current": (cur.stdout or "").strip() or None,
+                    "remote": (rem.stdout or "").strip() or None}
+    except (subprocess.SubprocessError, OSError, ValueError):
+        pass  # offline o non è un repo git: nessun avviso di aggiornamento
+    return data
+
+
+@app.get("/api/update")
+def update_status(force: bool = False):
+    """Ritorna {ok, behind, current, remote}: behind>0 => c'è un aggiornamento."""
+    now = time.time()
+    if (not force and _UPDATE_CACHE["data"]
+            and now - _UPDATE_CACHE["ts"] < _UPDATE_TTL):
+        return _UPDATE_CACHE["data"]
+    data = _compute_update()
+    _UPDATE_CACHE.update(ts=now, data=data)
+    return data
 
 
 @app.post("/api/save")

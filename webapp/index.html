@@ -277,12 +277,20 @@
     border-top:1px solid var(--line);
   }
   .tb-start{
+    position:relative;
     display:flex; align-items:center; gap:8px; cursor:pointer; font-family:inherit;
     background:linear-gradient(180deg,var(--accent-a),var(--accent-b)); color:var(--white);
     border:1px solid var(--fg-dim); border-radius:11px; padding:9px 14px; font-size:13px; font-weight:700;
   }
   .tb-start:active{transform:scale(.96)}
   .tb-start .dot{width:8px; height:8px; border-radius:50%; background:var(--fg); box-shadow:var(--glow)}
+  /* aggiornamento disponibile: pallino ambra pulsante sul ☰ (discreto) */
+  .tb-start.has-upd::after{content:""; position:absolute; top:-4px; right:-4px;
+    width:11px; height:11px; border-radius:50%; background:var(--amber);
+    border:2px solid var(--bg); animation:updpulse 1.6s ease-in-out infinite}
+  @keyframes updpulse{0%,100%{opacity:1; transform:scale(1)} 50%{opacity:.35; transform:scale(.82)}}
+  .sm-upd{color:var(--amber); font-size:11px; font-weight:700; animation:updpulse 1.6s ease-in-out infinite}
+  @media (prefers-reduced-motion:reduce){ .tb-start.has-upd::after,.sm-upd{animation:none} }
   .tb-btn{
     background:var(--card); color:var(--fg); border:1px solid var(--line);
     border-radius:11px; padding:9px 11px; font-family:inherit; font-size:15px; cursor:pointer; line-height:1;
@@ -929,10 +937,10 @@ function runStream(url, title, opts){
   if(opts.input) setTimeout(()=>inp.focus(),100);
 }
 function openStream(tool){ runStream("/api/stream/"+encodeURIComponent(tool.id), tool.name, {input:true}); }
-function openSysStream(action, title, arg){
+function openSysStream(action, title, arg, onEnd){
   const q = arg ? ("?arg="+encodeURIComponent(arg)) : "";
   runStream("/api/sysstream/"+encodeURIComponent(action)+q, title, {input:false,
-    onEnd:()=>{ setTimeout(()=>refreshTools().catch(()=>{}), 800); }});
+    onEnd:()=>{ setTimeout(()=>refreshTools().catch(()=>{}), 800); if(onEnd) onEnd(); }});
 }
 async function restartServer(){
   try{
@@ -1211,6 +1219,20 @@ async function syncHealth(){
     if(!!d.root!==HAS_ROOT){ HAS_ROOT=!!d.root; render($("#search").value); } // aggiorna i badge "(solo root)"
   }catch(e){ srv.className="tdot bad"; pr.className="tdot"; }
 }
+/* ---------------- aggiornamenti disponibili ---------------- */
+let UPDATE_INFO = {behind:0};
+// Mostra un pallino pulsante sul pulsante ☰ quando il repo locale è indietro.
+function paintUpdate(){
+  const n=(UPDATE_INFO && UPDATE_INFO.behind)||0;
+  $("#startBtn").classList.toggle("has-upd", n>0);
+  if($("#startmenu").classList.contains("open")) renderStartMenu(); // aggiorna la voce nel menu
+}
+async function checkUpdate(force){
+  try{
+    UPDATE_INFO = await (await fetch("/api/update"+(force?"?force=1":""))).json();
+  }catch(e){ /* offline: nessun avviso */ }
+  paintUpdate();
+}
 /* ---------------- taskbar + menu Applicazioni (stile desktop) ---------------- */
 function findTool(id){ for(const arr of Object.values(ALL)) for(const t of arr) if(t.id===id) return t; return null; }
 
@@ -1277,7 +1299,14 @@ function renderStartMenu(){
   const mkm=(label,fn)=>{ const b=document.createElement("button"); b.textContent=label; b.onclick=fn; mnt.appendChild(b); };
   mkm("＋ Installa pacchetto",()=>{ closeStart(); openPkgInstall(); });
   mkm("⟳ Aggiorna Termux",()=>{ closeStart(); openSysStream("update-termux","Aggiorno Termux"); });
-  mkm("⬇ Aggiorna app",   ()=>{ closeStart(); openSysStream("update-app","Aggiorno l'app (git pull)"); });
+  // "Aggiorna app": se il repo è indietro, mostra un badge pulsante col n° di commit.
+  const nUpd=(UPDATE_INFO && UPDATE_INFO.behind)||0;
+  const bUpd=document.createElement("button");
+  bUpd.innerHTML = "⬇ Aggiorna app" + (nUpd>0
+      ? ' <span class="sm-upd">● '+nUpd+' aggiornament'+(nUpd===1?"o":"i")+'</span>' : "");
+  bUpd.onclick=()=>{ closeStart(); openSysStream("update-app","Aggiorno l'app (git pull)",null,
+      ()=>setTimeout(()=>checkUpdate(true),1200)); };
+  mnt.appendChild(bUpd);
   mkm("🐧 Aggiorna Debian",()=>{ closeStart(); openSysStream("update-debian","Aggiorno il Debian (proot)"); });
   mkm("🐉 Abilita repo Kali",()=>{ closeStart(); openSysStream("enable-kali","Abilito il repo Kali nel Debian"); });
   mkm("🚀 Abilita autostart",()=>{ closeStart(); openSysStream("setup-autostart","Abilito l'autostart all'accensione"); });
@@ -1367,6 +1396,7 @@ async function load(){
     render();
     syncTor();
     syncHealth(); setInterval(syncHealth, 20000);
+    checkUpdate();   // verifica se c'è un aggiornamento (git fetch, in cache lato server)
     // Al primissimo avvio mostra la guida (una volta sola).
     try{ if(!localStorage.getItem("nexus_seen_guide")){ localStorage.setItem("nexus_seen_guide","1"); showGuide(); } }catch{}
   }catch(e){
