@@ -1021,7 +1021,15 @@ def system_command(action: str) -> list[str]:
         return ["bash", "-lc", "pkg update -y && pkg upgrade -y"]
     if action == "update-app":
         repo = str(Path(__file__).parent)
-        return ["bash", "-lc", f'cd "{repo}" && git pull --ff-only']
+        # Prova il fast-forward; se la cronologia è divergente (es. dopo un
+        # rewrite/force-push sul repo) NON si blocca: allinea con reset --hard
+        # a origin/master (i file non tracciati restano). È un deploy di sola
+        # lettura: nessuna modifica locale da preservare.
+        return ["bash", "-lc",
+                f'cd "{repo}" && git fetch origin && '
+                '{ git merge --ff-only origin/master || '
+                '(echo "Cronologia divergente: allineo a origin/master…"; '
+                'git reset --hard origin/master); }']
     if action == "update-debian":
         return list(PROOT) + ["bash", "-lc",
                               "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade"]
