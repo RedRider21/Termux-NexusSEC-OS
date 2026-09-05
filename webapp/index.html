@@ -1247,14 +1247,16 @@ async function syncTor(){
   }catch(e){/* backend offline */}
 }
 // Barra di stato: server locale (verde/rosso) e Debian in proot (verde=pronto).
+let SRV_UP = false;
 async function syncHealth(){
   const srv=$("#statSrv").firstElementChild, pr=$("#statProot").firstElementChild;
   try{
     const d=await (await fetch("/api/health")).json();
     srv.className="tdot ok";
     pr.className=d.proot?"tdot ok":"tdot";
+    if(!SRV_UP){ SRV_UP=true; checkUpdate(); }  // server (ri)tornato su: ricontrolla aggiornamenti
     if(!!d.root!==HAS_ROOT){ HAS_ROOT=!!d.root; render($("#search").value); } // aggiorna i badge "(solo root)"
-  }catch(e){ srv.className="tdot bad"; pr.className="tdot"; }
+  }catch(e){ SRV_UP=false; srv.className="tdot bad"; pr.className="tdot"; }
 }
 /* ---------------- aggiornamenti disponibili ---------------- */
 let UPDATE_INFO = {behind:0};
@@ -1437,6 +1439,9 @@ async function load(){
     syncTor();
     syncHealth(); setInterval(syncHealth, 20000);
     checkUpdate();   // verifica se c'è un aggiornamento (git fetch, in cache lato server)
+    setInterval(()=>checkUpdate(), 1800000);   // e ogni 30 min
+    // ricontrolla quando l'app torna in primo piano (es. dopo un po' in background)
+    document.addEventListener("visibilitychange",()=>{ if(!document.hidden) checkUpdate(); });
     // Al primissimo avvio mostra la guida (una volta sola).
     try{ if(!localStorage.getItem("nexus_seen_guide")){ localStorage.setItem("nexus_seen_guide","1"); showGuide(); } }catch{}
   }catch(e){
