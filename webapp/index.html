@@ -159,13 +159,37 @@
   pre#streamOut .sys{color:var(--fg-dim)}
   pre#streamOut .me{color:var(--amber)}
   pre#streamOut .end{color:var(--muted)}
-  #streamBar{display:none; gap:8px; padding:10px 12px; border-top:1px solid var(--line);
-    background:var(--panel); padding-bottom:calc(10px + env(safe-area-inset-bottom,0))}
+  #streamBar{display:none; align-items:center; gap:8px; padding:10px 12px; box-sizing:border-box;
+    width:100%; border-top:1px solid var(--line); background:var(--panel);
+    padding-bottom:calc(10px + env(safe-area-inset-bottom,0))}
   #streamBar.on{display:flex}
-  #streamBar input{flex:1; background:#050705; color:var(--white); border:1px solid var(--line);
+  #streamBar>*{flex:0 0 auto}                    /* i bottoni non si allargano… */
+  #streamBar #streamIn{flex:1 1 auto; min-width:0}  /* …solo l'input si adatta e può restringersi */
+  #streamBar input{background:#050705; color:var(--white); border:1px solid var(--line);
     border-radius:10px; padding:11px 12px; font-family:inherit; font-size:14px; outline:none}
   #streamBar input:focus{border-color:var(--fg-dim)}
   #streamBar input:disabled{opacity:.5}
+  #streamBar .nav{padding:9px 11px; min-width:40px; text-align:center; font-size:15px}
+  /* Invia: bottone primario (accento) */
+  .btn-send{background:linear-gradient(180deg,var(--accent-a),var(--accent-b)); color:var(--white);
+    border:1px solid var(--fg-dim); border-radius:10px; padding:10px 14px; font-family:inherit;
+    font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap}
+  .btn-send:active{transform:scale(.96)}
+  /* Stop: bottone di pericolo, sempre ben visibile */
+  .btn-stop{background:rgba(255,90,90,.16); color:#ff8a8a; border:1px solid rgba(255,90,90,.55);
+    border-radius:10px; padding:10px 14px; font-family:inherit; font-size:13px; font-weight:700;
+    cursor:pointer; white-space:nowrap}
+  .btn-stop:active{transform:scale(.96)}
+  .btn-stop.done{background:var(--card); color:var(--fg); border-color:var(--line)}
+  /* stato con spinner mostrato durante le installazioni (nessun input richiesto) */
+  .stream-status{display:none; flex:1 1 auto; min-width:0; align-items:center; gap:9px;
+    color:var(--fg-dim); font-size:13px}
+  .stream-status #streamStatusTxt{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .stream-status.done .spin{display:none}       /* finito: niente spinner */
+  .stream-status.done #streamStatusTxt{color:var(--fg)}
+  #streamBar.noinput #streamPrev,#streamBar.noinput #streamNext,
+  #streamBar.noinput #streamIn,#streamBar.noinput #streamSend{display:none}
+  #streamBar.noinput .stream-status{display:flex}
   iframe#term{width:100%; height:100%; border:0; background:#000}
   .spin{display:inline-block; width:12px; height:12px; border:2px solid var(--line);
     border-top-color:var(--fg); border-radius:50%; animation:sp .7s linear infinite; vertical-align:-2px}
@@ -412,11 +436,12 @@
     <div id="termHint" class="hint" hidden>Se il terminale resta vuoto, tocca <b>↗ Scheda</b> qui sopra: alcune versioni di ttyd non permettono l'incorporamento.<br>Se la tastiera mette la <b>maiuscola</b> ai comandi (es. <code>Cd</code> invece di <code>cd</code>), disattiva l'auto-maiuscola della tastiera (Gboard → Impostazioni → Correzione testo → <b>Maiuscole automatiche: OFF</b>): il terminale è di ttyd e non possiamo forzarlo dall'app.</div>
   </div>
   <div id="streamBar" hidden>
-    <button id="streamPrev" class="iconbtn" title="Comando precedente">↑</button>
-    <button id="streamNext" class="iconbtn" title="Comando successivo">↓</button>
+    <span id="streamStatus" class="stream-status"><span class="spin"></span><span id="streamStatusTxt">in corso…</span></span>
+    <button id="streamPrev" class="iconbtn nav" title="Comando precedente">↑</button>
+    <button id="streamNext" class="iconbtn nav" title="Comando successivo">↓</button>
     <input id="streamIn" placeholder="scrivi e premi Invio per rispondere…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-    <button id="streamSend" class="iconbtn">Invia ▸</button>
-    <button id="streamSig" class="iconbtn" title="Interrompi lo script (Ctrl-C)">■</button>
+    <button id="streamSend" class="btn-send">Invia ▸</button>
+    <button id="streamSig" class="btn-stop" title="Interrompi lo script (Ctrl-C)">■ Stop</button>
   </div>
 </div>
 
@@ -900,11 +925,15 @@ function runStream(url, title, opts){
   $("#ovtitle").textContent=title;
   const out=$("#streamOut"); out.textContent=""; out.hidden=false;
   const bar=$("#streamBar"), inp=$("#streamIn"), send=$("#streamSend");
+  const sig=$("#streamSig"), status=$("#streamStatus"), statusTxt=$("#streamStatusTxt");
   bar.classList.add("on");
+  bar.classList.toggle("noinput", !opts.input);   // installazioni: solo stato + Stop
+  status.classList.remove("done"); statusTxt.textContent="in corso…";
+  sig.className="btn-stop"; sig.textContent="■ Stop"; sig.title="Interrompi (Ctrl-C)";
   inp.disabled=!opts.input; send.disabled=!opts.input;
   $("#streamPrev").disabled=!opts.input; $("#streamNext").disabled=!opts.input;
   shellIdx=shellHist.length;   // riparti dal fondo dello storico
-  inp.value=""; inp.placeholder = opts.input ? "scrivi e premi Invio per rispondere…" : "(nessun input richiesto)";
+  inp.value=""; inp.placeholder="scrivi e premi Invio per rispondere…";
   overlay.classList.add("open");
   streamAppend("· connessione…\n", "sys");
 
@@ -916,9 +945,17 @@ function runStream(url, title, opts){
     if(m.type==="out")        streamAppend(m.data);
     else if(m.type==="start") streamAppend("$ "+m.data+"\n\n", "sys");
     else if(m.type==="end"){  streamAppend("\n· terminato (uscita "+m.data+")\n", "end");
-                              inp.disabled=true; send.disabled=true; if(opts.onEnd) opts.onEnd(m.data); }
-    else if(m.type==="error"){streamAppend("\n[errore] "+m.data+"\n", "me"); inp.disabled=true; send.disabled=true; }
+                              finishStream(m.data==0?"completato ✓":"terminato (uscita "+m.data+")");
+                              if(opts.onEnd) opts.onEnd(m.data); }
+    else if(m.type==="error"){streamAppend("\n[errore] "+m.data+"\n", "me"); finishStream("errore"); }
   };
+  // A fine flusso: ferma lo spinner e trasforma "Stop" in "Chiudi".
+  function finishStream(txt){
+    inp.disabled=true; send.disabled=true;
+    status.classList.add("done"); statusTxt.textContent=txt||"completato";
+    sig.className="btn-stop done"; sig.textContent="✕ Chiudi"; sig.title="Chiudi il pannello";
+    sig.onclick=()=>$("#ovclose").click();
+  }
   ws.onclose=()=>{ if(streamWS===ws){ inp.disabled=true; send.disabled=true; } };
   ws.onerror=()=>{ streamAppend("\n[errore] impossibile aprire il flusso (server.py attivo?)\n","me"); };
   function doSend(){
