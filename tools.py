@@ -235,7 +235,7 @@ TOOLS: dict[str, dict] = {
         "name": "Metasploit (console)",
         "category": "Exploitation", "mode": "interactive", "runtime": "proot", "target": None,
         "cmd": ["bash", "-lc", "msfconsole || bash"],
-        "repo": "kali", "pkg": "metasploit-framework",
+        "repo": "kali", "pkg": "metasploit-framework", "catalog": True,
         "help": "Console Metasploit (pacchetto metasploit-framework, repo Kali)",
     },
     "hydra": {
@@ -984,6 +984,78 @@ def install_profile_command(key: str, skip: set | None = None) -> list[str]:
                      "proot-distro login debian -- bash -lc '" + inner + "'")
 
     script = " ; ".join(parts) if parts else 'echo "Niente da installare: tutto gia\' presente."'
+    return ["bash", "-lc", script]
+
+
+def uninstall_profile_command(key: str) -> list[str]:
+    """argv (bash -lc) che RIMUOVE i tool di un profilo, per avvicinarsi allo
+    stato precedente all'installazione. Per sicurezza NON tocca:
+      - i tool di BASE (non del catalogo),
+      - i pacchetti condivisi con un altro profilo,
+      - i tool "native"/"stream" (non installano nulla).
+    Su Debian esegue anche `apt-get autoremove` per liberare le dipendenze.
+    """
+    prof = PROFILES.get(key)
+    if not prof:
+        raise ValueError("Profilo sconosciuto.")
+
+    # Pacchetti da PRESERVARE: quelli usati da tool di BASE (non del catalogo) e
+    # quelli richiesti da un ALTRO profilo. Es.: `ncat` usa il pacchetto `nmap`,
+    # condiviso con i tool base nmap_quick/nmap_ping -> non va rimosso.
+    keep = set()
+    for tid, t in TOOLS.items():
+        if t.get("mode") in ("native", "stream") or t.get("works") is False:
+            continue
+        if not t.get("catalog"):        # tool di base: proteggi il suo pacchetto
+            keep.add(_pkg_of(tid, t))
+    for k, p in PROFILES.items():
+        if k == key:
+            continue
+        for tid in p["tools"]:
+            t = TOOLS.get(tid)
+            if t and t.get("mode") not in ("native", "stream") and t.get("works") is not False:
+                keep.add(_pkg_of(tid, t))
+
+    termux, pip, debian = [], [], []
+    for tid in prof["tools"]:
+        t = TOOLS.get(tid)
+        if not t or t.get("mode") in ("native", "stream") or t.get("works") is False:
+            continue
+        if not t.get("catalog"):        # non rimuovere i tool di base
+            continue
+        pkg = _pkg_of(tid, t)
+        if pkg in keep:                 # condiviso con un altro profilo
+            continue
+        if t.get("pip"):
+            pip.append(pkg)
+        elif t.get("runtime") == "termux":
+            termux.append(pkg)
+        else:
+            debian.append(pkg)
+
+    parts = []
+    if termux:
+        pkgs = " ".join(sorted(set(termux)))
+        parts.append('echo "== rimuovo (Termux) =="; F=""; '
+                     f'for p in {pkgs}; do pkg uninstall -y "$p" || F="$F $p"; done; '
+                     '[ -n "$F" ] && echo "!! non rimossi:$F" || echo "Termux: ok"')
+    if pip:
+        pkgs = " ".join(sorted(set(pip)))
+        parts.append('echo "== rimuovo (pip) =="; F=""; '
+                     f'for p in {pkgs}; do pip uninstall -y "$p" || F="$F $p"; done; '
+                     '[ -n "$F" ] && echo "!! non rimossi:$F" || echo "pip: ok"')
+    if debian:
+        pkgs = " ".join(sorted(set(debian)))
+        inner = ('F=""; '
+                 f'for p in {pkgs}; do DEBIAN_FRONTEND=noninteractive '
+                 'apt-get remove -y "$p" || F="$F $p"; done; '
+                 'DEBIAN_FRONTEND=noninteractive apt-get autoremove -y; '
+                 '[ -n "$F" ] && echo "!! non rimossi:$F" || echo "Debian: ok"')
+        parts.append('echo "== rimuovo (Debian/proot) =="; '
+                     "proot-distro login debian -- bash -lc '" + inner + "'")
+
+    script = (" ; ".join(parts) if parts
+              else 'echo "Niente da rimuovere: solo tool di base o condivisi con altri profili."')
     return ["bash", "-lc", script]
 
 

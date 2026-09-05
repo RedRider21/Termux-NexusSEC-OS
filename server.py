@@ -45,7 +45,7 @@ from native import run_native
 from tools import (PROOT, TOOLS, TOR_SOCKS_PORT, detection_targets, exec_prefix,
                   inner_command, install_command, install_package_command,
                   install_profile_command, profiles_list, system_command,
-                  tools_by_category, validate_target)
+                  tools_by_category, uninstall_profile_command, validate_target)
 
 # --------------------------------------------------------------------------- #
 # Configurazione
@@ -506,6 +506,8 @@ async def sys_stream(ws: WebSocket, action: str) -> None:
             argv = install_command(arg)
         elif action == "install-profile":
             argv = install_profile_command(arg, skip=installed_ids())
+        elif action == "uninstall-profile":
+            argv = uninstall_profile_command(arg)
         elif action == "install-package":
             repo, _, pkgs = arg.partition(":")
             argv = install_package_command(repo, pkgs)
@@ -524,8 +526,9 @@ async def sys_stream(ws: WebSocket, action: str) -> None:
         return
 
     await _stream_process(ws, argv, allow_input=False)
-    # Dopo un'installazione, invalida la cache cosi' il tool risulta subito attivo.
-    if action in ("install-tool", "install-profile", "install-package"):
+    # Dopo un'installazione/rimozione, invalida la cache cosi' lo stato è aggiornato.
+    if action in ("install-tool", "install-profile", "install-package",
+                  "uninstall-profile"):
         _INSTALLED["ids"] = None
     # Dopo "Aggiorna app" (git pull), azzera la cache dello stato aggiornamenti.
     if action == "update-app":

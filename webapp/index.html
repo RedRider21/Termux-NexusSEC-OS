@@ -273,6 +273,7 @@
   .pbanner button{background:var(--card); color:var(--fg); border:1px solid var(--line);
     border-radius:9px; padding:8px 11px; font-family:inherit; font-size:12px; cursor:pointer}
   .pbanner button.go{background:var(--fg); color:var(--on-accent); font-weight:700; border-color:var(--fg)}
+  .pbanner button.rm{color:#ff8a8a; border-color:rgba(255,90,90,.5)}
   /* ---------- menu: profili + sistema + recenti ---------- */
   .sm-prof{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px}
   .sm-pcard{text-align:left; cursor:pointer; font-family:inherit; color:var(--white);
@@ -1136,10 +1137,29 @@ function profileBanner(prof){
     +`<small>${escapeHtml(prof.desc)} · ${inst}/${all.length} installati</small></span>`;
   const inb=document.createElement("button"); inb.className="go"; inb.textContent="⤓ Installa profilo";
   inb.onclick=()=>installProfile(prof);
+  el.appendChild(inb);
+  // "Rimuovi profilo": solo se c'è qualcosa da rimuovere (tool del catalogo installati)
+  if(inst>0){
+    const rmb=document.createElement("button"); rmb.className="rm"; rmb.textContent="🗑 Rimuovi";
+    rmb.onclick=()=>uninstallProfile(prof);
+    el.appendChild(rmb);
+  }
   const cl=document.createElement("button"); cl.textContent="✕ mostra tutti";
   cl.onclick=clearProfile;
-  el.appendChild(inb); el.appendChild(cl);
+  el.appendChild(cl);
   return el;
+}
+function uninstallProfile(prof){
+  const ids=new Set(prof.tools);
+  // tool del catalogo installati (i soli che verranno rimossi; base e condivisi restano)
+  const rimovibili=Object.values(ALL).flat()
+    .filter(t=>ids.has(t.id) && t.catalog && t.installed!==false && t.works!==false);
+  if(!rimovibili.length){ toast("Niente da rimuovere (solo tool di base o condivisi)."); return; }
+  if(!confirm("Rimuovere i tool del profilo «"+prof.name+"»?\n\n"
+     +"Verranno disinstallati i pacchetti del profilo (i tool di base e quelli "
+     +"condivisi con altri profili restano). Libera spazio ma è un'operazione "
+     +"che scarica/rimuove file.")) return;
+  openSysStream("uninstall-profile","Rimuovo profilo "+prof.name, prof.key);
 }
 function installProfile(prof){
   const ids=new Set(prof.tools);
