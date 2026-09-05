@@ -1304,8 +1304,11 @@ function renderStartMenu(){
   const bUpd=document.createElement("button");
   bUpd.innerHTML = "⬇ Aggiorna app" + (nUpd>0
       ? ' <span class="sm-upd">● '+nUpd+' aggiornament'+(nUpd===1?"o":"i")+'</span>' : "");
+  // Dopo il git pull il server ha ancora il vecchio codice in memoria e la PWA
+  // è in cache: riavvio il server (che poi ricarica la pagina) per applicare.
   bUpd.onclick=()=>{ closeStart(); openSysStream("update-app","Aggiorno l'app (git pull)",null,
-      ()=>setTimeout(()=>checkUpdate(true),1200)); };
+      ()=>{ toast("Aggiornamento scaricato — riavvio per applicare…");
+            setTimeout(restartServer, 1600); }); };
   mnt.appendChild(bUpd);
   mkm("🐧 Aggiorna Debian",()=>{ closeStart(); openSysStream("update-debian","Aggiorno il Debian (proot)"); });
   mkm("🐉 Abilita repo Kali",()=>{ closeStart(); openSysStream("enable-kali","Abilito il repo Kali nel Debian"); });
