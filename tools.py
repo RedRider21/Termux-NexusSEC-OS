@@ -127,7 +127,7 @@ TOOLS: dict[str, dict] = {
     "dig": {
         "name": "Dig · lookup DNS",
         "category": "Network", "mode": "oneshot", "runtime": "termux", "target": "host",
-        "cmd": ["dig", "+noall", "+answer", "+nocmd"],
+        "cmd": ["dig", "+noall", "+answer", "+nocmd"], "pkg": "dnsutils",
         "help": "Record DNS (A) di un dominio. Nativo Termux (dnsutils).",
         "params": [
             {"type": "select", "flag": "-t", "join": "space", "label": "Tipo record (-t)",
@@ -235,7 +235,8 @@ TOOLS: dict[str, dict] = {
         "name": "Metasploit (console)",
         "category": "Exploitation", "mode": "interactive", "runtime": "proot", "target": None,
         "cmd": ["bash", "-lc", "msfconsole || bash"],
-        "help": "Console Metasploit (richiede INSTALL_METASPLOIT=yes)",
+        "repo": "kali", "pkg": "metasploit-framework",
+        "help": "Console Metasploit (pacchetto metasploit-framework, repo Kali)",
     },
     "hydra": {
         "name": "Hydra (interattivo)",
@@ -603,7 +604,7 @@ _c("socat", "socat · relay", "Network", "termux",
 _c("ncat", "Ncat · netcat", "Network", "termux", pkg="nmap", binn="ncat",
    help="Tipo: networking. Netcat moderno (connessioni TCP/UDP).")
 _c("sipvicious", "SIPVicious · VoIP", "Network", repo="kali", binn="svmap",
-   help="Tipo: VoIP. Scanner di sistemi SIP/VoIP.")
+   pkg="sipvicious", help="Tipo: VoIP. Scanner di sistemi SIP/VoIP.")
 
 # --- OSINT -------------------------------------------------------------------
 _c("recon_ng", "Recon-ng · framework OSINT", "Network", repo="kali", binn="recon-ng",
@@ -664,12 +665,12 @@ _c("rkhunter", "Rootkit Hunter", "Forensics", pkg="rkhunter",
 _c("lynis", "Lynis · audit", "Forensics", "termux",
    help="Tipo: audit. Audit di sicurezza e hardening del sistema.")
 _c("bulk_extractor", "Bulk Extractor", "Forensics", repo="kali", binn="bulk_extractor",
-   help="Tipo: forense. Estrae email/URL/carte da immagini disco.")
+   pkg="bulk-extractor", help="Tipo: forense. Estrae email/URL/carte da immagini disco.")
 _c("volatility3", "Volatility 3 · memoria", "Forensics", "termux", pip=True, binn="vol",
-   help="Tipo: forense. Analisi di dump di memoria (RAM).")
+   pkg="volatility3", help="Tipo: forense. Analisi di dump di memoria (RAM).")
 
 # --- Reverse -----------------------------------------------------------------
-_c("radare2", "Radare2 · RE", "Reverse", "termux", binn="r2",
+_c("radare2", "Radare2 · RE", "Reverse", "termux", binn="r2", pkg="radare2",
    help="Tipo: reverse. Framework di reverse engineering.")
 _c("gdb", "GDB · debugger", "Reverse", "termux",
    help="Tipo: debug. Debugger GNU.")
@@ -681,7 +682,7 @@ _c("jadx", "Jadx · decompila APK", "Reverse", "termux",
    help="Tipo: reverse. Decompila APK/DEX in codice Java.")
 _c("apktool", "Apktool · APK", "Reverse", "termux",
    help="Tipo: reverse. Decompila e ricostruisce risorse di un APK.")
-_c("binutils", "Binutils · objdump", "Reverse", "termux", binn="objdump",
+_c("binutils", "Binutils · objdump", "Reverse", "termux", binn="objdump", pkg="binutils",
    help="Tipo: reverse. objdump/readelf/nm e altri.")
 _c("hexedit", "Hexedit", "Reverse", "termux",
    help="Tipo: utility. Editor esadecimale da terminale.")
@@ -699,7 +700,7 @@ _c("impacket", "Impacket", "Exploitation", repo="kali", pkg="impacket-scripts",
    binn="impacket-smbserver",
    help="Tipo: AD. Script per protocolli Windows/Active Directory.")
 _c("netexec", "NetExec (nxc)", "Exploitation", "termux", pip=True, binn="nxc",
-   help="Tipo: AD. Esecuzione/enum su reti Windows (ex-CrackMapExec).")
+   pkg="netexec", help="Tipo: AD. Esecuzione/enum su reti Windows (ex-CrackMapExec).")
 _c("evil_winrm", "Evil-WinRM", "Exploitation", repo="kali", binn="evil-winrm",
    help="Tipo: post-exploit. Shell WinRM verso host Windows.")
 _c("bloodhound_py", "BloodHound.py", "Exploitation", "termux", pip=True,
@@ -882,11 +883,27 @@ def _pkg_of(tool_id: str, t: dict) -> str:
     return pkg
 
 
+# Alcuni pacchetti Termux vivono in repository aggiuntivi (root-repo, tur-repo):
+# li abilitiamo come fallback se il primo tentativo non trova il pacchetto.
+_TERMUX_EXTRA_REPOS = "root-repo tur-repo"
+
+# Script (da eseguire DENTRO il Debian in proot) che abilita il repo Kali, così
+# diventano installabili i pacchetti di sicurezza di Kali. Idempotente.
+_KALI_ENABLE_INNER = (
+    'echo "deb https://http.kali.org/kali kali-rolling main contrib non-free" '
+    '> /etc/apt/sources.list.d/kali.list; '
+    'apt-get update -o Acquire::AllowInsecureRepositories=true '
+    '-o Acquire::AllowDowngradeToInsecureRepositories=true || true; '
+    'DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-unauthenticated '
+    'kali-archive-keyring || true; apt-get update'
+)
+
+
 def install_command(tool_id: str) -> list[str]:
     """argv per installare UN tool, in base a runtime/pip/repo.
 
     - pip            -> pip install <pkg>
-    - runtime termux -> pkg install -y <pkg> (con fallback su root-repo)
+    - runtime termux -> pkg install -y <pkg> (con fallback su root-repo/tur-repo)
     - proot/kali     -> apt-get install -y <pkg> dentro il Debian
     """
     t = TOOLS.get(tool_id)
@@ -901,8 +918,12 @@ def install_command(tool_id: str) -> list[str]:
         return ["pip", "install", pkg]
     if t.get("runtime") == "termux":
         return ["bash", "-lc",
-                f"pkg install -y {pkg} || (pkg install -y root-repo && pkg install -y {pkg})"]
+                f"pkg install -y {pkg} || "
+                f"(pkg install -y {_TERMUX_EXTRA_REPOS} && pkg install -y {pkg})"]
+    # proot: se il tool richiede il repo Kali, abilitalo prima (idempotente).
+    pre = (_KALI_ENABLE_INNER + "; ") if t.get("repo") == "kali" else ""
     return list(PROOT) + ["bash", "-lc",
+                          f"{pre}apt-get update; "
                           f"DEBIAN_FRONTEND=noninteractive apt-get install -y {pkg}"]
 
 
@@ -915,6 +936,7 @@ def install_profile_command(key: str, skip: set | None = None) -> list[str]:
         raise ValueError("Profilo sconosciuto.")
     skip = skip or set()
     termux, pip, debian = [], [], []
+    needs_kali = False
     for tid in prof["tools"]:
         t = TOOLS.get(tid)
         if not t or t.get("works") is False or tid in skip:
@@ -928,15 +950,39 @@ def install_profile_command(key: str, skip: set | None = None) -> list[str]:
             termux.append(pkg)
         else:
             debian.append(pkg)
+            if t.get("repo") == "kali":
+                needs_kali = True
+
     parts = []
+    # Ogni pacchetto è tentato singolarmente: se uno fallisce NON blocca gli altri,
+    # e alla fine di ogni blocco viene stampato l'elenco dei non installati.
     if termux:
-        parts.append('echo "== pacchetti Termux =="; pkg install -y ' + " ".join(sorted(set(termux))))
+        pkgs = " ".join(sorted(set(termux)))
+        parts.append(
+            'echo "== pacchetti Termux =="; '
+            f'pkg install -y {_TERMUX_EXTRA_REPOS} >/dev/null 2>&1 || true; '
+            f'F=""; for p in {pkgs}; do pkg install -y "$p" || F="$F $p"; done; '
+            '[ -n "$F" ] && echo "!! Termux non installati:$F" || echo "Termux: ok"')
     if pip:
-        parts.append('echo "== tool Python (pip) =="; pip install ' + " ".join(sorted(set(pip))))
+        pkgs = " ".join(sorted(set(pip)))
+        parts.append(
+            'echo "== tool Python (pip) =="; '
+            f'F=""; for p in {pkgs}; do pip install "$p" || F="$F $p"; done; '
+            '[ -n "$F" ] && echo "!! pip non installati:$F" || echo "pip: ok"')
     if debian:
-        parts.append('echo "== nel Debian (proot) =="; proot-distro login debian -- '
-                     'bash -lc "DEBIAN_FRONTEND=noninteractive apt-get install -y '
-                     + " ".join(sorted(set(debian))) + '"')
+        pkgs = " ".join(sorted(set(debian)))
+        inner = (
+            'apt-get update; F=""; '
+            f'for p in {pkgs}; do DEBIAN_FRONTEND=noninteractive '
+            'apt-get install -y "$p" || F="$F $p"; done; '
+            '[ -n "$F" ] && echo "!! Debian non installati:$F" || echo "Debian: ok"')
+        if needs_kali:            # abilita il repo Kali prima di installare
+            inner = _KALI_ENABLE_INNER + "; " + inner
+        # inner tra apici singoli: le sue variabili ($p/$F) le valuta la shell
+        # DENTRO proot, non quella esterna.
+        parts.append('echo "== nel Debian (proot) =="; '
+                     "proot-distro login debian -- bash -lc '" + inner + "'")
+
     script = " ; ".join(parts) if parts else 'echo "Niente da installare: tutto gia\' presente."'
     return ["bash", "-lc", script]
 
@@ -957,10 +1003,14 @@ def install_package_command(repo: str, pkgs: str) -> list[str]:
     joined = " ".join(names)
     if repo == "termux":
         return ["bash", "-lc",
-                f"pkg install -y {joined} || (pkg install -y root-repo && pkg install -y {joined})"]
+                f"pkg install -y {joined} || "
+                f"(pkg install -y {_TERMUX_EXTRA_REPOS} && pkg install -y {joined})"]
     if repo in ("debian", "kali"):
+        # per "kali" abilita prima il repo Kali (idempotente), poi installa.
+        pre = (_KALI_ENABLE_INNER + "; ") if repo == "kali" else ""
         return list(PROOT) + ["bash", "-lc",
-                              f"apt-get update; DEBIAN_FRONTEND=noninteractive apt-get install -y {joined}"]
+                              f"{pre}apt-get update; "
+                              f"DEBIAN_FRONTEND=noninteractive apt-get install -y {joined}"]
     raise ValueError("Repository sconosciuto (usa termux/debian/kali).")
 
 
