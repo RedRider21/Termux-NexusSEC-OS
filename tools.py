@@ -590,7 +590,7 @@ _c("dalfox", "Dalfox · XSS", "Web", repo="kali",
    help="Tipo: XSS. Scanner automatico di cross-site scripting.")
 _c("weevely", "Weevely · web shell", "Web", repo="kali",
    help="Tipo: web shell. Genera e gestisce web shell PHP offuscate.")
-_c("mitmproxy", "mitmproxy · proxy MITM", "Web", "termux",
+_c("mitmproxy", "mitmproxy · proxy MITM", "Web", repo="kali",
    help="Tipo: proxy MITM. Intercetta/modifica HTTP(S) come proxy locale.")
 
 # --- Network / recon ---------------------------------------------------------
@@ -901,6 +901,22 @@ def _pkg_of(tool_id: str, t: dict) -> str:
 # li abilitiamo come fallback se il primo tentativo non trova il pacchetto.
 _TERMUX_EXTRA_REPOS = "root-repo tur-repo"
 
+# Dentro il Debian in proot NON esiste un init (systemd/cron): i postinst che
+# provano ad avviare o registrare servizi falliscono (es. "systemd",
+# "cron-daemon-common"). policy-rc.d che ritorna 101 dice a dpkg di NON avviare
+# alcun demone durante l'installazione, così la configurazione non si blocca.
+_PROOT_APT_PREP = (
+    'mkdir -p /usr/sbin && printf "#!/bin/sh\\nexit 101\\n" > /usr/sbin/policy-rc.d '
+    '&& chmod +x /usr/sbin/policy-rc.d; '
+)
+
+# apt in proot: niente Recommends (installazioni più leggere, non trascina
+# cron/systemd & co.) e risposta automatica ai conflitti di configurazione.
+_APT_INSTALL = (
+    'DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends '
+    '-o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold'
+)
+
 # Script (da eseguire DENTRO il Debian in proot) che abilita il repo Kali, così
 # diventano installabili i pacchetti di sicurezza di Kali. Idempotente.
 _KALI_ENABLE_INNER = (
@@ -937,8 +953,8 @@ def install_command(tool_id: str) -> list[str]:
     # proot: se il tool richiede il repo Kali, abilitalo prima (idempotente).
     pre = (_KALI_ENABLE_INNER + "; ") if t.get("repo") == "kali" else ""
     return list(PROOT) + ["bash", "-lc",
-                          f"{pre}apt-get update; "
-                          f"DEBIAN_FRONTEND=noninteractive apt-get install -y {pkg}"]
+                          f"{_PROOT_APT_PREP}{pre}apt-get update; "
+                          f"{_APT_INSTALL} {pkg}"]
 
 
 def install_profile_command(key: str, skip: set | None = None) -> list[str]:
@@ -987,11 +1003,11 @@ def install_profile_command(key: str, skip: set | None = None) -> list[str]:
         pkgs = " ".join(sorted(set(debian)))
         inner = (
             'apt-get update; F=""; '
-            f'for p in {pkgs}; do DEBIAN_FRONTEND=noninteractive '
-            'apt-get install -y "$p" || F="$F $p"; done; '
+            f'for p in {pkgs}; do {_APT_INSTALL} "$p" || F="$F $p"; done; '
             '[ -n "$F" ] && echo "!! Debian non installati:$F" || echo "Debian: ok"')
         if needs_kali:            # abilita il repo Kali prima di installare
             inner = _KALI_ENABLE_INNER + "; " + inner
+        inner = _PROOT_APT_PREP + inner   # niente avvio servizi in proot
         # inner tra apici singoli: le sue variabili ($p/$F) le valuta la shell
         # DENTRO proot, non quella esterna.
         parts.append('echo "== nel Debian (proot) =="; '
