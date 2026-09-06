@@ -908,26 +908,36 @@ _TERMUX_EXTRA_REPOS = "root-repo tur-repo"
 # provano ad avviare o registrare servizi falliscono (es. "systemd",
 # "cron-daemon-common"). policy-rc.d che ritorna 101 dice a dpkg di NON avviare
 # alcun demone durante l'installazione, così la configurazione non si blocca.
-_PROOT_APT_PREP = (
-    'mkdir -p /usr/sbin && printf "#!/bin/sh\\nexit 101\\n" > /usr/sbin/policy-rc.d '
-    '&& chmod +x /usr/sbin/policy-rc.d; '
-    'export DEBIAN_FRONTEND=noninteractive; '
-    # Recupera un dpkg lasciato a metà da un'installazione interrotta ("dpkg was
-    # interrupted, you must manually run dpkg --configure -a"): senza questo, OGNI
-    # apt-get install successivo fallisce subito. policy-rc.d (sopra) evita che la
-    # riconfigurazione provi ad avviare servizi. Poi -f install sistema le rotture.
-    'dpkg --configure -a 2>/dev/null || true; '
-    'apt-get install -f -y 2>/dev/null || true; '
-    # Se restano pacchetti in stato ROTTO (Unpacked/half-conFigured/Half-installed
-    # — tipico: il database di metasploit che non si configura in proot), questi
-    # BLOCCANO ogni apt install successivo. Li rimuovo per ripristinare uno stato
-    # pulito (awk: 2° char dello stato dpkg in U/F/H; \\$ così arriva ad awk, non
-    # viene espanso dalla shell). È mirato: i pacchetti sani (ii) non si toccano.
-    'B=$(dpkg -l 2>/dev/null | awk "substr(\\$1,2,1) ~ /[UFH]/ {print \\$2}"); '
-    '[ -n "$B" ] && { echo "Rimuovo pacchetti rotti che bloccano apt: $B"; '
-    'apt-get purge -y $B 2>/dev/null || dpkg --remove --force-all $B 2>/dev/null || true; '
-    'dpkg --configure -a 2>/dev/null || true; }; '
-)
+def _L(lang: str, it: str, en: str) -> str:
+    """Sceglie la stringa nella lingua della UI ('en' -> inglese, altrimenti IT).
+    La preferenza arriva dal client (localStorage nexus_lang) via query param.
+    """
+    return en if lang == "en" else it
+
+
+def _proot_apt_prep(lang: str = "it") -> str:
+    msg = _L(lang, "Rimuovo pacchetti rotti che bloccano apt: $B",
+                   "Removing broken packages that block apt: $B")
+    return (
+        'mkdir -p /usr/sbin && printf "#!/bin/sh\\nexit 101\\n" > /usr/sbin/policy-rc.d '
+        '&& chmod +x /usr/sbin/policy-rc.d; '
+        'export DEBIAN_FRONTEND=noninteractive; '
+        # Recupera un dpkg lasciato a metà da un'installazione interrotta ("dpkg was
+        # interrupted, you must manually run dpkg --configure -a"): senza questo, OGNI
+        # apt-get install successivo fallisce subito. policy-rc.d (sopra) evita che la
+        # riconfigurazione provi ad avviare servizi. Poi -f install sistema le rotture.
+        'dpkg --configure -a 2>/dev/null || true; '
+        'apt-get install -f -y 2>/dev/null || true; '
+        # Se restano pacchetti in stato ROTTO (Unpacked/half-conFigured/Half-installed
+        # — tipico: il database di metasploit che non si configura in proot), questi
+        # BLOCCANO ogni apt install successivo. Li rimuovo per ripristinare uno stato
+        # pulito (awk: 2° char dello stato dpkg in U/F/H; \\$ così arriva ad awk, non
+        # viene espanso dalla shell). È mirato: i pacchetti sani (ii) non si toccano.
+        'B=$(dpkg -l 2>/dev/null | awk "substr(\\$1,2,1) ~ /[UFH]/ {print \\$2}"); '
+        '[ -n "$B" ] && { echo "' + msg + '"; '
+        'apt-get purge -y $B 2>/dev/null || dpkg --remove --force-all $B 2>/dev/null || true; '
+        'dpkg --configure -a 2>/dev/null || true; }; '
+    )
 
 # apt in proot: niente Recommends (installazioni più leggere, non trascina
 # cron/systemd & co.) e risposta automatica ai conflitti di configurazione.
@@ -943,30 +953,34 @@ _APT_INSTALL = (
 # ("Unable to locate package"). Qui: (1) installo i prerequisiti dai repo Debian
 # (che funzionano); (2) scarico la chiave UFFICIALE Kali e la converto in keyring;
 # (3) aggiungo il repo con signed-by (firmato, niente --allow-insecure).
-_KALI_ENABLE_INNER = (
-    'apt-get update || true; '
-    'DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends '
-    'ca-certificates gnupg curl wget || true; '
-    'install -d -m 0755 /usr/share/keyrings; '
-    'if [ ! -s /usr/share/keyrings/kali-archive-keyring.gpg ]; then '
-    '(curl -fsSL https://archive.kali.org/archive-key.asc '
-    '|| wget -qO- https://archive.kali.org/archive-key.asc) '
-    '| gpg --dearmor -o /usr/share/keyrings/kali-archive-keyring.gpg 2>/dev/null || true; fi; '
-    # Se la chiave c'è -> repo firmato. Se NON è stato possibile crearla (gpg/rete)
-    # -> fallback [trusted=yes]: repo non verificato ma comunque installabile, così
-    # i tool Kali entrano lo stesso invece di risultare "impossibile trovare".
-    'if [ -s /usr/share/keyrings/kali-archive-keyring.gpg ]; then '
-    'echo "deb [signed-by=/usr/share/keyrings/kali-archive-keyring.gpg] '
-    'http://http.kali.org/kali kali-rolling main contrib non-free" '
-    '> /etc/apt/sources.list.d/kali.list; echo "[kali] repo firmato"; '
-    'else echo "deb [trusted=yes] '
-    'http://http.kali.org/kali kali-rolling main contrib non-free" '
-    '> /etc/apt/sources.list.d/kali.list; echo "[kali] repo trusted=yes (chiave non disponibile)"; fi; '
-    'apt-get update'
-)
+def _kali_enable_inner(lang: str = "it") -> str:
+    signed = _L(lang, "[kali] repo firmato", "[kali] repo signed")
+    trusted = _L(lang, "[kali] repo trusted=yes (chiave non disponibile)",
+                       "[kali] repo trusted=yes (key unavailable)")
+    return (
+        'apt-get update || true; '
+        'DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends '
+        'ca-certificates gnupg curl wget || true; '
+        'install -d -m 0755 /usr/share/keyrings; '
+        'if [ ! -s /usr/share/keyrings/kali-archive-keyring.gpg ]; then '
+        '(curl -fsSL https://archive.kali.org/archive-key.asc '
+        '|| wget -qO- https://archive.kali.org/archive-key.asc) '
+        '| gpg --dearmor -o /usr/share/keyrings/kali-archive-keyring.gpg 2>/dev/null || true; fi; '
+        # Se la chiave c'è -> repo firmato. Se NON è stato possibile crearla (gpg/rete)
+        # -> fallback [trusted=yes]: repo non verificato ma comunque installabile, così
+        # i tool Kali entrano lo stesso invece di risultare "impossibile trovare".
+        'if [ -s /usr/share/keyrings/kali-archive-keyring.gpg ]; then '
+        'echo "deb [signed-by=/usr/share/keyrings/kali-archive-keyring.gpg] '
+        'http://http.kali.org/kali kali-rolling main contrib non-free" '
+        '> /etc/apt/sources.list.d/kali.list; echo "' + signed + '"; '
+        'else echo "deb [trusted=yes] '
+        'http://http.kali.org/kali kali-rolling main contrib non-free" '
+        '> /etc/apt/sources.list.d/kali.list; echo "' + trusted + '"; fi; '
+        'apt-get update'
+    )
 
 
-def install_command(tool_id: str) -> list[str]:
+def install_command(tool_id: str, lang: str = "it") -> list[str]:
     """argv per installare UN tool, in base a runtime/pip/repo.
 
     - pip            -> pip install <pkg>
@@ -975,11 +989,13 @@ def install_command(tool_id: str) -> list[str]:
     """
     t = TOOLS.get(tool_id)
     if t is None:
-        raise ValueError("Tool sconosciuto.")
+        raise ValueError(_L(lang, "Tool sconosciuto.", "Unknown tool."))
     if t.get("works") is False:
-        raise ValueError(t.get("reason", "Non installabile su questo telefono."))
+        raise ValueError(t.get("reason", _L(lang, "Non installabile su questo telefono.",
+                                                  "Not installable on this phone.")))
     if t.get("mode") in ("native", "stream"):
-        raise ValueError("Questo elemento non richiede installazione.")
+        raise ValueError(_L(lang, "Questo elemento non richiede installazione.",
+                                  "This item does not require installation."))
     pkg = _pkg_of(tool_id, t)
     if t.get("pip"):
         # --prefer-binary: usa i wheel pre-compilati quando esistono, evitando
@@ -990,22 +1006,23 @@ def install_command(tool_id: str) -> list[str]:
                 f"pkg install -y {pkg} || "
                 f"(pkg install -y {_TERMUX_EXTRA_REPOS} && pkg install -y {pkg})"]
     # proot: se il tool richiede il repo Kali, abilitalo prima (idempotente).
-    pre = (_KALI_ENABLE_INNER + "; ") if t.get("repo") == "kali" else ""
+    pre = (_kali_enable_inner(lang) + "; ") if t.get("repo") == "kali" else ""
     return list(PROOT) + ["bash", "-lc",
-                          f"{_PROOT_APT_PREP}{pre}apt-get update; "
+                          f"{_proot_apt_prep(lang)}{pre}apt-get update; "
                           f"{_APT_INSTALL} {pkg}"]
 
 
 def _with_report(body: str, title: str, count_label: str, count: int,
-                 ok_msg: str, fail_label: str) -> str:
+                 ok_msg: str, fail_label: str, lang: str = "it") -> str:
     """Avvolge lo script di install/rimozione profilo: mostra l'output live
     (copiandolo in un file con `tee`) e alla fine stampa un piccolo RESOCONTO,
     ricavando l'elenco dei falliti dai marcatori '!!' emessi da ogni blocco.
     """
+    head = _L(lang, "RESOCONTO · ", "REPORT · ")
     return (
         'R="$HOME/.nexus-last-report.txt"; : > "$R"; '
         '{ ' + body + ' ; } 2>&1 | tee "$R"; '
-        'echo; echo "===== RESOCONTO · ' + title + ' ====="; '
+        'echo; echo "===== ' + head + title + ' ====="; '
         f'echo "{count_label}: {count}"; '
         'if grep -q "!!" "$R" 2>/dev/null; then '
         f'echo "{fail_label}:"; grep "!!" "$R" | sed "s/^!! //"; '
@@ -1014,13 +1031,14 @@ def _with_report(body: str, title: str, count_label: str, count: int,
     )
 
 
-def install_profile_command(key: str, skip: set | None = None) -> list[str]:
+def install_profile_command(key: str, skip: set | None = None,
+                            lang: str = "it") -> list[str]:
     """argv (bash -lc) che installa i tool MANCANTI di un profilo, in blocchi
     per runtime (Termux / pip / Debian). `skip` = id gia' installati da saltare.
     """
     prof = PROFILES.get(key)
     if not prof:
-        raise ValueError("Profilo sconosciuto.")
+        raise ValueError(_L(lang, "Profilo sconosciuto.", "Unknown profile."))
     skip = skip or set()
     termux, pip, debian = [], [], []
     needs_kali = False
@@ -1043,46 +1061,58 @@ def install_profile_command(key: str, skip: set | None = None) -> list[str]:
     parts = []
     # Ogni pacchetto è tentato singolarmente: se uno fallisce NON blocca gli altri,
     # e alla fine di ogni blocco viene stampato l'elenco dei non installati.
+    hdr_tx = _L(lang, "== pacchetti Termux ==", "== Termux packages ==")
+    hdr_pip = _L(lang, "== tool Python (pip) ==", "== Python tools (pip) ==")
+    hdr_deb = _L(lang, "== nel Debian (proot) ==", "== in Debian (proot) ==")
+    ni_tx = _L(lang, "!! Termux non installati:", "!! Termux not installed:")
+    ni_pip = _L(lang, "!! pip non installati:", "!! pip not installed:")
+    ni_deb = _L(lang, "!! Debian non installati:", "!! Debian not installed:")
     if termux:
         pkgs = " ".join(sorted(set(termux)))
         parts.append(
-            'echo "== pacchetti Termux =="; '
+            f'echo "{hdr_tx}"; '
             f'pkg install -y {_TERMUX_EXTRA_REPOS} >/dev/null 2>&1 || true; '
             f'F=""; for p in {pkgs}; do pkg install -y "$p" || F="$F $p"; done; '
-            '[ -n "$F" ] && echo "!! Termux non installati:$F" || echo "Termux: ok"')
+            f'[ -n "$F" ] && echo "{ni_tx}$F" || echo "Termux: ok"')
     if pip:
         pkgs = " ".join(sorted(set(pip)))
         parts.append(
-            'echo "== tool Python (pip) =="; '
+            f'echo "{hdr_pip}"; '
             f'F=""; for p in {pkgs}; do pip install --prefer-binary "$p" || F="$F $p"; done; '
-            '[ -n "$F" ] && echo "!! pip non installati:$F" || echo "pip: ok"')
+            f'[ -n "$F" ] && echo "{ni_pip}$F" || echo "pip: ok"')
     if debian:
         pkgs = " ".join(sorted(set(debian)))
         inner = (
             'apt-get update; F=""; '
             f'for p in {pkgs}; do {_APT_INSTALL} "$p" || F="$F $p"; done; '
-            '[ -n "$F" ] && echo "!! Debian non installati:$F" || echo "Debian: ok"')
+            f'[ -n "$F" ] && echo "{ni_deb}$F" || echo "Debian: ok"')
         if needs_kali:            # abilita il repo Kali prima di installare
-            inner = _KALI_ENABLE_INNER + "; " + inner
-        inner = _PROOT_APT_PREP + inner   # niente avvio servizi in proot
+            inner = _kali_enable_inner(lang) + "; " + inner
+        inner = _proot_apt_prep(lang) + inner   # niente avvio servizi in proot
         # inner tra apici singoli: le sue variabili ($p/$F) le valuta la shell
         # DENTRO proot, non quella esterna.
-        parts.append('echo "== nel Debian (proot) =="; '
+        parts.append(f'echo "{hdr_deb}"; '
                      "proot-distro login debian -- bash -lc '" + inner + "'")
 
     if not parts:
+        none_msg = _L(lang, ": niente da installare, tutto gia presente. 🎉",
+                            ": nothing to install, everything already present. 🎉")
         return ["bash", "-lc",
-                'echo "Profilo ' + prof["name"] + ': niente da installare, tutto gia presente. 🎉"']
+                'echo "' + _L(lang, "Profilo ", "Profile ") + prof["name"] + none_msg + '"']
     attempted = len(set(termux) | set(pip) | set(debian))
     script = _with_report(
-        " ; ".join(parts), "Installazione profilo " + prof["name"],
-        "Pacchetti elaborati", attempted,
-        "✓ Tutti i pacchetti del profilo sono stati installati.",
-        "⚠ NON installati (riprova il profilo o installali dal catalogo 🧰)")
+        " ; ".join(parts),
+        _L(lang, "Installazione profilo ", "Profile install ") + prof["name"],
+        _L(lang, "Pacchetti elaborati", "Packages processed"), attempted,
+        _L(lang, "✓ Tutti i pacchetti del profilo sono stati installati.",
+                 "✓ All profile packages were installed."),
+        _L(lang, "⚠ NON installati (riprova il profilo o installali dal catalogo 🧰)",
+                 "⚠ NOT installed (retry the profile or install them from the catalog 🧰)"),
+        lang=lang)
     return ["bash", "-lc", script]
 
 
-def uninstall_profile_command(key: str) -> list[str]:
+def uninstall_profile_command(key: str, lang: str = "it") -> list[str]:
     """argv (bash -lc) che RIMUOVE i tool di un profilo, per avvicinarsi allo
     stato precedente all'installazione. Per sicurezza NON tocca:
       - i tool di BASE (non del catalogo),
@@ -1092,7 +1122,7 @@ def uninstall_profile_command(key: str) -> list[str]:
     """
     prof = PROFILES.get(key)
     if not prof:
-        raise ValueError("Profilo sconosciuto.")
+        raise ValueError(_L(lang, "Profilo sconosciuto.", "Unknown profile."))
 
     # Pacchetti da PRESERVARE: quelli usati da tool di BASE (non del catalogo) e
     # quelli richiesti da un ALTRO profilo. Es.: `ncat` usa il pacchetto `nmap`,
@@ -1131,42 +1161,47 @@ def uninstall_profile_command(key: str) -> list[str]:
     # Rimozione: si tenta SOLO su ciò che è davvero installato (dpkg/pip show);
     # un pacchetto non installato non è un errore (non c'è nulla da togliere),
     # così non compare più nel falso elenco "non rimossi".
+    nr = _L(lang, "!! non rimossi:", "!! not removed:")
     parts = []
     if termux:
         pkgs = " ".join(sorted(set(termux)))
-        parts.append('echo "== rimuovo (Termux) =="; F=""; '
+        parts.append(f'echo "{_L(lang, "== rimuovo (Termux) ==", "== removing (Termux) ==")}"; F=""; '
                      f'for p in {pkgs}; do dpkg -s "$p" >/dev/null 2>&1 || continue; '
                      'pkg uninstall -y "$p" || F="$F $p"; done; '
-                     '[ -n "$F" ] && echo "!! non rimossi:$F" || echo "Termux: ok"')
+                     f'[ -n "$F" ] && echo "{nr}$F" || echo "Termux: ok"')
     if pip:
         pkgs = " ".join(sorted(set(pip)))
-        parts.append('echo "== rimuovo (pip) =="; F=""; '
+        parts.append(f'echo "{_L(lang, "== rimuovo (pip) ==", "== removing (pip) ==")}"; F=""; '
                      f'for p in {pkgs}; do pip show "$p" >/dev/null 2>&1 || continue; '
                      'pip uninstall -y "$p" || F="$F $p"; done; '
-                     '[ -n "$F" ] && echo "!! non rimossi:$F" || echo "pip: ok"')
+                     f'[ -n "$F" ] && echo "{nr}$F" || echo "pip: ok"')
     if debian:
         pkgs = " ".join(sorted(set(debian)))
         inner = ('F=""; '
                  f'for p in {pkgs}; do dpkg -s "$p" >/dev/null 2>&1 || continue; '
                  'DEBIAN_FRONTEND=noninteractive apt-get remove -y "$p" || F="$F $p"; done; '
                  'DEBIAN_FRONTEND=noninteractive apt-get autoremove -y || true; '
-                 '[ -n "$F" ] && echo "!! non rimossi:$F" || echo "Debian: ok"')
-        parts.append('echo "== rimuovo (Debian/proot) =="; '
+                 f'[ -n "$F" ] && echo "{nr}$F" || echo "Debian: ok"')
+        parts.append(f'echo "{_L(lang, "== rimuovo (Debian/proot) ==", "== removing (Debian/proot) ==")}"; '
                      "proot-distro login debian -- bash -lc '" + inner + "'")
 
     if not parts:
         return ["bash", "-lc",
-                'echo "Niente da rimuovere: solo tool di base o condivisi con altri profili."']
+                'echo "' + _L(lang, "Niente da rimuovere: solo tool di base o condivisi con altri profili.",
+                                    "Nothing to remove: only base tools or ones shared with other profiles.") + '"']
     removable = len(set(termux) | set(pip) | set(debian))
     script = _with_report(
-        " ; ".join(parts), "Rimozione profilo " + prof["name"],
-        "Pacchetti considerati", removable,
-        "✓ Rimozione completata (dipendenze inutili liberate).",
-        "⚠ NON rimossi")
+        " ; ".join(parts),
+        _L(lang, "Rimozione profilo ", "Profile removal ") + prof["name"],
+        _L(lang, "Pacchetti considerati", "Packages considered"), removable,
+        _L(lang, "✓ Rimozione completata (dipendenze inutili liberate).",
+                 "✓ Removal complete (unused dependencies freed)."),
+        _L(lang, "⚠ NON rimossi", "⚠ NOT removed"),
+        lang=lang)
     return ["bash", "-lc", script]
 
 
-def install_package_command(repo: str, pkgs: str) -> list[str]:
+def install_package_command(repo: str, pkgs: str, lang: str = "it") -> list[str]:
     """argv per installare uno o piu' pacchetti QUALSIASI per nome.
 
     Sblocca l'intero parco pacchetti dei repository gia' presenti, oltre al
@@ -1175,10 +1210,11 @@ def install_package_command(repo: str, pkgs: str) -> list[str]:
     """
     names = [p for p in pkgs.split() if p]
     if not names:
-        raise ValueError("Nessun pacchetto indicato.")
+        raise ValueError(_L(lang, "Nessun pacchetto indicato.", "No package specified."))
     for n in names:
         if not _PKG_RE.match(n):
-            raise ValueError(f"Nome pacchetto non valido: {n!r}")
+            raise ValueError(_L(lang, f"Nome pacchetto non valido: {n!r}",
+                                      f"Invalid package name: {n!r}"))
     joined = " ".join(names)
     if repo == "termux":
         return ["bash", "-lc",
@@ -1186,15 +1222,16 @@ def install_package_command(repo: str, pkgs: str) -> list[str]:
                 f"(pkg install -y {_TERMUX_EXTRA_REPOS} && pkg install -y {joined})"]
     if repo in ("debian", "kali"):
         # per "kali" abilita prima il repo Kali (idempotente), poi installa.
-        pre = (_KALI_ENABLE_INNER + "; ") if repo == "kali" else ""
+        pre = (_kali_enable_inner(lang) + "; ") if repo == "kali" else ""
         return list(PROOT) + ["bash", "-lc",
                               f"{pre}apt-get update; "
                               f"DEBIAN_FRONTEND=noninteractive apt-get install -y {joined}"]
-    raise ValueError("Repository sconosciuto (usa termux/debian/kali).")
+    raise ValueError(_L(lang, "Repository sconosciuto (usa termux/debian/kali).",
+                              "Unknown repository (use termux/debian/kali)."))
 
 
 # Azioni di manutenzione whitelisted (nessun input dall'utente).
-def system_command(action: str) -> list[str]:
+def system_command(action: str, lang: str = "it") -> list[str]:
     """argv per un'azione di sistema whitelisted (aggiornamenti / repo Kali)."""
     if action == "update-termux":
         return ["bash", "-lc", "pkg update -y && pkg upgrade -y"]
@@ -1209,13 +1246,15 @@ def system_command(action: str) -> list[str]:
             f'cd "{repo}" || exit 1',
             f'git config --global --add safe.directory "{repo}" 2>/dev/null || true',
             'echo "== git fetch origin =="',
-            'git fetch origin || { echo "!! FETCH FALLITO — controlla la rete"; exit 1; }',
+            'git fetch origin || { echo "' + _L(lang, "!! FETCH FALLITO — controlla la rete",
+                                                       "!! FETCH FAILED — check the network") + '"; exit 1; }',
             'if git merge --ff-only origin/master 2>/dev/null; then '
-            'echo "OK: aggiornato in fast-forward"; '
-            'else echo "Cronologia divergente o modifiche locali: allineo a origin/master…"; '
-            'git reset --hard origin/master || { echo "!! RESET FALLITO"; exit 1; }; '
-            'echo "OK: allineato a origin/master"; fi',
-            'echo "== versione ora installata =="',
+            'echo "' + _L(lang, "OK: aggiornato in fast-forward", "OK: updated (fast-forward)") + '"; '
+            'else echo "' + _L(lang, "Cronologia divergente o modifiche locali: allineo a origin/master…",
+                                     "Diverged history or local changes: aligning to origin/master…") + '"; '
+            'git reset --hard origin/master || { echo "' + _L(lang, "!! RESET FALLITO", "!! RESET FAILED") + '"; exit 1; }; '
+            'echo "' + _L(lang, "OK: allineato a origin/master", "OK: aligned to origin/master") + '"; fi',
+            'echo "' + _L(lang, "== versione ora installata ==", "== version now installed ==") + '"',
             'git log --oneline -1',
         ]
         return ["bash", "-lc", "; ".join(lines)]
@@ -1229,11 +1268,15 @@ def system_command(action: str) -> list[str]:
         # installer dei tool. Alla fine VERIFICA da solo se il repo e' davvero
         # attivo (senza far digitare nulla all'utente).
         return list(PROOT) + ["bash", "-lc",
-            _PROOT_APT_PREP + _KALI_ENABLE_INNER + '; echo; echo "===== VERIFICA REPO KALI ====="; '
+            _proot_apt_prep(lang) + _kali_enable_inner(lang)
+            + '; echo; echo "===== ' + _L(lang, "VERIFICA REPO KALI", "KALI REPO CHECK") + ' ====="; '
             'if apt-cache policy ffuf 2>/dev/null | grep -qE "Candidate:[[:space:]]*[0-9]"; then '
-            'echo "✓ Repo Kali ATTIVO — i tool Kali (ffuf, wpscan, ...) ora si installano."; '
-            'else echo "⚠ Repo Kali NON attivo: apt non vede ancora i pacchetti Kali."; '
-            'echo "  Ultime righe di apt-get update qui sotto:"; '
+            'echo "' + _L(lang, "✓ Repo Kali ATTIVO — i tool Kali (ffuf, wpscan, ...) ora si installano.",
+                                "✓ Kali repo ACTIVE — Kali tools (ffuf, wpscan, ...) can now be installed.") + '"; '
+            'else echo "' + _L(lang, "⚠ Repo Kali NON attivo: apt non vede ancora i pacchetti Kali.",
+                                     "⚠ Kali repo NOT active: apt does not see the Kali packages yet.") + '"; '
+            'echo "' + _L(lang, "  Ultime righe di apt-get update qui sotto:",
+                                "  Last lines of apt-get update below:") + '"; '
             'apt-get update 2>&1 | tail -6; fi']
     if action == "setup-autostart":
         repo = str(Path(__file__).parent)
@@ -1241,13 +1284,15 @@ def system_command(action: str) -> list[str]:
                 f'mkdir -p ~/.termux/boot && '
                 f'cp "{repo}/boot/start-nexussec.sh" ~/.termux/boot/start-nexussec.sh && '
                 f'chmod +x ~/.termux/boot/start-nexussec.sh && '
-                f'echo "Autostart ABILITATO. Installa l\'app Termux:Boot (F-Droid) e riavvia il telefono."']
+                'echo "' + _L(lang, "Autostart ABILITATO. Installa l\'app Termux:Boot (F-Droid) e riavvia il telefono.",
+                                    "Autostart ENABLED. Install the Termux:Boot app (F-Droid) and reboot the phone.") + '"']
     if action == "disable-autostart":
         return ["bash", "-lc",
                 'rm -f ~/.termux/boot/start-nexussec.sh && '
-                'echo "Autostart DISABILITATO. Il server non partirà più da solo all\'accensione." || '
-                'echo "Nessun autostart configurato."']
-    raise ValueError("Azione di sistema sconosciuta.")
+                'echo "' + _L(lang, "Autostart DISABILITATO. Il server non partirà più da solo all\'accensione.",
+                                    "Autostart DISABLED. The server will no longer start on boot.") + '" || '
+                'echo "' + _L(lang, "Nessun autostart configurato.", "No autostart configured.") + '"']
+    raise ValueError(_L(lang, "Azione di sistema sconosciuta.", "Unknown system action."))
 
 
 def detection_targets() -> tuple[dict, dict]:

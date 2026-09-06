@@ -469,8 +469,8 @@
 <!-- modal: installa un pacchetto qualsiasi -->
 <div id="pkgModal">
   <div class="card-modal">
-    <h3>Installa un pacchetto</h3>
-    <p>Scrivi il nome (anche più di uno, separati da spazio) e scegli il repository.
+    <h3 id="pkgTitle">Installa un pacchetto</h3>
+    <p id="pkgDesc">Scrivi il nome (anche più di uno, separati da spazio) e scegli il repository.
        Così puoi installare quasi tutto, oltre al catalogo. I nomi vengono validati.</p>
     <input id="pkgInput" placeholder="es. hping3  netdiscover" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
     <div class="verr" id="pkgErr"></div>
@@ -491,7 +491,7 @@
 <!-- menu Applicazioni (bottom sheet stile desktop) -->
 <div class="startmenu" id="startmenu">
   <div class="sm-head">
-    <span>▤</span><b>Applicazioni</b>
+    <span>▤</span><b id="smHeadTitle">Applicazioni</b>
     <button class="iconbtn" id="smRefresh" title="Rileva di nuovo i tool installati">↻</button>
     <button class="iconbtn" id="smClose">✕</button>
   </div>
@@ -514,7 +514,7 @@
 <!-- selettore tema (bottom sheet) -->
 <div class="scrim" id="themeScrim"></div>
 <div class="themesheet" id="themeSheet">
-  <div class="ts-head"><span>🎨</span><b>Tema</b><button class="iconbtn" id="themeClose">✕</button></div>
+  <div class="ts-head"><span>🎨</span><b id="themeHeadTitle">Tema</b><button class="iconbtn" id="themeClose">✕</button></div>
   <div class="ts-list" id="themeList"></div>
 </div>
 
@@ -589,10 +589,12 @@ const ICON = {
 const CAT_ICON = {Network:"🌐", Web:"🕸️", Exploitation:"🎯", Cracking:"🔓",
   Anonimato:"🧅", Sistema:"🖥️", Forensics:"🧪", Reverse:"🧩", Wireless:"📶"};
 // Dove gira il tool: Termux nativo (leggero/veloce) o Debian minimale in proot.
-const RUNTIME = {
-  termux:`<span class="badge" title="pacchetto nativo Termux (leggero, veloce)">📦 Termux</span>`,
-  proot:`<span class="badge" title="dentro il Debian minimale (proot)">🐧 Debian</span>`,
-};
+// Badge del runtime, con tooltip tradotto al momento del render.
+function runtimeBadge(rt){
+  if(rt==="termux") return `<span class="badge" title="${tr("pacchetto nativo Termux (leggero, veloce)")}">📦 Termux</span>`;
+  if(rt==="proot")  return `<span class="badge" title="${tr("dentro il Debian minimale (proot)")}">🐧 Debian</span>`;
+  return "";
+}
 
 let ALL = {};          // categorie -> tool
 let PROFILES = [];     // profili (set di tool installabili insieme)
@@ -617,13 +619,13 @@ function toggleFav(id){ if(FAV.has(id)) FAV.delete(id); else FAV.add(id); saveFa
 /* ---------------- modalita' anonima (Tor) ---------------- */
 function paintTor(){
   const on=anonMode, b=$("#torBtn");
-  b.title = on ? "Tor: ON — traffico instradato via Tor" : "Tor: off — instrada il traffico via Tor";
+  b.title = on ? tr("Tor: ON — traffico instradato via Tor") : tr("Tor: off — instrada il traffico via Tor");
   b.style.borderColor = on ? "var(--amber)" : "var(--line)";
   b.style.color = on ? "var(--amber)" : "var(--fg)";
   $("#trayTor").classList.toggle("on", on);
 }
 async function setTor(on){
-  $("#torBtn").title = on ? "Tor: avvio…" : "Tor: off";
+  $("#torBtn").title = on ? tr("Tor: avvio…") : tr("Tor: off");
   try{
     const r=await fetch("/api/tor/"+(on?"start":"stop"),{method:"POST"});
     const d=await r.json();
@@ -638,7 +640,7 @@ function anonFor(tool){ return tool.force_anon || (anonMode && tool.anon_ok); }
 /* ---------------- toast ---------------- */
 let toastT;
 function toast(msg){
-  const t=$("#toast"); t.textContent=msg; t.classList.add("show");
+  const t=$("#toast"); t.textContent=tr(msg); t.classList.add("show");
   clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),1800);
 }
 
@@ -654,12 +656,44 @@ function resetOverlay(){
 }
 function showGuide(){
   resetOverlay();
-  $("#ovtitle").textContent="Guida rapida";
-  const g=$("#guide"); g.innerHTML=""; g.appendChild($("#guideTpl").content.cloneNode(true));
+  $("#ovtitle").textContent=tr("Guida rapida");
+  const g=$("#guide"); g.innerHTML="";
+  if(LANG==="en") g.innerHTML=GUIDE_EN;
+  else g.appendChild($("#guideTpl").content.cloneNode(true));
   g.hidden=false;
   overlay.classList.add("open");
   const body=document.querySelector(".obody"); if(body) body.scrollTop=0;
 }
+// Guida in inglese (specchio del <template id="guideTpl"> italiano).
+const GUIDE_EN = `
+  <h3>👋 Welcome to NexusSEC</h3>
+  <p>This app drives security tools from your phone. Here are the essentials to get started.</p>
+  <h4>How to launch a tool</h4>
+  <p>Each card has a label that says what happens on tap:</p>
+  <ul>
+    <li><span class="b">» run</span> — runs it and shows the result.</li>
+    <li><span class="b">▮ terminal</span> — opens an interactive terminal.</li>
+    <li><span class="b">◈ live stream</span> — live output and you can <span class="b">reply</span> to prompts (try <span class="b">Recon demo</span>).</li>
+    <li><span class="b">＋ to install</span> — not installed: tap and press <span class="b">⬇ Install now</span>.</li>
+    <li><span class="b">❌ not on stock</span> — does not run on a phone without root (explained on tap).</li>
+  </ul>
+  <h4>Navigating</h4>
+  <ul>
+    <li>The <span class="b">chips at the top</span> show one group at a time, or <span class="b">All</span>.</li>
+    <li><span class="b">🧰</span> also shows tools not yet installed (catalog).</li>
+    <li><span class="b">🎨</span> changes the theme. <span class="b">🧅</span> routes through Tor.</li>
+  </ul>
+  <h4>Doing everything without typing in Termux</h4>
+  <p>From the bottom bar, tap <span class="b">NexusSEC</span>:</p>
+  <ul>
+    <li><span class="b">Profiles</span> (Web, OSINT…): install a theme's tools in bulk.</li>
+    <li><span class="b">Maintenance</span>: update Termux / the app / Debian, or restart the server.</li>
+  </ul>
+  <div class="tip">After <span class="b">Update app</span> use <span class="b">⏻ Restart server</span>, then reload the page.</div>
+  <h4>If something goes wrong</h4>
+  <p>"Server unreachable"? Go back to Termux and check that <code>python server.py</code> is running, then reopen <code>http://127.0.0.1:8000</code>.</p>
+  <div class="tip warn">⚠️ <span class="b">Authorized testing only.</span> Use these tools solely on systems you own or have written permission for.</div>
+  <p>Full manual: <a href="https://github.com/RedRider21/Termux-NexusSEC-OS/blob/master/MANUALE.md" target="_blank" rel="noopener">MANUALE.md on GitHub</a>.</p>`;
 function showOutput(title, text, meta){
   resetOverlay();
   $("#ovtitle").textContent=title; output.hidden=false; output.textContent=text;
@@ -687,7 +721,7 @@ $("#dlBtn").onclick=async()=>{
     const r=await fetch("/api/save",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({tool,text})});
     const d=await r.json();
-    if(r.ok && d.path){ toast("Salvato: "+d.path); return; }
+    if(r.ok && d.path){ toast(tr("Salvato: ")+d.path); return; }
     throw new Error(d.detail||"errore");
   }catch(e){
     try{
@@ -706,10 +740,10 @@ const RE_HOST=/^[A-Za-z0-9](?:[A-Za-z0-9._:-]*[A-Za-z0-9])?(?:\/\d{1,3})?$/;
 const RE_URL=/^https?:\/\/[A-Za-z0-9._:-]+(?:\/[^\s]*)?$/;
 function validTarget(kind,v){
   v=(v||"").trim();
-  if(!v) return "Inserisci un valore.";
-  if(v.startsWith("-")) return "Non puo' iniziare con '-'.";
-  if(kind==="host" && !RE_HOST.test(v)) return "Host/IP/CIDR non valido.";
-  if(kind==="url" && !RE_URL.test(v)) return "URL non valido (http:// o https://).";
+  if(!v) return tr("Inserisci un valore.");
+  if(v.startsWith("-")) return tr("Non puo' iniziare con '-'.");
+  if(kind==="host" && !RE_HOST.test(v)) return tr("Host/IP/CIDR non valido.");
+  if(kind==="url" && !RE_URL.test(v)) return tr("URL non valido (http:// o https://).");
   return "";
 }
 
@@ -734,30 +768,30 @@ function renderParams(tool){
       const l=document.createElement("label"); l.className="mp-toggle mp-ctl";
       l.dataset.type="toggle"; l.dataset.flag=p.flag;
       const rootf=isRootFlag(tool,p.flag);
-      const tag=rootf?` <span class="rootbadge">(solo root)</span>`:"";
-      l.innerHTML=`<input type="checkbox"><span>${escapeHtml(p.label)}${tag}</span>`;
-      if(p.help){ const h=document.createElement("span"); h.className="mp-help"; h.textContent="· "+p.help; l.appendChild(h); }
+      const tag=rootf?` <span class="rootbadge">${tr("(solo root)")}</span>`:"";
+      l.innerHTML=`<input type="checkbox"><span>${escapeHtml(tr(p.label))}${tag}</span>`;
+      if(p.help){ const h=document.createElement("span"); h.className="mp-help"; h.textContent="· "+tr(p.help); l.appendChild(h); }
       if(rootf && !HAS_ROOT){        // no-root: spunta visibile ma disattivata
         l.classList.add("needroot");
         l.querySelector("input").disabled=true;
-        l.title="Richiede un telefono rootato (usa raw socket)";
+        l.title=tr("Richiede un telefono rootato (usa raw socket)");
       }
       l.querySelector("input").addEventListener("change",updatePreview);
       mParams.appendChild(l);
     } else if(p.type==="text"){
       const d=document.createElement("div"); d.className="mp-ctl"; d.dataset.type="text";
       d.dataset.flag=p.flag||""; d.dataset.join=p.join||"space";
-      d.innerHTML=`<label class="mp-lbl">${escapeHtml(p.label)}</label>`
-        +`<input class="mp-text" placeholder="${escapeHtml(p.placeholder||"")}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">`
-        +(p.help?`<div class="mp-help">${escapeHtml(p.help)}</div>`:"");
+      d.innerHTML=`<label class="mp-lbl">${escapeHtml(tr(p.label))}</label>`
+        +`<input class="mp-text" placeholder="${escapeHtml(tr(p.placeholder||""))}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">`
+        +(p.help?`<div class="mp-help">${escapeHtml(tr(p.help))}</div>`:"");
       d.querySelector("input").addEventListener("input",updatePreview);
       mParams.appendChild(d);
     } else if(p.type==="select"){
       const d=document.createElement("div"); d.className="mp-ctl"; d.dataset.type="select";
       d.dataset.flag=p.flag||""; d.dataset.join=p.join||"flag";
-      const opts=(p.options||[]).map(o=>`<option value="${escapeHtml(o.value!==undefined?o.value:(o.flag||""))}">${escapeHtml(o.label)}</option>`).join("");
-      d.innerHTML=`<label class="mp-lbl">${escapeHtml(p.label)}</label><select>${opts}</select>`
-        +(p.help?`<div class="mp-help">${escapeHtml(p.help)}</div>`:"");
+      const opts=(p.options||[]).map(o=>`<option value="${escapeHtml(o.value!==undefined?o.value:(o.flag||""))}">${escapeHtml(tr(o.label))}</option>`).join("");
+      d.innerHTML=`<label class="mp-lbl">${escapeHtml(tr(p.label))}</label><select>${opts}</select>`
+        +(p.help?`<div class="mp-help">${escapeHtml(tr(p.help))}</div>`:"");
       d.querySelector("select").addEventListener("change",updatePreview);
       mParams.appendChild(d);
     }
@@ -767,13 +801,13 @@ function renderParams(tool){
 function renderHints(tool){
   const box=$("#mHints"); box.innerHTML="";
   const hs=tool.hints||[]; if(!hs.length) return;
-  const lbl=document.createElement("div"); lbl.className="mh-lbl"; lbl.textContent="suggerimenti (tocca per aggiungere):";
+  const lbl=document.createElement("div"); lbl.className="mh-lbl"; lbl.textContent=tr("suggerimenti (tocca per aggiungere):");
   box.appendChild(lbl);
   hs.forEach(h=>{
     const b=document.createElement("button"); b.type="button"; b.className="hint-chip";
     const rootf=isRootFlag(tool,h);
-    b.textContent=h; if(rootf){ b.classList.add("root"); b.append(" (solo root)"); }
-    if(rootf && !HAS_ROOT){ b.disabled=true; b.title="Richiede un telefono rootato (raw socket)"; }
+    b.textContent=h; if(rootf){ b.classList.add("root"); b.append(tr(" (solo root)")); }
+    if(rootf && !HAS_ROOT){ b.disabled=true; b.title=tr("Richiede un telefono rootato (raw socket)"); }
     else b.onclick=()=>{ mArgs.value=(mArgs.value.trim()+" "+h).trim()+" "; mArgs.focus(); updatePreview(); };
     box.appendChild(b);
   });
@@ -807,7 +841,7 @@ function updatePreview(){
   const terr = (t.target && tv) ? validTarget(t.target, tv) : "";
   mErr.textContent = (t.target && tv) ? terr : "";
   const args=collectArgs();
-  mArgsErr.textContent = args.length>40 ? "Troppi parametri (max 40)." : "";
+  mArgsErr.textContent = args.length>40 ? tr("Troppi parametri (max 40).") : "";
   const parts=[t.cmdline||t.id];
   if(args.length) parts.push(args.map(shellQuote).join(" "));
   if(t.target) parts.push(tv?shellQuote(tv):"<target>");
@@ -818,7 +852,7 @@ function askRun(tool){
   return new Promise((resolve)=>{
     modalResolve=resolve; curTool=tool;
     $("#mTitle").textContent=tool.name;
-    $("#mHelp").textContent=tool.help||"Imposta ed esegui.";
+    $("#mHelp").textContent=tr(tool.help||"Imposta ed esegui.");
     const hasT=!!tool.target;
     mInput.style.display = hasT ? "" : "none";
     mErr.style.display = hasT ? "" : "none";
@@ -852,35 +886,35 @@ async function runOneshot(tool){
   const anon=anonFor(tool);
   overlay.dataset.tool=tool.id;
   showOutput(tool.name, "");
-  output.innerHTML='<span class="spin"></span> '+(anon?"avvio via Tor…":"esecuzione in corso…");
+  output.innerHTML='<span class="spin"></span> '+(anon?tr("avvio via Tor…"):tr("esecuzione in corso…"));
   const t0=performance.now();
   try{
     const r=await fetch("/api/run",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({tool:tool.id,target,anon,args})});
     const d=await r.json();
     const ms=Math.round(performance.now()-t0);
-    if(!r.ok){ showOutput(tool.name,"Errore: "+(d.detail||r.status)); return; }
+    if(!r.ok){ showOutput(tool.name,tr("Errore: ")+(d.detail||r.status)); return; }
     const text=(d.stdout||"")+(d.stderr?"\n[stderr]\n"+d.stderr:"");
     const rcClass=d.returncode===0?"rc-ok":"rc-err";
     const meta=`<span>${target?`<b>target</b> ${escapeHtml(target)}`:""}</span>`
              +(anon?`<span><b>🧅 via Tor</b></span>`:"")
-             +`<span><b>uscita</b> <span class="${rcClass}">${d.returncode}</span></span>`
-             +`<span><b>tempo</b> ${ms} ms</span>`;
-    showOutput(tool.name, text||"(nessun output)", meta);
+             +`<span><b>${tr("uscita")}</b> <span class="${rcClass}">${d.returncode}</span></span>`
+             +`<span><b>${tr("tempo")}</b> ${ms} ms</span>`;
+    showOutput(tool.name, text||tr("(nessun output)"), meta);
     $("#copyBtn").hidden=false; $("#dlBtn").hidden=false;
     saveHistory({tool:tool.id, name:tool.name, target, rc:d.returncode, text, ts:Date.now(), ms});
-  }catch(e){ showOutput(tool.name,"Errore di rete: "+e); }
+  }catch(e){ showOutput(tool.name,tr("Errore di rete: ")+e); }
 }
 async function openTerminal(tool){
   overlay.dataset.tool=tool.id;
-  showOutput(tool.name,""); output.innerHTML='<span class="spin"></span> avvio terminale…';
+  showOutput(tool.name,""); output.innerHTML='<span class="spin"></span> '+tr("avvio terminale…");
   try{
     const r=await fetch("/api/terminal/"+tool.id,{method:"POST"});
     const d=await r.json();
-    if(!r.ok){ showOutput(tool.name,"Errore: "+(d.detail||r.status)); return; }
+    if(!r.ok){ showOutput(tool.name,tr("Errore: ")+(d.detail||r.status)); return; }
     showTerminal(tool.name, d.url);
     openWins.set(tool.id, {name:tool.name, url:d.url}); renderTaskbarWins();
-  }catch(e){ showOutput(tool.name,"Errore di rete: "+e); }
+  }catch(e){ showOutput(tool.name,tr("Errore di rete: ")+e); }
 }
 
 /* ---------------- flusso live (WebSocket) ---------------- */
@@ -932,14 +966,14 @@ function runStream(url, title, opts){
   const sig=$("#streamSig"), status=$("#streamStatus"), statusTxt=$("#streamStatusTxt");
   bar.classList.add("on");
   bar.classList.toggle("noinput", !opts.input);   // installazioni: solo stato + Stop
-  status.classList.remove("done"); statusTxt.textContent="in corso…";
-  sig.className="btn-stop"; sig.textContent="■ Stop"; sig.title="Interrompi (Ctrl-C)";
+  status.classList.remove("done"); statusTxt.textContent=tr("in corso…");
+  sig.className="btn-stop"; sig.textContent="■ Stop"; sig.title=tr("Interrompi (Ctrl-C)");
   inp.disabled=!opts.input; send.disabled=!opts.input;
   $("#streamPrev").disabled=!opts.input; $("#streamNext").disabled=!opts.input;
   shellIdx=shellHist.length;   // riparti dal fondo dello storico
-  inp.value=""; inp.placeholder="scrivi e premi Invio per rispondere…";
+  inp.value=""; inp.placeholder=tr("scrivi e premi Invio per rispondere…");
   overlay.classList.add("open");
-  streamAppend("· connessione…\n", "sys");
+  streamAppend(tr("· connessione…\n"), "sys");
 
   const proto = location.protocol==="https:" ? "wss:" : "ws:";
   const ws = new WebSocket(proto+"//"+location.host+url);
@@ -948,20 +982,20 @@ function runStream(url, title, opts){
     let m; try{ m=JSON.parse(ev.data); }catch{ return; }
     if(m.type==="out")        streamAppend(m.data);
     else if(m.type==="start") streamAppend("$ "+m.data+"\n\n", "sys");
-    else if(m.type==="end"){  streamAppend("\n· terminato (uscita "+m.data+")\n", "end");
-                              finishStream(m.data==0?"completato ✓":"terminato (uscita "+m.data+")");
+    else if(m.type==="end"){  streamAppend("\n"+tr("· terminato (uscita ")+m.data+")\n", "end");
+                              finishStream(m.data==0?tr("completato ✓"):tr("terminato (uscita ")+m.data+")");
                               if(opts.onEnd) opts.onEnd(m.data); }
-    else if(m.type==="error"){streamAppend("\n[errore] "+m.data+"\n", "me"); finishStream("errore"); }
+    else if(m.type==="error"){streamAppend("\n"+tr("[errore] ")+m.data+"\n", "me"); finishStream(tr("errore")); }
   };
   // A fine flusso: ferma lo spinner e trasforma "Stop" in "Chiudi".
   function finishStream(txt){
     inp.disabled=true; send.disabled=true;
-    status.classList.add("done"); statusTxt.textContent=txt||"completato";
-    sig.className="btn-stop done"; sig.textContent="✕ Chiudi"; sig.title="Chiudi il pannello";
+    status.classList.add("done"); statusTxt.textContent=txt||tr("completato");
+    sig.className="btn-stop done"; sig.textContent=tr("✕ Chiudi"); sig.title=tr("Chiudi il pannello");
     sig.onclick=()=>$("#ovclose").click();
   }
   ws.onclose=()=>{ if(streamWS===ws){ inp.disabled=true; send.disabled=true; } };
-  ws.onerror=()=>{ streamAppend("\n[errore] impossibile aprire il flusso (server.py attivo?)\n","me"); };
+  ws.onerror=()=>{ streamAppend("\n"+tr("[errore] ")+tr("impossibile aprire il flusso (server.py attivo?)")+"\n","me"); };
   function doSend(){
     const v=inp.value; if(v==="" || !streamWS || streamWS.readyState!==1) return;
     streamAppend("> "+v+"\n", "me");
@@ -979,7 +1013,9 @@ function runStream(url, title, opts){
 }
 function openStream(tool){ runStream("/api/stream/"+encodeURIComponent(tool.id), tool.name, {input:true}); }
 function openSysStream(action, title, arg, onEnd){
-  const q = arg ? ("?arg="+encodeURIComponent(arg)) : "";
+  // Passa la lingua della UI: così anche l'output delle procedure (install/
+  // rimozione/aggiornamento + resoconto) esce nella lingua scelta.
+  const q = "?lang="+LANG + (arg ? ("&arg="+encodeURIComponent(arg)) : "");
   runStream("/api/sysstream/"+encodeURIComponent(action)+q, title, {input:false,
     onEnd:()=>{ setTimeout(()=>refreshTools().catch(()=>{}), 800); if(onEnd) onEnd(); }});
 }
@@ -1001,10 +1037,10 @@ document.querySelectorAll('#pkgModal [data-repo]').forEach(b=>{
   b.onclick=()=>{
     const pkg=$("#pkgInput").value.trim();
     if(!/^[A-Za-z0-9][A-Za-z0-9+._ -]*$/.test(pkg)){
-      $("#pkgErr").textContent="Nome non valido (lettere, numeri, + . _ - e spazi)."; return; }
+      $("#pkgErr").textContent=tr("Nome non valido (lettere, numeri, + . _ - e spazi)."); return; }
     const repo=b.getAttribute("data-repo");
     closePkgInstall();
-    openSysStream("install-package","Installo: "+pkg+" ("+repo+")", repo+":"+pkg);
+    openSysStream("install-package",tr("Installo: ")+pkg+" ("+repo+")", repo+":"+pkg);
   };
 });
 
@@ -1016,22 +1052,22 @@ function saveHistory(item){
 }
 $("#histBtn").onclick=()=>{
   const h=loadHistory();
-  resetOverlay(); $("#ovtitle").textContent="Storico ("+h.length+")";
+  resetOverlay(); $("#ovtitle").textContent=tr("Storico")+" ("+h.length+")";
   output.hidden=false;
-  if(!h.length){ output.innerHTML='<div class="empty">Nessuna esecuzione registrata.</div>'; overlay.classList.add("open"); return; }
+  if(!h.length){ output.innerHTML='<div class="empty">'+tr("Nessuna esecuzione registrata.")+'</div>'; overlay.classList.add("open"); return; }
   output.innerHTML="";
   const wrap=document.createElement("div");
   h.forEach((it,i)=>{
     const el=document.createElement("div"); el.className="hist-item";
     const rc = it.rc===0?'<span class="rc-ok">ok</span>':`<span class="rc-err">rc ${it.rc}</span>`;
     el.innerHTML=`<div class="ht">${ICON[it.tool]||"▸"} ${escapeHtml(it.name)}`
-      +`<button class="hrun" title="Ri-esegui">↻</button></div>`
+      +`<button class="hrun" title="${tr("Ri-esegui")}">↻</button></div>`
       +`<div class="hs"><span>${it.target?escapeHtml(it.target):"—"}</span>`
       +`<span>${rc}</span><span>${new Date(it.ts).toLocaleString()}</span></div>`;
     el.onclick=()=>{
       overlay.dataset.tool=it.tool;
       const meta=`<span>${it.target?`<b>target</b> ${escapeHtml(it.target)}`:""}</span>`
-               +`<span><b>uscita</b> ${it.rc}</span><span><b>${new Date(it.ts).toLocaleString()}</b></span>`;
+               +`<span><b>${tr("uscita")}</b> ${it.rc}</span><span><b>${new Date(it.ts).toLocaleString()}</b></span>`;
       showOutput(it.name, it.text, meta); $("#copyBtn").hidden=false; $("#dlBtn").hidden=false;
     };
     el.querySelector(".hrun").onclick=(e)=>{
@@ -1043,7 +1079,7 @@ $("#histBtn").onclick=()=>{
     };
     wrap.appendChild(el);
   });
-  const clear=document.createElement("button"); clear.className="iconbtn"; clear.textContent="🗑 Svuota storico";
+  const clear=document.createElement("button"); clear.className="iconbtn"; clear.textContent=tr("🗑 Svuota storico");
   clear.style.margin="14px"; clear.onclick=()=>{ localStorage.removeItem(HKEY); toast("Storico svuotato"); overlay.classList.remove("open"); };
   output.appendChild(wrap); output.appendChild(clear);
   overlay.classList.add("open");
@@ -1053,41 +1089,51 @@ $("#histBtn").onclick=()=>{
 function escapeHtml(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function installHint(tool){
   const pkg=tool.pkg||tool.bin||tool.id;
-  let body="Questo tool non risulta installato.\n\nPer installarlo, da Termux:\n\n";
+  const en=(LANG==="en");
+  let body=en ? "This tool does not appear to be installed.\n\nTo install it, from Termux:\n\n"
+              : "Questo tool non risulta installato.\n\nPer installarlo, da Termux:\n\n";
   if(tool.pip){
     body+="    pip install "+pkg+"\n";
   } else if(tool.runtime==="termux"){
     body+="    pkg install "+pkg+"\n"+
-          "    (se non lo trova:  pkg install root-repo && pkg install "+pkg+")\n";
+          (en?"    (if it isn't found:  pkg install root-repo && pkg install "+pkg+")\n"
+             :"    (se non lo trova:  pkg install root-repo && pkg install "+pkg+")\n");
   } else if(tool.repo==="kali"){
-    body+="  # è un tool del repo di Kali: abilitalo una volta sola nel Debian…\n"+
+    body+=(en?"  # it is a tool from the Kali repo: enable it once inside Debian…\n"
+             :"  # è un tool del repo di Kali: abilitalo una volta sola nel Debian…\n")+
           "    proot-distro login debian\n"+
           "    echo 'deb https://http.kali.org/kali kali-rolling main contrib non-free' \\\n"+
           "        > /etc/apt/sources.list.d/kali.list\n"+
           "    apt install -y kali-archive-keyring && apt update\n"+
-          "  # …poi installa il tool:\n"+
+          (en?"  # …then install the tool:\n":"  # …poi installa il tool:\n")+
           "    apt install "+pkg+"\n"+
-          "\n  (in alternativa: ENABLE_KALI_REPO=yes ./install.sh, una volta sola)\n";
+          (en?"\n  (alternatively: ENABLE_KALI_REPO=yes ./install.sh, once)\n"
+             :"\n  (in alternativa: ENABLE_KALI_REPO=yes ./install.sh, una volta sola)\n");
   } else {
     body+="    proot-distro login debian -- apt install "+pkg+"\n";
   }
-  body+="\nOppure premi «Installa ora» qui sotto: lo faccio io, vedi il flusso live.";
+  body+=en ? "\nOr press «Install now» below: I do it for you, watch the live stream."
+           : "\nOppure premi «Installa ora» qui sotto: lo faccio io, vedi il flusso live.";
   overlay.dataset.tool=tool.id;
   resetOverlay();
   $("#ovtitle").textContent=tool.name;
   output.hidden=false; output.textContent=body;
   const btn=document.createElement("button");
-  btn.className="btn go"; btn.style.margin="14px"; btn.textContent="⬇ Installa ora";
-  btn.onclick=()=>openSysStream("install-tool", "Installo "+tool.name, tool.id);
+  btn.className="btn go"; btn.style.margin="14px"; btn.textContent=en?"⬇ Install now":"⬇ Installa ora";
+  btn.onclick=()=>openSysStream("install-tool", (en?"Installing ":"Installo ")+tool.name, tool.id);
   output.appendChild(btn);
   overlay.classList.add("open");
 }
 function showReason(tool){
   overlay.dataset.tool=tool.id;
-  showOutput(tool.name,
-    "⚠️  Non utilizzabile su questo telefono.\n\n"+(tool.reason||"")+"\n\n"+
-    "È elencato per completezza (nella distro NexusSec-OS su PC funziona). "+
-    "Sul telefono stock, senza root, non può girare.");
+  const en=(LANG==="en");
+  showOutput(tool.name, en
+    ? "⚠️  Not usable on this phone.\n\n"+(tool.reason||"")+"\n\n"+
+      "It is listed for completeness (it works in the NexusSec-OS distro on a PC). "+
+      "On a stock phone, without root, it cannot run."
+    : "⚠️  Non utilizzabile su questo telefono.\n\n"+(tool.reason||"")+"\n\n"+
+      "È elencato per completezza (nella distro NexusSec-OS su PC funziona). "+
+      "Sul telefono stock, senza root, non può girare.");
 }
 function toolCard(tool){
   const b=document.createElement("button"); b.className="tool"; b.dataset.name=(tool.name+" "+(tool.help||"")).toLowerCase();
@@ -1097,20 +1143,20 @@ function toolCard(tool){
   const broken=tool.works===false;
   const off=!broken && tool.installed===false;
   if(broken||off) b.classList.add("off");
-  const onion=(!broken&&(tool.anon_ok||tool.force_anon))?`<span class="badge" title="instradabile via Tor">🧅</span>`:"";
-  const live=native?`<span class="badge" title="API esterna, gira anche senza proot">🌐 live</span>`:"";
-  const rt=broken?"":(RUNTIME[tool.runtime]||"");
+  const onion=(!broken&&(tool.anon_ok||tool.force_anon))?`<span class="badge" title="${tr("instradabile via Tor")}">🧅</span>`:"";
+  const live=native?`<span class="badge" title="${tr("API esterna, gira anche senza proot")}">🌐 live</span>`:"";
+  const rt=broken?"":runtimeBadge(tool.runtime);
   let mainBadge;
-  if(broken && tool.root_only) mainBadge=`<span class="badge nope" title="tocca per sapere perché">🔒 solo root</span>`;
-  else if(broken) mainBadge=`<span class="badge nope" title="tocca per sapere perché">❌ non su stock</span>`;
-  else if(off) mainBadge=`<span class="badge off" title="tocca per l'istruzione di installazione">＋ da installare</span>`;
-  else if(stream) mainBadge=`<span class="badge term">${tool.id.startsWith("shell_live")?"⌨️ shell":"◈ flusso live"}</span>`;
-  else mainBadge=`<span class="badge ${interactive?"term":""}">${interactive?"▮ terminale":"» run"}</span>`;
+  if(broken && tool.root_only) mainBadge=`<span class="badge nope" title="${tr("tocca per sapere perché")}">${tr("🔒 solo root")}</span>`;
+  else if(broken) mainBadge=`<span class="badge nope" title="${tr("tocca per sapere perché")}">${tr("❌ non su stock")}</span>`;
+  else if(off) mainBadge=`<span class="badge off" title="${tr("tocca per l'istruzione di installazione")}">${tr("＋ da installare")}</span>`;
+  else if(stream) mainBadge=`<span class="badge term">${tool.id.startsWith("shell_live")?"⌨️ shell":tr("◈ flusso live")}</span>`;
+  else mainBadge=`<span class="badge ${interactive?"term":""}">${interactive?tr("▮ terminale"):"» run"}</span>`;
   const fav=FAV.has(tool.id);
   b.innerHTML=`<div class="top"><span class="emoji">${ICON[tool.id]||"▸"}</span>`
     +`<span class="nm">${escapeHtml(tool.name)}</span>`
-    +`<span class="fav${fav?" on":""}" title="Preferito">${fav?"★":"☆"}</span></div>`
-    +`<span class="desc">${escapeHtml(tool.help||"")}</span>`
+    +`<span class="fav${fav?" on":""}" title="${tr("Preferito")}">${fav?"★":"☆"}</span></div>`
+    +`<span class="desc">${escapeHtml(tr(tool.help||""))}</span>`
     +`<div style="display:flex;gap:6px;flex-wrap:wrap">${mainBadge}${rt}${live}${onion}</div>`;
   b.onclick=()=> broken ? showReason(tool) : (off ? installHint(tool)
     : (stream?openStream(tool) : (interactive?openTerminal(tool):runOneshot(tool))));
@@ -1133,8 +1179,8 @@ function profileBanner(prof){
   const inst=all.filter(t=>t.installed!==false).length;
   const el=document.createElement("div"); el.className="pbanner";
   el.innerHTML=`<span class="pi">${prof.icon}</span>`
-    +`<span class="pt"><b>${t("pb_profile")}: ${escapeHtml(prof.name)}</b>`
-    +`<small>${escapeHtml(prof.desc)} · ${inst}/${all.length} ${t("prof_installed")}</small></span>`;
+    +`<span class="pt"><b>${t("pb_profile")}: ${escapeHtml(tr(prof.name))}</b>`
+    +`<small>${escapeHtml(tr(prof.desc))} · ${inst}/${all.length} ${t("prof_installed")}</small></span>`;
   const inb=document.createElement("button"); inb.className="go"; inb.textContent=t("pb_install");
   inb.onclick=()=>installProfile(prof);
   el.appendChild(inb);
@@ -1155,16 +1201,23 @@ function uninstallProfile(prof){
   const rimovibili=Object.values(ALL).flat()
     .filter(t=>ids.has(t.id) && t.catalog && t.installed!==false && t.works!==false);
   if(!rimovibili.length){ toast("Niente da rimuovere (solo tool di base o condivisi)."); return; }
-  if(!confirm("Rimuovere i tool del profilo «"+prof.name+"»?\n\n"
-     +"Verranno disinstallati i pacchetti del profilo (i tool di base e quelli "
-     +"condivisi con altri profili restano). Libera spazio ma è un'operazione "
-     +"che scarica/rimuove file.")) return;
-  openSysStream("uninstall-profile","Rimuovo profilo "+prof.name, prof.key);
+  const en=(LANG==="en");
+  if(!confirm(en
+     ? "Remove the tools of the «"+prof.name+"» profile?\n\n"
+       +"The profile packages will be uninstalled (base tools and those shared "
+       +"with other profiles stay). Frees space but it is an operation that "
+       +"downloads/removes files."
+     : "Rimuovere i tool del profilo «"+prof.name+"»?\n\n"
+       +"Verranno disinstallati i pacchetti del profilo (i tool di base e quelli "
+       +"condivisi con altri profili restano). Libera spazio ma è un'operazione "
+       +"che scarica/rimuove file.")) return;
+  openSysStream("uninstall-profile",(en?"Removing profile ":"Rimuovo profilo ")+prof.name, prof.key);
 }
 function installProfile(prof){
   const ids=new Set(prof.tools);
   const tools=Object.values(ALL).flat().filter(t=>ids.has(t.id) && t.installed===false && t.works!==false);
-  if(!tools.length){ overlay.dataset.tool=prof.key; showOutput("Profilo "+prof.name, "Tutti i tool di questo profilo risultano già installati. 🎉"); return; }
+  const en=(LANG==="en");
+  if(!tools.length){ overlay.dataset.tool=prof.key; showOutput((en?"Profile ":"Profilo ")+prof.name, tr("Tutti i tool di questo profilo risultano già installati. 🎉")); return; }
   const g={termux:[],pip:[],debian:[],kali:[]};
   tools.forEach(t=>{ const pkg=t.pkg||t.bin||t.id;
     if(t.pip) g.pip.push(pkg);
@@ -1172,21 +1225,24 @@ function installProfile(prof){
     else if(t.repo==="kali") g.kali.push(pkg);
     else g.debian.push(pkg);
   });
-  let body="Installa il profilo "+prof.name+" — "+tools.length+" tool mancanti.\nDa Termux, esegui i blocchi che ti servono:\n";
-  if(g.termux.length) body+="\n# pacchetti nativi Termux\n  pkg install "+g.termux.join(" ")+"\n";
-  if(g.pip.length)    body+="\n# tool Python (pip)\n  pip install "+g.pip.join(" ")+"\n";
-  if(g.debian.length) body+="\n# nel Debian (proot)\n  proot-distro login debian -- apt install "+g.debian.join(" ")+"\n";
-  if(g.kali.length)   body+="\n# dal repo Kali (una volta sola: ENABLE_KALI_REPO=yes ./install.sh)\n  proot-distro login debian -- apt install "+g.kali.join(" ")+"\n";
-  body+="\nOppure premi «Installa ora»: installo io i tool mancanti (flusso live).";
+  let body=en
+    ? "Install the "+prof.name+" profile — "+tools.length+" missing tools.\nFrom Termux, run the blocks you need:\n"
+    : "Installa il profilo "+prof.name+" — "+tools.length+" tool mancanti.\nDa Termux, esegui i blocchi che ti servono:\n";
+  if(g.termux.length) body+=(en?"\n# native Termux packages\n":"\n# pacchetti nativi Termux\n")+"  pkg install "+g.termux.join(" ")+"\n";
+  if(g.pip.length)    body+=(en?"\n# Python tools (pip)\n":"\n# tool Python (pip)\n")+"  pip install "+g.pip.join(" ")+"\n";
+  if(g.debian.length) body+=(en?"\n# in Debian (proot)\n":"\n# nel Debian (proot)\n")+"  proot-distro login debian -- apt install "+g.debian.join(" ")+"\n";
+  if(g.kali.length)   body+=(en?"\n# from the Kali repo (once: ENABLE_KALI_REPO=yes ./install.sh)\n":"\n# dal repo Kali (una volta sola: ENABLE_KALI_REPO=yes ./install.sh)\n")+"  proot-distro login debian -- apt install "+g.kali.join(" ")+"\n";
+  body+=en ? "\nOr press «Install now»: I install the missing tools for you (live stream)."
+           : "\nOppure premi «Installa ora»: installo io i tool mancanti (flusso live).";
   overlay.dataset.tool=prof.key;
   resetOverlay();
-  $("#ovtitle").textContent="Installa profilo · "+prof.name;
+  $("#ovtitle").textContent=(en?"Install profile · ":"Installa profilo · ")+prof.name;
   output.hidden=false; output.textContent=body; $("#copyBtn").hidden=false;
   const btn=document.createElement("button");
-  btn.className="btn go"; btn.style.margin="14px"; btn.textContent="⬇ Installa ora ("+tools.length+" tool)";
+  btn.className="btn go"; btn.style.margin="14px"; btn.textContent=en?("⬇ Install now ("+tools.length+" tools)"):("⬇ Installa ora ("+tools.length+" tool)");
   // A fine installazione apro direttamente la vista del profilo, così i tool
   // appena installati si trovano tutti raggruppati e pronti all'uso.
-  btn.onclick=()=>openSysStream("install-profile", "Installo profilo "+prof.name, prof.key,
+  btn.onclick=()=>openSysStream("install-profile", (en?"Installing profile ":"Installo profilo ")+prof.name, prof.key,
                                 ()=>selectProfile(prof.key));
   output.appendChild(btn);
   overlay.classList.add("open");
@@ -1206,9 +1262,9 @@ function renderCats(){
     b.onclick=()=>{ activeCategory=key; render($("#search").value); };
     bar.appendChild(b);
   };
-  mk(null,"Tutte","▦");
-  if(FAV.size) mk("__fav__","Preferiti","★");
-  cats.forEach(c=>mk(c,c,CAT_ICON[c]||"•"));
+  mk(null,tr("Tutte"),"▦");
+  if(FAV.size) mk("__fav__",tr("Preferiti"),"★");
+  cats.forEach(c=>mk(c,tr(c),CAT_ICON[c]||"•"));
 }
 function render(filter=""){
   const app=$("#app"); app.innerHTML=""; filter=(filter||"").trim().toLowerCase();
@@ -1225,7 +1281,7 @@ function render(filter=""){
     h.innerHTML=`<span class="ic">★</span>${t("fav_title")} <span class="count">${favs.length}</span>`;
     app.appendChild(h);
     if(!favs.length){ const e=document.createElement("div"); e.className="empty";
-      e.textContent="Nessun preferito. Tocca la ☆ su una scheda per aggiungerlo."; app.appendChild(e); return; }
+      e.textContent=tr("Nessun preferito. Tocca la ☆ su una scheda per aggiungerlo."); app.appendChild(e); return; }
     const g=document.createElement("div"); g.className="grid";
     favs.forEach(t=>g.appendChild(toolCard(t)));
     app.appendChild(g);
@@ -1269,7 +1325,7 @@ function render(filter=""){
     });
     if(!vis.length) continue;
     const h=document.createElement("h2");
-    h.innerHTML=`<span class="ic">${CAT_ICON[cat]||"•"}</span>${escapeHtml(cat)} <span class="count">${vis.length}</span>`;
+    h.innerHTML=`<span class="ic">${CAT_ICON[cat]||"•"}</span>${escapeHtml(tr(cat))} <span class="count">${vis.length}</span>`;
     app.appendChild(h);
     const g=document.createElement("div"); g.className="grid";
     vis.forEach(t=>{ g.appendChild(toolCard(t)); shown++; });
@@ -1360,8 +1416,8 @@ function renderStartMenu(){
   PROFILES.forEach(p=>{
     const s=profileStats(p);
     const c=document.createElement("button"); c.className="sm-pcard";
-    c.innerHTML=`<span class="h"><span class="e">${p.icon}</span>${escapeHtml(p.name)}</span>`
-      +`<span class="d">${escapeHtml(p.desc)}</span>`
+    c.innerHTML=`<span class="h"><span class="e">${p.icon}</span>${escapeHtml(tr(p.name))}</span>`
+      +`<span class="d">${escapeHtml(tr(p.desc))}</span>`
       +`<span class="c">${s.inst}/${s.all} ${t("prof_installed")}</span>`;
     c.onclick=()=>{ closeStart(); selectProfile(p.key); };
     pg.appendChild(c);
@@ -1403,7 +1459,7 @@ function renderStartMenu(){
   const mnt=document.createElement("div"); mnt.className="sm-sys";
   const mkm=(label,fn)=>{ const b=document.createElement("button"); b.textContent=label; b.onclick=fn; mnt.appendChild(b); };
   mkm(t("mm_pkg"),()=>{ closeStart(); openPkgInstall(); });
-  mkm(t("mm_upterm"),()=>{ closeStart(); openSysStream("update-termux","Aggiorno Termux"); });
+  mkm(t("mm_upterm"),()=>{ closeStart(); openSysStream("update-termux",tr("Aggiorno Termux")); });
   // "Aggiorna app": se il repo è indietro, mostra un badge pulsante col n° di commit.
   const nUpd=(UPDATE_INFO && UPDATE_INFO.behind)||0;
   const bUpd=document.createElement("button");
@@ -1411,14 +1467,14 @@ function renderStartMenu(){
       ? ' <span class="sm-upd">● '+nUpd+(LANG==="en"?(nUpd===1?" update":" updates"):(nUpd===1?" aggiornamento":" aggiornamenti"))+'</span>' : "");
   // Dopo il git pull il server ha ancora il vecchio codice in memoria e la PWA
   // è in cache: riavvio il server (che poi ricarica la pagina) per applicare.
-  bUpd.onclick=()=>{ closeStart(); openSysStream("update-app","Aggiorno l'app (git pull)",null,
+  bUpd.onclick=()=>{ closeStart(); openSysStream("update-app",tr("Aggiorno l'app (git pull)"),null,
       ()=>{ toast("Aggiornamento scaricato — riavvio per applicare…");
             setTimeout(restartServer, 1600); }); };
   mnt.appendChild(bUpd);
-  mkm(t("mm_updeb"),()=>{ closeStart(); openSysStream("update-debian","Aggiorno il Debian (proot)"); });
-  mkm(t("mm_kali"),()=>{ closeStart(); openSysStream("enable-kali","Abilito il repo Kali nel Debian"); });
-  mkm(t("mm_auto_on"),()=>{ closeStart(); openSysStream("setup-autostart","Abilito l'autostart all'accensione"); });
-  mkm(t("mm_auto_off"),()=>{ closeStart(); openSysStream("disable-autostart","Disabilito l'autostart"); });
+  mkm(t("mm_updeb"),()=>{ closeStart(); openSysStream("update-debian",tr("Aggiorno il Debian (proot)")); });
+  mkm(t("mm_kali"),()=>{ closeStart(); openSysStream("enable-kali",tr("Abilito il repo Kali nel Debian")); });
+  mkm(t("mm_auto_on"),()=>{ closeStart(); openSysStream("setup-autostart",tr("Abilito l'autostart all'accensione")); });
+  mkm(t("mm_auto_off"),()=>{ closeStart(); openSysStream("disable-autostart",tr("Disabilito l'autostart")); });
   mkm(t("mm_restart"),  ()=>{ closeStart(); restartServer(); });
   body.appendChild(mnt);
 
@@ -1500,6 +1556,263 @@ const I18N = {
     st_tools:"tools installed", st_catalog:"in catalog", st_profiles:"profiles (▤)",
   },
 };
+/* Dizionario EN indicizzato sulla stringa ITALIANA di origine.
+   In italiano tr(s)===s (nessun rischio di regressione); in inglese traduce,
+   con fallback alla stringa originale se una voce manca. Copre sia le stringhe
+   che arrivano dal server (categorie, help dei tool, parametri, profili) sia i
+   testi fissi del client (toast, tooltip, badge, messaggi, guida).
+   Le stringhe identiche in inglese (Network, Web, OSINT, Reverse, Forensics,
+   Wireless, Cracking, Exploitation…) sono omesse: il fallback le lascia uguali. */
+const EN = {
+  // --- categorie e chip di filtro ---
+  "Anonimato":"Anonymity", "Sistema":"System", "Tutte":"All", "Preferiti":"Favorites",
+  // --- descrizioni profili ---
+  "Scansione, exploit, brute force, Active Directory.":"Scanning, exploitation, brute force, Active Directory.",
+  "Essenziale e leggero: recon, scan, injection, brute, cracking, SMB. Senza Metasploit/Exploit-DB.":"Essential and lightweight: recon, scan, injection, brute, cracking, SMB. Without Metasploit/Exploit-DB.",
+  "Sicurezza di siti e applicazioni web.":"Security of websites and web applications.",
+  "Ricognizione da fonti pubbliche.":"Reconnaissance from public sources.",
+  "Analisi forense, steganografia, malware.":"Forensic analysis, steganography, malware.",
+  "Reverse engineering, debug, analisi APK.":"Reverse engineering, debugging, APK analysis.",
+  // --- help dei tool ---
+  "-sV + -O + script + traceroute (raw socket)":"-sV + -O + scripts + traceroute (raw socket)",
+  "Brute-force di login; usa la shell per comporre il comando":"Login brute-force; use the shell to build the command",
+  "Come la Shell (pannello) ma il traffico TCP passa da Tor (proxychains). Richiede Tor attivo.":"Like the Shell (panel) but TCP traffic goes through Tor (proxychains). Requires Tor running.",
+  "Console Metasploit (pacchetto metasploit-framework, repo Kali)":"Metasploit console (metasploit-framework package, Kali repo)",
+  "Cracking di hash da file":"Crack hashes from a file",
+  "Dati di un dominio o IP via RDAP (API pubblica). Non richiede proot: funziona subito.":"Domain or IP data via RDAP (public API). No proot needed: works right away.",
+  "Elenca gli host vivi in una rete (es. 192.168.1.0/24). NB: usa ICMP/ARP, non passa da Tor.":"Lists live hosts on a network (e.g. 192.168.1.0/24). Note: uses ICMP/ARP, does not go through Tor.",
+  "Enumera record e prova zone transfer di un dominio (via Debian).":"Enumerates records and attempts zone transfer of a domain (via Debian).",
+  "Fuzzing di parametri/percorsi web con wordlist (via Debian).":"Fuzzing of web parameters/paths with a wordlist (via Debian).",
+  "Informazioni di registrazione di un dominio (pacchetto nativo Termux)":"Registration info of a domain (native Termux package)",
+  "Interroga un resolver specifico (scrivi con la @)":"Query a specific resolver (write it with @)",
+  "Interroga un server whois specifico":"Query a specific whois server",
+  "Limita le categorie di test (più veloce)":"Limit the test categories (faster)",
+  "Mostra l'IP con cui esci verso l'esterno: attiva Tor e controlla che sia un exit node.":"Shows the IP you use to reach the outside: enables Tor and checks it is an exit node.",
+  "Non risolve i nomi: più veloce":"Does not resolve names: faster",
+  "Non si ferma al primo match":"Does not stop at the first match",
+  "Porte comuni di un host o range (es. 192.168.1.1 o 192.168.1.0/24)":"Common ports of a host or range (e.g. 192.168.1.1 or 192.168.1.0/24)",
+  "Record DNS (A) di un dominio. Nativo Termux (dnsutils).":"DNS (A) record of a domain. Native Termux (dnsutils).",
+  "Richiede una API key Shodan configurata":"Requires a configured Shodan API key",
+  "Riconosce il sistema operativo (raw socket)":"Detects the operating system (raw socket)",
+  "Rileva il Web Application Firewall davanti a un sito (via Debian).":"Detects the Web Application Firewall in front of a site (via Debian).",
+  "Rileva il servizio/versione sulle porte aperte":"Detects the service/version on open ports",
+  "SQL injection; parte in modalita' wizard":"SQL injection; starts in wizard mode",
+  "Script Python interattivo: mostra il flusso live e le domande nel pannello nativo (esempio del WebSocket).":"Interactive Python script: shows the live stream and prompts in the native panel (WebSocket demo).",
+  "Shell Termux dentro il pannello dell'app: scrivi un comando e premi Invio, l'output scorre live. Il campo e' della web-app, quindi niente auto-maiuscola della tastiera (a differenza del terminale ttyd). Nota: non e' un vero terminale (niente frecce/tab), i comandi che restano in esecuzione mostrano l'output alla loro fine.":"Termux shell inside the app panel: type a command and press Enter, output streams live. The field belongs to the web app, so no keyboard auto-capitalization (unlike the ttyd terminal). Note: it is not a real terminal (no arrows/tab); long-running commands show their output when they finish.",
+  "Solo crack offline di handshake gia' catturati (la cattura non e' possibile su telefono stock)":"Offline cracking only of already-captured handshakes (capture is not possible on a stock phone)",
+  "Sovrascrive le porte comuni (-F)":"Overrides the common ports (-F)",
+  "Tecnologie usate da un sito (es. https://esempio.it)":"Technologies used by a site (e.g. https://example.com)",
+  "Terminale in cui il traffico TCP passa da Tor. Richiede Tor attivo.":"Terminal where TCP traffic goes through Tor. Requires Tor running.",
+  "Terminale libero dentro il Debian minimale (proot)":"Free terminal inside the minimal Debian (proot)",
+  "Tipo: AD. Esecuzione/enum su reti Windows (ex-CrackMapExec).":"Type: AD. Execution/enum on Windows networks (formerly CrackMapExec).",
+  "Tipo: AD. Raccoglie dati di Active Directory per BloodHound.":"Type: AD. Collects Active Directory data for BloodHound.",
+  "Tipo: AD. Script per protocolli Windows/Active Directory.":"Type: AD. Scripts for Windows/Active Directory protocols.",
+  "Tipo: MITM. Attacchi man-in-the-middle.":"Type: MITM. Man-in-the-middle attacks.",
+  "Tipo: MITM. Cattura credenziali su LAN.":"Type: MITM. Captures credentials on the LAN.",
+  "Tipo: MITM. Man-in-the-middle su LAN.":"Type: MITM. Man-in-the-middle on the LAN.",
+  "Tipo: OSINT DNS. Ricognizione DNS e ricerca sottodomini.":"Type: OSINT DNS. DNS reconnaissance and subdomain discovery.",
+  "Tipo: OSINT DNS. Toolkit DNS veloce (risoluzione, record, wildcard).":"Type: OSINT DNS. Fast DNS toolkit (resolution, records, wildcard).",
+  "Tipo: OSINT crawler. Estrae URL, email, dati da un sito.":"Type: OSINT crawler. Extracts URLs, emails and data from a site.",
+  "Tipo: OSINT. Automazione OSINT con interfaccia web locale.":"Type: OSINT. OSINT automation with a local web interface.",
+  "Tipo: OSINT. CLI di Shodan (richiede API key).":"Type: OSINT. Shodan CLI (requires API key).",
+  "Tipo: OSINT. Cerca un username su centinaia di siti.":"Type: OSINT. Searches a username across hundreds of sites.",
+  "Tipo: OSINT. Cerca uno username sui social network.":"Type: OSINT. Searches a username across social networks.",
+  "Tipo: OSINT. Enumerazione passiva di sottodomini.":"Type: OSINT. Passive subdomain enumeration.",
+  "Tipo: OSINT. Enumerazione sottodomini da fonti pubbliche.":"Type: OSINT. Subdomain enumeration from public sources.",
+  "Tipo: OSINT. Estrae metadati da documenti pubblici.":"Type: OSINT. Extracts metadata from public documents.",
+  "Tipo: OSINT. Framework modulare di ricognizione.":"Type: OSINT. Modular reconnaissance framework.",
+  "Tipo: OSINT. Mappa i sottodomini e la superficie d'attacco.":"Type: OSINT. Maps subdomains and the attack surface.",
+  "Tipo: OSINT. Raccoglie email, sottodomini e host da fonti pubbliche.":"Type: OSINT. Collects emails, subdomains and hosts from public sources.",
+  "Tipo: OSINT. Trova domini e sottodomini collegati a un target.":"Type: OSINT. Finds domains and subdomains linked to a target.",
+  "Tipo: OSINT. Trova domini simili/typosquatting (phishing).":"Type: OSINT. Finds look-alike/typosquatting domains (phishing).",
+  "Tipo: OSINT. URL storici di un dominio dalla Wayback Machine.":"Type: OSINT. Historical URLs of a domain from the Wayback Machine.",
+  "Tipo: OSINT. Verifica se un'email e' registrata su vari siti.":"Type: OSINT. Checks whether an email is registered on various sites.",
+  "Tipo: TLS. Analisi configurazione SSL/TLS di un server.":"Type: TLS. Analyzes a server's SSL/TLS configuration.",
+  "Tipo: TLS. Cifrari e certificati SSL/TLS di un server.":"Type: TLS. SSL/TLS ciphers and certificates of a server.",
+  "Tipo: TLS. Test approfondito di cifrari, protocolli e vulnerabilità TLS.":"Type: TLS. In-depth test of TLS ciphers, protocols and vulnerabilities.",
+  "Tipo: VoIP. Scanner di sistemi SIP/VoIP.":"Type: VoIP. Scanner for SIP/VoIP systems.",
+  "Tipo: XSS. Scanner automatico di cross-site scripting.":"Type: XSS. Automatic cross-site scripting scanner.",
+  "Tipo: anonimato. Instrada un singolo comando via Tor.":"Type: anonymity. Routes a single command through Tor.",
+  "Tipo: antivirus. Scansione malware dei file.":"Type: antivirus. Malware scan of files.",
+  "Tipo: audit. Audit di sicurezza e hardening del sistema.":"Type: audit. Security audit and system hardening.",
+  "Tipo: brute force. Brute force per RDP/SSH/OpenVPN.":"Type: brute force. Brute force for RDP/SSH/OpenVPN.",
+  "Tipo: brute force. Brute forcer modulare multi-protocollo.":"Type: brute force. Modular multi-protocol brute forcer.",
+  "Tipo: brute force. Cracking di autenticazioni di rete.":"Type: brute force. Cracking of network authentications.",
+  "Tipo: brute force. Login su servizi di rete (alternativa a Hydra).":"Type: brute force. Login against network services (alternative to Hydra).",
+  "Tipo: content discovery. Brute force di directory, DNS e vhost via wordlist.":"Type: content discovery. Brute force of directories, DNS and vhosts via wordlist.",
+  "Tipo: content discovery. Brute force ricorsivo di directory.":"Type: content discovery. Recursive directory brute force.",
+  "Tipo: content discovery. Scanner classico di contenuti/directory web.":"Type: content discovery. Classic web content/directory scanner.",
+  "Tipo: cracking. Password Windows via rainbow table.":"Type: cracking. Windows passwords via rainbow tables.",
+  "Tipo: cracking. Password di archivi ZIP.":"Type: cracking. Passwords of ZIP archives.",
+  "Tipo: cracking. Password di file PDF.":"Type: cracking. Passwords of PDF files.",
+  "Tipo: debug. Debugger GNU.":"Type: debug. GNU debugger.",
+  "Tipo: debug. Traccia le chiamate a libreria.":"Type: debug. Traces library calls.",
+  "Tipo: debug. Traccia le system call di un processo.":"Type: debug. Traces the system calls of a process.",
+  "Tipo: enum SMB. Enumera share e permessi SMB.":"Type: SMB enum. Enumerates SMB shares and permissions.",
+  "Tipo: enum SNMP. Interroga i MIB di un dispositivo via SNMP.":"Type: SNMP enum. Queries a device's MIBs via SNMP.",
+  "Tipo: enum SNMP. Scanner di community string SNMP.":"Type: SNMP enum. SNMP community string scanner.",
+  "Tipo: enum. Scansione dei nomi NetBIOS in una rete.":"Type: enum. Scans NetBIOS names on a network.",
+  "Tipo: enum. Scopre host via ARP sulla LAN.":"Type: enum. Discovers hosts via ARP on the LAN.",
+  "Tipo: enum. Scopre host via ARP.":"Type: enum. Discovers hosts via ARP.",
+  "Tipo: enumeration. Estrae info da server SMB/Windows (utenti, share). Il base usa -a (tutto); i suggerimenti mirano test singoli.":"Type: enumeration. Extracts info from SMB/Windows servers (users, shares). The default uses -a (all); the hints target single tests.",
+  "Tipo: exploit web. Browser Exploitation Framework (server locale).":"Type: web exploit. Browser Exploitation Framework (local server).",
+  "Tipo: exploit web. Rileva e sfrutta vulnerabilita' di command injection.":"Type: web exploit. Detects and exploits command injection vulnerabilities.",
+  "Tipo: exploit. Framework di exploit per router e IoT.":"Type: exploit. Exploit framework for routers and IoT.",
+  "Tipo: forense GUI. Analisi disco.":"Type: forensic GUI. Disk analysis.",
+  "Tipo: forense. Analisi di dump di memoria (RAM).":"Type: forensic. Analysis of memory (RAM) dumps.",
+  "Tipo: forense. Analisi di filesystem (The Sleuth Kit).":"Type: forensic. Filesystem analysis (The Sleuth Kit).",
+  "Tipo: forense. Analizza ed estrae contenuti da firmware/binari.":"Type: forensic. Analyzes and extracts content from firmware/binaries.",
+  "Tipo: forense. Estrae email/URL/carte da immagini disco.":"Type: forensic. Extracts emails/URLs/cards from disk images.",
+  "Tipo: forense. File carving configurabile.":"Type: forensic. Configurable file carving.",
+  "Tipo: forense. Recupera file per carving.":"Type: forensic. Recovers files by carving.",
+  "Tipo: forense. Recupera partizioni e file (da immagini).":"Type: forensic. Recovers partitions and files (from images).",
+  "Tipo: forense/OSINT. Legge e modifica i metadati di foto e file.":"Type: forensic/OSINT. Reads and edits the metadata of photos and files.",
+  "Tipo: fuzzing web. Brute force veloce di path e parametri.":"Type: web fuzzing. Fast brute force of paths and parameters.",
+  "Tipo: hardening. Cerca rootkit noti nel sistema.":"Type: hardening. Looks for known rootkits on the system.",
+  "Tipo: hardening. Rileva rootkit e anomalie.":"Type: hardening. Detects rootkits and anomalies.",
+  "Tipo: malware. Pattern matching su file con regole YARA.":"Type: malware. Pattern matching on files with YARA rules.",
+  "Tipo: mirror. Scarica un intero sito in locale.":"Type: mirror. Downloads an entire site locally.",
+  "Tipo: networking. Generatore di pacchetti custom.":"Type: networking. Custom packet generator.",
+  "Tipo: networking. Netcat moderno (connessioni TCP/UDP).":"Type: networking. Modern Netcat (TCP/UDP connections).",
+  "Tipo: networking. Relay e tunnel tra socket, file e processi.":"Type: networking. Relay and tunnel between sockets, files and processes.",
+  "Tipo: password cracking. Cracking di hash ad alte prestazioni (via CPU).":"Type: password cracking. High-performance hash cracking (via CPU).",
+  "Tipo: port scan. Scanner di porte ultrarapido.":"Type: port scan. Ultra-fast port scanner.",
+  "Tipo: port scan. Scanner di porte veloce (connect scan).":"Type: port scan. Fast port scanner (connect scan).",
+  "Tipo: post-exploit. Shell WinRM verso host Windows.":"Type: post-exploit. WinRM shell to Windows hosts.",
+  "Tipo: proxy MITM. Intercetta/modifica HTTP(S) come proxy locale.":"Type: MITM proxy. Intercepts/edits HTTP(S) as a local proxy.",
+  "Tipo: proxy web GUI. Test di web app.":"Type: web proxy GUI. Web app testing.",
+  "Tipo: recon DNS. Sottodomini, record e tentativi di zone transfer.":"Type: DNS recon. Subdomains, records and zone transfer attempts.",
+  "Tipo: recon. Info su un host: whois, sottodomini, porte.":"Type: recon. Info about a host: whois, subdomains, ports.",
+  "Tipo: recon. Ricognizione automatica multi-tool.":"Type: recon. Automated multi-tool reconnaissance.",
+  "Tipo: reverse GUI. Disassembler/decompiler.":"Type: reverse GUI. Disassembler/decompiler.",
+  "Tipo: reverse. Analisi di eseguibili PE (Windows).":"Type: reverse. Analysis of PE executables (Windows).",
+  "Tipo: reverse. Decompila APK/DEX in codice Java.":"Type: reverse. Decompiles APK/DEX into Java code.",
+  "Tipo: reverse. Decompila e ricostruisce risorse di un APK.":"Type: reverse. Decompiles and rebuilds an APK's resources.",
+  "Tipo: reverse. Estrae stringhe offuscate da malware.":"Type: reverse. Extracts obfuscated strings from malware.",
+  "Tipo: reverse. Framework di reverse engineering.":"Type: reverse. Reverse engineering framework.",
+  "Tipo: reverse. objdump/readelf/nm e altri.":"Type: reverse. objdump/readelf/nm and others.",
+  "Tipo: ricerca exploit. Cerca exploit pubblici noti (Exploit-DB), offline.":"Type: exploit search. Searches known public exploits (Exploit-DB), offline.",
+  "Tipo: scanner CMS. Sicurezza di siti Joomla.":"Type: CMS scanner. Security of Joomla sites.",
+  "Tipo: scanner CMS. Vulnerabilita' di siti WordPress (plugin/tema/utenti).":"Type: CMS scanner. Vulnerabilities of WordPress sites (plugins/theme/users).",
+  "Tipo: scanner vuln web. Trova XSS/SQLi/ecc. via crawling.":"Type: web vuln scanner. Finds XSS/SQLi/etc. via crawling.",
+  "Tipo: scanner vuln. Scansione basata su template della community.":"Type: vuln scanner. Community template-based scanning.",
+  "Tipo: scanner web GUI.":"Type: web scanner GUI.",
+  "Tipo: sniffer GUI. Analisi di traffico.":"Type: sniffer GUI. Traffic analysis.",
+  "Tipo: sniffer. Cattura pacchetti di rete.":"Type: sniffer. Captures network packets.",
+  "Tipo: sniffer. Wireshark da terminale.":"Type: sniffer. Wireshark from the terminal.",
+  "Tipo: social engineering. Social-Engineer Toolkit.":"Type: social engineering. Social-Engineer Toolkit.",
+  "Tipo: stego. Cracker velocissimo di steghide.":"Type: stego. Very fast steghide cracker.",
+  "Tipo: stego. Nasconde/estrae dati in immagini e audio.":"Type: stego. Hides/extracts data in images and audio.",
+  "Tipo: utility. Crea una wordlist dalle parole presenti in un sito.":"Type: utility. Builds a wordlist from the words on a site.",
+  "Tipo: utility. Editor esadecimale da terminale.":"Type: utility. Hex editor for the terminal.",
+  "Tipo: utility. Genera wordlist personalizzate per pattern/charset.":"Type: utility. Generates custom wordlists by pattern/charset.",
+  "Tipo: utility. Riconosce il tipo/algoritmo di un hash sconosciuto.":"Type: utility. Identifies the type/algorithm of an unknown hash.",
+  "Tipo: web crawler. Crawler veloce per URL/endpoint (ProjectDiscovery).":"Type: web crawler. Fast crawler for URLs/endpoints (ProjectDiscovery).",
+  "Tipo: web recon. Brute force di percorsi/file su un web server.":"Type: web recon. Brute force of paths/files on a web server.",
+  "Tipo: web recon. Scopre parametri HTTP nascosti.":"Type: web recon. Discovers hidden HTTP parameters.",
+  "Tipo: web shell. Genera e gestisce web shell PHP offuscate.":"Type: web shell. Generates and manages obfuscated PHP web shells.",
+  "Tipo: wireless. Access point malevolo.":"Type: wireless. Rogue access point.",
+  "Tipo: wireless. Attacchi Wi-Fi automatizzati.":"Type: wireless. Automated Wi-Fi attacks.",
+  "Tipo: wireless. Attacco Pixie Dust WPS.":"Type: wireless. WPS Pixie Dust attack.",
+  "Tipo: wireless. Attacco WPS su router.":"Type: wireless. WPS attack on routers.",
+  "Tipo: wireless. Cambia l'indirizzo MAC.":"Type: wireless. Changes the MAC address.",
+  "Tipo: wireless. Crack WPA-PSK.":"Type: wireless. WPA-PSK cracking.",
+  "Tipo: wireless. Sniffer/IDS Wi-Fi.":"Type: wireless. Wi-Fi sniffer/IDS.",
+  "Tipo: wireless. Stress/attacco su reti Wi-Fi.":"Type: wireless. Stress/attack on Wi-Fi networks.",
+  "Tratta l'host come attivo, salta il discovery":"Treats the host as up, skips discovery",
+  "Vulnerabilita' note di un web server (es. https://esempio.it)":"Known vulnerabilities of a web server (e.g. https://example.com)",
+  // --- label e opzioni dei parametri ---
+  "Aggressività (-a)":"Aggressiveness (-a)", "Aggressivo (-A)":"Aggressive (-A)",
+  "ANY (tutti)":"ANY (all)", "A (default)":"A (default)", "AAAA (IPv6)":"AAAA (IPv6)",
+  "Cerca IP con Shodan (-s)":"Search IP with Shodan (-s)", "CNAME (alias)":"CNAME (alias)",
+  "Enumera (--enumerate)":"Enumerate (--enumerate)", "Escludi host (--exclude)":"Exclude hosts (--exclude)",
+  "Estrai anche le email (-e)":"Also extract emails (-e)", "Forza HTTPS (-ssl)":"Force HTTPS (-ssl)",
+  "Includi parole con numeri":"Include words with numbers", "Limite risultati (-l)":"Result limit (-l)",
+  "Lunghezza minima parola (-m)":"Minimum word length (-m)", "MX (mail)":"MX (mail)",
+  "NS (name server)":"NS (name server)", "No DNS (-n)":"No DNS (-n)", "No ping (-Pn)":"No ping (-Pn)",
+  "OS detection (-O)":"OS detection (-O)", "PTR (reverse)":"PTR (reverse)", "Password (-p)":"Password (-p)",
+  "Porta (-port)":"Port (-port)", "Porte (-p)":"Ports (-p)", "Profondità crawl (-d)":"Crawl depth (-d)",
+  "Prova tutti i WAF (-a)":"Try all WAFs (-a)", "Salta il reverse lookup":"Skip the reverse lookup",
+  "Script NSE (--script)":"NSE scripts (--script)", "Segui i redirect":"Follow redirects",
+  "Server DNS (@)":"DNS server (@)", "Server whois (-h)":"Whois server (-h)",
+  "Tempo max (-maxtime)":"Max time (-maxtime)", "Thread (--threads)":"Threads (--threads)",
+  "Tipo record (-t)":"Record type (-t)", "Tipo scansione (-t)":"Scan type (-t)",
+  "Tuning (-Tuning)":"Tuning (-Tuning)", "User-agent casuale":"Random user-agent",
+  "Utente (-u)":"User (-u)", "Verboso (-v)":"Verbose (-v)", "Versioni servizi (-sV)":"Service versions (-sV)",
+  "ap · tutti i plugin":"ap · all plugins", "axfr (zone transfer)":"axfr (zone transfer)",
+  "brt (brute sottodomini)":"brt (subdomain brute)", "completa (default)":"full (default)",
+  "niente (default)":"none (default)", "srv (record SRV)":"srv (SRV record)",
+  "std (record standard)":"std (standard records)", "u · utenti":"u · users",
+  "vp · plugin vulnerabili":"vp · vulnerable plugins", "vp,vt,u · combinato":"vp,vt,u · combined",
+  "vt · temi vulnerabili":"vt · vulnerable themes", "1 · passiva (default)":"1 · passive (default)",
+  "3 · attiva":"3 · active", "4 · pesante":"4 · heavy",
+  "es. 192.168.1.1,192.168.1.5":"e.g. 192.168.1.1,192.168.1.5", "es. 22,80,443 o 1-1000":"e.g. 22,80,443 or 1-1000",
+  "es. http-title, banner":"e.g. http-title, banner", "es. whois.nic.it":"e.g. whois.nic.it",
+  "es. @1.1.1.1":"e.g. @1.1.1.1", "es. guest":"e.g. guest", "es. 1234b oppure x 6":"e.g. 1234b or x 6",
+  "es. 120s":"e.g. 120s", "opzionale":"optional",
+  "es. 10":"e.g. 10", "es. 2":"e.g. 2", "es. 5":"e.g. 5", "es. 500":"e.g. 500", "es. 8443":"e.g. 8443",
+  // --- badge, runtime, stati (client) ---
+  "🔒 solo root":"🔒 root only", "❌ non su stock":"❌ not on stock", "＋ da installare":"＋ to install",
+  "◈ flusso live":"◈ live stream", "▮ terminale":"▮ terminal", "(solo root)":"(root only)",
+  " (solo root)":" (root only)",
+  "instradabile via Tor":"routable via Tor", "API esterna, gira anche senza proot":"external API, works even without proot",
+  "tocca per sapere perché":"tap to find out why", "tocca per l'istruzione di installazione":"tap for the install instruction",
+  "Preferito":"Favorite", "pacchetto nativo Termux (leggero, veloce)":"native Termux package (light, fast)",
+  "dentro il Debian minimale (proot)":"inside the minimal Debian (proot)",
+  "Richiede un telefono rootato (usa raw socket)":"Requires a rooted phone (uses raw sockets)",
+  "Richiede un telefono rootato (raw socket)":"Requires a rooted phone (raw sockets)", "Ri-esegui":"Re-run",
+  // --- tooltip (header/taskbar/overlay/menu) ---
+  "Tor: off — instrada il traffico via Tor":"Tor: off — route traffic through Tor",
+  "Tor: ON — traffico instradato via Tor":"Tor: ON — traffic routed through Tor",
+  "Tor: avvio…":"Tor: starting…", "Tor: off":"Tor: off", "Tor":"Tor",
+  "Mostra i tool installabili dal catalogo":"Show the tools installable from the catalog",
+  "Cambia tema":"Change theme", "Storico":"History",
+  "Apri il terminale in una scheda separata":"Open the terminal in a separate tab",
+  "Comando precedente":"Previous command", "Comando successivo":"Next command",
+  "Interrompi lo script (Ctrl-C)":"Stop the script (Ctrl-C)", "Interrompi (Ctrl-C)":"Stop (Ctrl-C)",
+  "Chiudi il pannello":"Close the panel", "Rileva di nuovo i tool installati":"Detect installed tools again",
+  "Server locale":"Local server", "Debian (proot)":"Debian (proot)",
+  // --- toast e messaggi ---
+  "Tor non raggiungibile":"Tor unreachable",
+  "Traffico TCP instradato via Tor (solo dove supportato)":"TCP traffic routed via Tor (only where supported)",
+  "Copiato":"Copied", "Copia non riuscita":"Copy failed", "Salvato: ":"Saved: ",
+  "Scaricato":"Downloaded", "Salvataggio non riuscito":"Save failed",
+  "Riavvio in corso… ricarico tra poco":"Restarting… reloading shortly", "Riavvio non riuscito":"Restart failed",
+  "Tool non disponibile":"Tool unavailable", "Storico svuotato":"History cleared",
+  "Aggiunto ai preferiti":"Added to favorites", "Rimosso dai preferiti":"Removed from favorites",
+  "Niente da rimuovere (solo tool di base o condivisi).":"Nothing to remove (only base or shared tools).",
+  "Catalogo tool installabili mostrato":"Installable tools catalog shown", "Catalogo nascosto":"Catalog hidden",
+  "Elenco tool aggiornato":"Tools list updated", "Aggiornamento non riuscito":"Update failed",
+  "Shell non disponibile":"Shell unavailable",
+  "Aggiornamento scaricato — riavvio per applicare…":"Update downloaded — restarting to apply…",
+  // --- overlay/titoli/pulsanti dinamici ---
+  "Guida rapida":"Quick guide", "Imposta ed esegui.":"Set and run.",
+  "suggerimenti (tocca per aggiungere):":"hints (tap to add):",
+  "Nessun preferito. Tocca la ☆ su una scheda per aggiungerlo.":"No favorites. Tap the ☆ on a card to add it.",
+  "Nessuna esecuzione registrata.":"No runs recorded.", "🗑 Svuota storico":"🗑 Clear history",
+  "Backend offline.":"Backend offline.",
+  // --- flusso streaming ed esecuzione ---
+  "in corso…":"running…", "completato ✓":"completed ✓", "completato":"completed", "errore":"error",
+  "· connessione…\n":"· connecting…\n", "avvio via Tor…":"starting via Tor…",
+  "esecuzione in corso…":"running…", "avvio terminale…":"starting terminal…",
+  "(nessun output)":"(no output)", "Errore: ":"Error: ", "Errore di rete: ":"Network error: ",
+  "uscita":"exit", "tempo":"time", "Installo: ":"Installing: ",
+  "scrivi e premi Invio per rispondere…":"type and press Enter to reply…",
+  "· terminato (uscita ":"· finished (exit ", "terminato (uscita ":"finished (exit ",
+  "[errore] ":"[error] ", "✕ Chiudi":"✕ Close",
+  "impossibile aprire il flusso (server.py attivo?)":"cannot open the stream (is server.py running?)",
+  // --- validazione ---
+  "Inserisci un valore.":"Enter a value.", "Non puo' iniziare con '-'.":"Cannot start with '-'.",
+  "Host/IP/CIDR non valido.":"Invalid host/IP/CIDR.", "URL non valido (http:// o https://).":"Invalid URL (http:// or https://).",
+  "Troppi parametri (max 40).":"Too many parameters (max 40).",
+  "Nome non valido (lettere, numeri, + . _ - e spazi).":"Invalid name (letters, numbers, + . _ - and spaces).",
+  // --- azioni di sistema (titoli del pannello) ---
+  "Aggiorno Termux":"Updating Termux", "Aggiorno l'app (git pull)":"Updating the app (git pull)",
+  "Aggiorno il Debian (proot)":"Updating Debian (proot)", "Abilito il repo Kali nel Debian":"Enabling the Kali repo in Debian",
+  "Abilito l'autostart all'accensione":"Enabling autostart on boot", "Disabilito l'autostart":"Disabling autostart",
+  "Tutti i tool di questo profilo risultano già installati. 🎉":"All tools in this profile are already installed. 🎉",
+};
+function tr(s){ if(LANG==="it"||s==null) return s; const v=EN[s]; return v!==undefined?v:s; }
 let LANG = (()=>{ try{ const s=localStorage.getItem("nexus_lang"); if(s==="it"||s==="en") return s; }catch{}
                   return (navigator.language||"it").slice(0,2)==="en" ? "en" : "it"; })();
 let LAST_COUNTS = null;   // {ready,catN,profiles} per ricostruire la barra di stato al cambio lingua
@@ -1511,12 +1824,54 @@ function setLang(l){
   render($("#search").value);
   if($("#startmenu").classList.contains("open")) renderStartMenu();
 }
+// Testi FISSI nell'HTML: coppie [selettore, proprietà, testo IT].
+// Traduce con tr() quando LANG=en; in italiano ripristina l'originale.
+const STATIC_I18N = [
+  ["#torBtn","title","Tor: off — instrada il traffico via Tor"],
+  ["#catBtn","title","Mostra i tool installabili dal catalogo"],
+  ["#themeBtn","title","Cambia tema"],
+  ["#histBtn","title","Storico"],
+  ["#tabBtn","title","Apri il terminale in una scheda separata"],
+  ["#tabBtn","text","↗ Scheda"],
+  ["#copyBtn","text","📋 Copia"],
+  ["#streamPrev","title","Comando precedente"],
+  ["#streamNext","title","Comando successivo"],
+  ["#streamSig","title","Interrompi lo script (Ctrl-C)"],
+  ["#streamSend","text","Invia ▸"],
+  ["#streamIn","placeholder","scrivi e premi Invio per rispondere…"],
+  ["#mArgsLbl","text","Parametri extra (riga di comando)"],
+  ["#mArgs","placeholder","es. -Pn --script vuln  (opzionale)"],
+  ["#mCancel","text","Annulla"],
+  ["#mGo","text","Esegui ▸"],
+  ["#pkgCancel","text","Annulla"],
+  ["#smRefresh","title","Rileva di nuovo i tool installati"],
+  ["#statSrv","title","Server locale"],
+  ["#statProot","title","Debian (proot)"],
+  ["#tbTerm","title","Terminale (shell)"],
+];
 function applyI18n(){
   document.documentElement.lang=LANG;
   const s=$("#search"); if(s) s.placeholder=t("search_ph");
-  const tb=$("#tbTerm"); if(tb) tb.title=t("tb_term");
   if(LAST_COUNTS){ const st=$("#status"); if(st)
     st.textContent=`${LAST_COUNTS.ready} ${t("st_tools")} · ${LAST_COUNTS.catN} ${t("st_catalog")} · ${LAST_COUNTS.profiles} ${t("st_profiles")}`; }
+  // testi fissi (tooltip, placeholder, pulsanti dell'HTML)
+  STATIC_I18N.forEach(([sel,prop,it])=>{
+    const el=$(sel); if(!el) return; const v=tr(it);
+    if(prop==="text") el.textContent=v; else if(prop==="placeholder") el.placeholder=v; else el.title=v;
+  });
+  // pezzi con più testo (finestre): tradotti direttamente qui
+  const smh=$("#smHeadTitle"); if(smh) smh.textContent=(LANG==="en"?"Applications":"Applicazioni");
+  const tsh=$("#themeHeadTitle"); if(tsh) tsh.textContent=(LANG==="en"?"Theme":"Tema");
+  const th=$("#pkgTitle"); if(th) th.textContent=(LANG==="en"?"Install a package":"Installa un pacchetto");
+  const pp=$("#pkgDesc"); if(pp) pp.textContent=(LANG==="en"
+     ?"Type the name (one or more, separated by spaces) and pick the repository. This way you can install almost anything, beyond the catalog. Names are validated."
+     :"Scrivi il nome (anche più di uno, separati da spazio) e scegli il repository. Così puoi installare quasi tutto, oltre al catalogo. I nomi vengono validati.");
+  const pin=$("#pkgInput"); if(pin) pin.placeholder=(LANG==="en"?"e.g. hping3  netdiscover":"es. hping3  netdiscover");
+  const thn=$("#termHint"); if(thn) thn.innerHTML=(LANG==="en")
+     ? `If the terminal stays blank, tap <b>↗ Tab</b> above: some ttyd versions do not allow embedding.<br>If the keyboard <b>capitalizes</b> commands (e.g. <code>Cd</code> instead of <code>cd</code>), turn off keyboard auto-capitalization (Gboard → Settings → Text correction → <b>Auto-capitalization: OFF</b>): the terminal belongs to ttyd and we cannot force it from the app.`
+     : `Se il terminale resta vuoto, tocca <b>↗ Scheda</b> qui sopra: alcune versioni di ttyd non permettono l'incorporamento.<br>Se la tastiera mette la <b>maiuscola</b> ai comandi (es. <code>Cd</code> invece di <code>cd</code>), disattiva l'auto-maiuscola della tastiera (Gboard → Impostazioni → Correzione testo → <b>Maiuscole automatiche: OFF</b>): il terminale è di ttyd e non possiamo forzarlo dall'app.`;
+  // il tooltip del bottone Tor è dinamico: lo ridipingo dopo i testi statici
+  try{ paintTor(); }catch(e){}
 }
 
 const TKEY="nexus_theme";
@@ -1572,7 +1927,7 @@ async function load(){
     try{ if(!localStorage.getItem("nexus_seen_guide")){ localStorage.setItem("nexus_seen_guide","1"); showGuide(); } }catch{}
   }catch(e){
     $("#status").textContent=t("st_offline");
-    $("#app").innerHTML='<div class="empty">Backend offline.</div>';
+    $("#app").innerHTML='<div class="empty">'+tr("Backend offline.")+'</div>';
   }
 }
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});

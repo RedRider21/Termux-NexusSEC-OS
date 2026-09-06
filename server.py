@@ -501,18 +501,21 @@ async def stream_tool(ws: WebSocket, tool_id: str) -> None:
 async def sys_stream(ws: WebSocket, action: str) -> None:
     await ws.accept()
     arg = ws.query_params.get("arg", "")
+    # Lingua della UI (it/en): il client la manda per avere anche l'output delle
+    # procedure (installa/rimuovi/aggiorna + resoconto) nella lingua scelta.
+    lang = "en" if ws.query_params.get("lang", "it") == "en" else "it"
     try:
         if action == "install-tool":
-            argv = install_command(arg)
+            argv = install_command(arg, lang=lang)
         elif action == "install-profile":
-            argv = install_profile_command(arg, skip=installed_ids())
+            argv = install_profile_command(arg, skip=installed_ids(), lang=lang)
         elif action == "uninstall-profile":
-            argv = uninstall_profile_command(arg)
+            argv = uninstall_profile_command(arg, lang=lang)
         elif action == "install-package":
             repo, _, pkgs = arg.partition(":")
-            argv = install_package_command(repo, pkgs)
+            argv = install_package_command(repo, pkgs, lang=lang)
         else:
-            argv = system_command(action)
+            argv = system_command(action, lang=lang)
     except ValueError as e:
         await ws.send_json({"type": "error", "data": str(e)})
         await ws.close()
@@ -521,7 +524,9 @@ async def sys_stream(ws: WebSocket, action: str) -> None:
     # Se il comando passa dal Debian, serve proot-distro.
     if "proot-distro" in argv and shutil.which("proot-distro") is None:
         await ws.send_json({"type": "error",
-                            "data": "proot-distro non trovato. Lancia prima install.sh."})
+                            "data": ("proot-distro not found. Run install.sh first."
+                                     if lang == "en"
+                                     else "proot-distro non trovato. Lancia prima install.sh.")})
         await ws.close()
         return
 
