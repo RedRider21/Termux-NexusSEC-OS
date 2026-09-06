@@ -911,6 +911,12 @@ _TERMUX_EXTRA_REPOS = "root-repo tur-repo"
 _PROOT_APT_PREP = (
     'mkdir -p /usr/sbin && printf "#!/bin/sh\\nexit 101\\n" > /usr/sbin/policy-rc.d '
     '&& chmod +x /usr/sbin/policy-rc.d; '
+    # Recupera un dpkg lasciato a metà da un'installazione interrotta ("dpkg was
+    # interrupted, you must manually run dpkg --configure -a"): senza questo, OGNI
+    # apt-get install successivo fallisce subito. policy-rc.d (sopra) evita che la
+    # riconfigurazione provi ad avviare servizi. Poi -f install sistema le rotture.
+    'DEBIAN_FRONTEND=noninteractive dpkg --configure -a 2>/dev/null || true; '
+    'DEBIAN_FRONTEND=noninteractive apt-get install -f -y 2>/dev/null || true; '
 )
 
 # apt in proot: niente Recommends (installazioni più leggere, non trascina
@@ -1213,7 +1219,7 @@ def system_command(action: str) -> list[str]:
         # installer dei tool. Alla fine VERIFICA da solo se il repo e' davvero
         # attivo (senza far digitare nulla all'utente).
         return list(PROOT) + ["bash", "-lc",
-            _KALI_ENABLE_INNER + '; echo; echo "===== VERIFICA REPO KALI ====="; '
+            _PROOT_APT_PREP + _KALI_ENABLE_INNER + '; echo; echo "===== VERIFICA REPO KALI ====="; '
             'if apt-cache policy ffuf 2>/dev/null | grep -qE "Candidate:[[:space:]]*[0-9]"; then '
             'echo "✓ Repo Kali ATTIVO — i tool Kali (ffuf, wpscan, ...) ora si installano."; '
             'else echo "⚠ Repo Kali NON attivo: apt non vede ancora i pacchetti Kali."; '
