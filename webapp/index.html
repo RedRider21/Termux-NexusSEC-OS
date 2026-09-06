@@ -696,7 +696,7 @@ const GUIDE_EN = `
   <p>Full manual: <a href="https://github.com/RedRider21/Termux-NexusSEC-OS/blob/master/MANUALE.md" target="_blank" rel="noopener">MANUALE.md on GitHub</a>.</p>`;
 function showOutput(title, text, meta){
   resetOverlay();
-  $("#ovtitle").textContent=title; output.hidden=false; output.textContent=text;
+  $("#ovtitle").textContent=tr(title); output.hidden=false; output.textContent=text;
   if(meta){ $("#ovmeta").hidden=false; $("#ovmeta").innerHTML=meta; }
   overlay.classList.add("open");
 }
@@ -704,7 +704,7 @@ let termUrl=null;
 function showTerminal(title, url){
   resetOverlay();
   termUrl=url;
-  $("#ovtitle").textContent=title;
+  $("#ovtitle").textContent=tr(title);
   $("#tabBtn").hidden=false; $("#termHint").hidden=false;
   term.hidden=false; term.src=url;
   overlay.classList.add("open");
@@ -851,7 +851,7 @@ function updatePreview(){
 function askRun(tool){
   return new Promise((resolve)=>{
     modalResolve=resolve; curTool=tool;
-    $("#mTitle").textContent=tool.name;
+    $("#mTitle").textContent=tr(tool.name);
     $("#mHelp").textContent=tr(tool.help||"Imposta ed esegui.");
     const hasT=!!tool.target;
     mInput.style.display = hasT ? "" : "none";
@@ -960,7 +960,7 @@ function runStream(url, title, opts){
   closeStream();
   resetOverlay();
   overlay.dataset.tool=title;
-  $("#ovtitle").textContent=title;
+  $("#ovtitle").textContent=tr(title);
   const out=$("#streamOut"); out.textContent=""; out.hidden=false;
   const bar=$("#streamBar"), inp=$("#streamIn"), send=$("#streamSend");
   const sig=$("#streamSig"), status=$("#streamStatus"), statusTxt=$("#streamStatusTxt");
@@ -1060,7 +1060,7 @@ $("#histBtn").onclick=()=>{
   h.forEach((it,i)=>{
     const el=document.createElement("div"); el.className="hist-item";
     const rc = it.rc===0?'<span class="rc-ok">ok</span>':`<span class="rc-err">rc ${it.rc}</span>`;
-    el.innerHTML=`<div class="ht">${ICON[it.tool]||"▸"} ${escapeHtml(it.name)}`
+    el.innerHTML=`<div class="ht">${ICON[it.tool]||"▸"} ${escapeHtml(tr(it.name))}`
       +`<button class="hrun" title="${tr("Ri-esegui")}">↻</button></div>`
       +`<div class="hs"><span>${it.target?escapeHtml(it.target):"—"}</span>`
       +`<span>${rc}</span><span>${new Date(it.ts).toLocaleString()}</span></div>`;
@@ -1116,7 +1116,7 @@ function installHint(tool){
            : "\nOppure premi «Installa ora» qui sotto: lo faccio io, vedi il flusso live.";
   overlay.dataset.tool=tool.id;
   resetOverlay();
-  $("#ovtitle").textContent=tool.name;
+  $("#ovtitle").textContent=tr(tool.name);
   output.hidden=false; output.textContent=body;
   const btn=document.createElement("button");
   btn.className="btn go"; btn.style.margin="14px"; btn.textContent=en?"⬇ Install now":"⬇ Installa ora";
@@ -1154,7 +1154,7 @@ function toolCard(tool){
   else mainBadge=`<span class="badge ${interactive?"term":""}">${interactive?tr("▮ terminale"):"» run"}</span>`;
   const fav=FAV.has(tool.id);
   b.innerHTML=`<div class="top"><span class="emoji">${ICON[tool.id]||"▸"}</span>`
-    +`<span class="nm">${escapeHtml(tool.name)}</span>`
+    +`<span class="nm">${escapeHtml(tr(tool.name))}</span>`
     +`<span class="fav${fav?" on":""}" title="${tr("Preferito")}">${fav?"★":"☆"}</span></div>`
     +`<span class="desc">${escapeHtml(tr(tool.help||""))}</span>`
     +`<div style="display:flex;gap:6px;flex-wrap:wrap">${mainBadge}${rt}${live}${onion}</div>`;
@@ -1320,7 +1320,11 @@ function render(filter=""){
     if(activeCategory && cat!==activeCategory) continue;
     const vis=tools.filter(t=>{
       if(inProf){ if(!inProf.has(t.id)) return false; }
-      else if(!visibleInCatalog(t)) return false;
+      // Con una CATEGORIA selezionata mostro TUTTI i suoi tool (installati +
+      // «da installare»), come la vista profilo: così il filtro non appare vuoto
+      // quando i tool di quella categoria sono nel catalogo e non ancora
+      // installati. Il toggle 🧰 governa solo la vista "Tutte".
+      else if(!activeCategory && !visibleInCatalog(t)) return false;
       return !filter || (t.name+" "+(t.help||"")).toLowerCase().includes(filter);
     });
     if(!vis.length) continue;
@@ -1390,7 +1394,7 @@ function renderTaskbarWins(){
   const c=$("#tbOpen"); c.innerHTML="";
   openWins.forEach((w,id)=>{
     const el=document.createElement("div"); el.className="tb-win";
-    const nm=document.createElement("span"); nm.className="nm"; nm.textContent=(ICON[id]||"▸")+" "+w.name;
+    const nm=document.createElement("span"); nm.className="nm"; nm.textContent=(ICON[id]||"▸")+" "+tr(w.name);
     nm.onclick=()=>showTerminal(w.name,w.url);
     const x=document.createElement("span"); x.className="x"; x.textContent="✕";
     x.onclick=(e)=>{ e.stopPropagation(); openWins.delete(id); renderTaskbarWins(); };
@@ -1485,7 +1489,7 @@ function renderStartMenu(){
     const rec=document.createElement("div"); rec.className="sm-rec";
     h.forEach(it=>{
       const b=document.createElement("button");
-      b.innerHTML=`${ICON[it.tool]||"▸"} ${escapeHtml(it.name)} <small>${it.target?escapeHtml(it.target):""}</small>`;
+      b.innerHTML=`${ICON[it.tool]||"▸"} ${escapeHtml(tr(it.name))} <small>${it.target?escapeHtml(it.target):""}</small>`;
       b.onclick=()=>{ closeStart(); const t=findTool(it.tool); if(t){ t.mode==="stream"?openStream(t):(t.mode==="interactive"?openTerminal(t):runOneshot(t)); } };
       rec.appendChild(b);
     });
@@ -1566,6 +1570,56 @@ const I18N = {
 const EN = {
   // --- categorie e chip di filtro ---
   "Anonimato":"Anonymity", "Sistema":"System", "Tutte":"All", "Preferiti":"Favorites",
+  // --- nomi dei temi (🎨) ---
+  "Terminale":"Terminal", "Minimal scuro":"Minimal dark", "Minimal chiaro":"Minimal light",
+  // --- nomi descrittivi dei tool (il nome proprio resta, si traduce la descrizione) ---
+  "Nmap · scansione rapida":"Nmap · quick scan",
+  "Nmap · host attivi (ping sweep)":"Nmap · live hosts (ping sweep)",
+  "Whois RDAP (senza proot)":"Whois RDAP (no proot)",
+  "Dig · lookup DNS":"Dig · DNS lookup",
+  "DNSRecon · enumerazione DNS":"DNSRecon · DNS enumeration",
+  "Nikto · scanner web":"Nikto · web scanner",
+  "wafw00f · rileva WAF":"wafw00f · detect WAF",
+  "sqlmap (interattivo)":"sqlmap (interactive)",
+  "Wfuzz · fuzzing web (interattivo)":"Wfuzz · web fuzzing (interactive)",
+  "Hydra (interattivo)":"Hydra (interactive)",
+  "Aircrack-ng (crack offline)":"Aircrack-ng (offline crack)",
+  "John the Ripper (interattivo)":"John the Ripper (interactive)",
+  "Verifica IP di uscita (Tor)":"Exit IP check (Tor)",
+  "Shell anonima (via Tor)":"Anonymous shell (via Tor)",
+  "Shell Debian (proot)":"Debian shell (proot)",
+  "Shell (pannello)":"Shell (panel)",
+  "Shell (pannello, via Tor)":"Shell (panel, via Tor)",
+  "Recon demo (flusso live)":"Recon demo (live stream)",
+  "DNSenum · enumerazione DNS":"DNSenum · DNS enumeration",
+  "WPScan · sicurezza WordPress":"WPScan · WordPress security",
+  "Gobuster · brute dir/DNS":"Gobuster · dir/DNS brute",
+  "Dirb · scanner directory":"Dirb · directory scanner",
+  "Hashcat · cracking hash":"Hashcat · hash cracking",
+  "hashID · identifica hash":"hashID · identify hash",
+  "Crunch · generatore wordlist":"Crunch · wordlist generator",
+  "CeWL · wordlist da sito":"CeWL · wordlist from site",
+  "ExifTool · metadati file":"ExifTool · file metadata",
+  "Ffuf · fuzzing web":"Ffuf · web fuzzing",
+  "Nuclei · scanner vuln":"Nuclei · vuln scanner",
+  "Wapiti · scanner web":"Wapiti · web scanner",
+  "HTTrack · mirror sito":"HTTrack · site mirror",
+  "mitmproxy · proxy MITM":"mitmproxy · MITM proxy",
+  "DMitry · recon host":"DMitry · host recon",
+  "Recon-ng · framework OSINT":"Recon-ng · OSINT framework",
+  "Subfinder · sottodomini":"Subfinder · subdomains",
+  "Amass · superficie d'attacco":"Amass · attack surface",
+  "Metagoofil · metadati doc":"Metagoofil · doc metadata",
+  "Ncrack · brute rete":"Ncrack · network brute",
+  "Patator · brute multiuso":"Patator · multi-purpose brute",
+  "TestDisk · recupero":"TestDisk · recovery",
+  "StegSeek · crack stego":"StegSeek · stego crack",
+  "YARA · regole malware":"YARA · malware rules",
+  "Volatility 3 · memoria":"Volatility 3 · memory",
+  "ltrace · librerie":"ltrace · libraries",
+  "Jadx · decompila APK":"Jadx · decompile APK",
+  "pev · analisi PE":"pev · PE analysis",
+  "FLARE FLOSS · stringhe":"FLARE FLOSS · strings",
   // --- descrizioni profili ---
   "Scansione, exploit, brute force, Active Directory.":"Scanning, exploitation, brute force, Active Directory.",
   "Essenziale e leggero: recon, scan, injection, brute, cracking, SMB. Senza Metasploit/Exploit-DB.":"Essential and lightweight: recon, scan, injection, brute, cracking, SMB. Without Metasploit/Exploit-DB.",
@@ -1893,7 +1947,7 @@ function renderThemeList(){
     c.innerHTML=`<div class="ts-prev" style="background:${t.bg}">`
       +`<span class="d" style="background:${t.dot}"></span>`
       +`<span class="bar" style="background:${t.bar}"></span></div>`
-      +`<div class="ts-name">${t.name}${t.id===cur?' <span class="chk">✓</span>':""}</div>`;
+      +`<div class="ts-name">${escapeHtml(tr(t.name))}${t.id===cur?' <span class="chk">✓</span>':""}</div>`;
     c.onclick=()=>applyTheme(t.id);
     list.appendChild(c);
   });

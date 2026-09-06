@@ -101,6 +101,9 @@ Questa è l'interfaccia (una web-app). Da qui in poi comandi da qui.
 - **🧅 Tor:** instrada il traffico via Tor (per i tool che lo supportano).
 - **🧰 Catalogo:** mostra anche i tool non ancora installati.
 - **🎨 Tema:** cambia l'aspetto (Terminale, Glass, Neon, Minimal chiaro/scuro).
+- **🌐 Lingua:** l'app è tutta in **Italiano** o **English** (interfaccia, schede
+  dei tool, tooltip, guida, messaggi e output delle procedure). Si sceglie da
+  **☰ → SISTEMA → 🌐** con una combobox; vedi *[Aggiornare l'app](#aggiornare-lapp-fase-completa)*.
 - **Barra in basso (stile desktop):** pulsante **NexusSEC** = menu, ⌨️ **Shell
   (pannello)** = una shell dentro l'app dove scrivi comandi liberi (consigliata sul
   telefono: niente auto-maiuscola), 🧅 Tor, orologio. Dal menu trovi anche **▮
@@ -123,6 +126,43 @@ Tocca **NexusSEC** (in basso a sinistra) per aprire il menu:
   → banner **⬇ Installa profilo** → **Installa ora**. Installa in blocco i mancanti.
 
 Ogni operazione mostra il suo output live: se qualcosa va storto, lo vedi subito.
+
+### Aggiornare l'app (fase completa)
+
+Quando su GitHub esce una versione nuova, l'app te lo dice con un **pallino
+arancione** ● sul pulsante **☰ NexusSEC** (lo controlla da sola con `git fetch`).
+
+<table>
+<tr>
+<td align="center" width="20%"><img src="docs/screens/20-update-badge.png" width="170"><br><sub><b>1.</b> Pallino ● sul ☰</sub></td>
+<td align="center" width="20%"><img src="docs/screens/21-manutenzione.png" width="170"><br><sub><b>2.</b> ⬇ Aggiorna app</sub></td>
+<td align="center" width="20%"><img src="docs/screens/22-update-live.png" width="170"><br><sub><b>3.</b> Flusso live + resoconto</sub></td>
+<td align="center" width="20%"><img src="docs/screens/23-riavvio.png" width="170"><br><sub><b>4.</b> ⏻ Riavvia server</sub></td>
+<td align="center" width="20%"><img src="docs/screens/24-lingua.png" width="170"><br><sub><b>5.</b> 🌐 Lingua IT/EN</sub></td>
+</tr>
+</table>
+
+1. Vedi il **pallino arancione** ● sul ☰ → c'è un aggiornamento.
+2. **☰ → MANUTENZIONE → ⬇ Aggiorna app** (mostra anche «● N aggiornamenti»).
+3. Scorre il **flusso live**: `git` allinea a `origin/master` e stampa un
+   **RESOCONTO** con la versione ora installata.
+4. Parte da sola **⏻ Riavvia server** (serve perché il Python in memoria è ancora
+   quello vecchio); dopo qualche secondo la **pagina si ricarica**. Se non lo fa,
+   ricaricala tu.
+5. **Lingua:** **☰ → SISTEMA → 🌐**, scegli *Italiano* o *English*. Cambia subito e
+   resta memorizzata.
+
+> **⚠️ Se «Aggiorna app» fallisce** (updater vecchio, o «dubious ownership» di git
+> in Termux), sbloccalo **una sola volta** da Termux, poi usa **⏻ Riavvia server**:
+>
+> ```bash
+> cd ~/Termux-NexusSEC-OS \
+>   && git -c safe.directory='*' fetch origin \
+>   && git -c safe.directory='*' reset --hard origin/master
+> ```
+>
+> Da lì in poi basta il pulsante. *(Nota: la cache della PWA cambia a ogni release,
+> es. `nexussec-v30`, così le novità si vedono dopo il riavvio.)*
 
 ---
 

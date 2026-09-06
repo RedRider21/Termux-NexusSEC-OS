@@ -48,6 +48,13 @@ non esistono in Termux, o come **richieste HTTP dirette** quando basta un'API.
   alle domande** — interazione bidirezionale, non solo un terminale incorporato.
 - **🎨 Temi.** Aspetto cambiabile al volo: *Terminale*, *Glass*, *Neon*, *Minimal
   chiaro/scuro* (scelta salvata; anche via link `?theme=<id>`).
+- **🌐 Multilingua (Italiano / English).** L'app è **interamente localizzata**:
+  interfaccia, schede e descrizioni dei tool, categorie, filtri, tooltip, guida,
+  messaggi e persino **l'output delle procedure** (installazioni, aggiornamenti,
+  resoconto) escono nella lingua scelta. Si cambia da **☰ → SISTEMA → 🌐** con una
+  semplice **combobox**; la lingua è rilevata da `navigator.language` al primo avvio
+  e poi salvata (`localStorage: nexus_lang`). Vedi [Aggiornare l'app e cambiare
+  lingua](#aggiornare-lapp-e-cambiare-lingua).
 - **🛠️ Gestione dalla PWA.** Aggiornamenti (Termux / app / Debian), installazione
   di un tool o di un intero profilo, **installazione di un pacchetto qualsiasi**
   (Termux/Debian/Kali per nome), abilitazione del **repo Kali**, **autostart**
@@ -193,6 +200,55 @@ Interfaccia reale, catturata a dimensioni da telefono:
 <td align="center" width="20%"><img src="docs/screens/theme-minimal-light.png" width="150"><br><sub><b>Minimal chiaro</b></sub></td>
 </tr>
 </table>
+
+---
+
+## Aggiornare l'app (e cambiare lingua)
+
+Aggiornare si fa **tutto dall'app**, senza scrivere comandi in Termux. Quando sul
+GitHub esce una versione nuova, il repo locale risulta «indietro» e l'app te lo
+segnala con un **pallino arancione** pulsante sul pulsante **☰ NexusSEC**.
+
+<table>
+<tr>
+<td align="center" width="20%"><img src="docs/screens/20-update-badge.png" width="180"><br><sub><b>1. Aggiornamento disponibile</b> — pallino arancione ● sul ☰</sub></td>
+<td align="center" width="20%"><img src="docs/screens/21-manutenzione.png" width="180"><br><sub><b>2. Manutenzione</b> — «⬇ Aggiorna app» (con «● N aggiornamenti»)</sub></td>
+<td align="center" width="20%"><img src="docs/screens/22-update-live.png" width="180"><br><sub><b>3. Flusso live</b> — <code>git</code> + <b>RESOCONTO</b> con la versione installata</sub></td>
+<td align="center" width="20%"><img src="docs/screens/23-riavvio.png" width="180"><br><sub><b>4. Riavvio server</b> — parte da sé, poi la pagina si ricarica</sub></td>
+<td align="center" width="20%"><img src="docs/screens/24-lingua.png" width="180"><br><sub><b>5. Lingua (🌐)</b> — combobox IT/English in ☰ → SISTEMA</sub></td>
+</tr>
+</table>
+
+**Passi:**
+
+1. **Vedi il pallino arancione** ● sul ☰: c'è un aggiornamento (l'app lo verifica
+   da sola con `git fetch`, in cache lato server, e a ogni ritorno in primo piano).
+2. **☰ → MANUTENZIONE → ⬇ Aggiorna app.** La voce mostra anche **«● N aggiornamenti»**.
+3. Parte il **flusso live**: `git fetch` + allineamento a `origin/master`
+   (fast-forward, o `reset --hard` se la cronologia è divergente), e alla fine un
+   **RESOCONTO** con la **versione ora installata**.
+4. Al termine parte da sola **⏻ Riavvia server** (il codice Python in memoria è
+   quello vecchio finché non si riavvia); dopo qualche secondo la **pagina si
+   ricarica**. Se non si ricarica da sola, ricaricala tu.
+5. **Cambiare lingua:** **☰ → SISTEMA → 🌐** e scegli *Italiano* o *English* dalla
+   combobox. Cambia all'istante e viene ricordata.
+
+> **La cache della PWA** passa a ogni release (attualmente `nexussec-v30` in
+> `webapp/sw.js`): al primo caricamento dopo il riavvio il service worker si
+> aggiorna da solo. Se non vedi le novità, chiudi e riapri l'app (o tira giù per
+> ricaricare).
+
+> **⚠️ Uovo e gallina.** «Aggiorna app» funziona se l'updater **già installato** è
+> sano. Se dà «aggiornamento non riuscito» (tipico dopo un update a metà, o per il
+> «dubious ownership» di git in Termux), sbloccalo **una volta sola** da Termux:
+>
+> ```bash
+> cd ~/Termux-NexusSEC-OS \
+>   && git -c safe.directory='*' fetch origin \
+>   && git -c safe.directory='*' reset --hard origin/master
+> ```
+>
+> Poi **⏻ Riavvia server**: da lì in avanti basta il pulsante.
 
 ---
 

@@ -108,7 +108,7 @@ TOOLS: dict[str, dict] = {
     },
     "whois": {
         "name": "Whois",
-        "category": "Network", "mode": "oneshot", "runtime": "termux", "target": "host",
+        "category": ["Network", "OSINT"], "mode": "oneshot", "runtime": "termux", "target": "host",
         "cmd": ["whois"], "anon_ok": True,
         "help": "Informazioni di registrazione di un dominio (pacchetto nativo Termux)",
         "params": [
@@ -120,13 +120,13 @@ TOOLS: dict[str, dict] = {
     },
     "rdap": {
         "name": "Whois RDAP (senza proot)",
-        "category": "Network", "mode": "native", "target": "host",
+        "category": ["Network", "OSINT"], "mode": "native", "target": "host",
         "cmd": [],   # nativo: nessun comando shell, il server fa una richiesta HTTPS
         "help": "Dati di un dominio o IP via RDAP (API pubblica). Non richiede proot: funziona subito.",
     },
     "dig": {
         "name": "Dig · lookup DNS",
-        "category": "Network", "mode": "oneshot", "runtime": "termux", "target": "host",
+        "category": ["Network", "OSINT"], "mode": "oneshot", "runtime": "termux", "target": "host",
         "cmd": ["dig", "+noall", "+answer", "+nocmd"], "pkg": "dnsutils",
         "help": "Record DNS (A) di un dominio. Nativo Termux (dnsutils).",
         "params": [
@@ -152,7 +152,7 @@ TOOLS: dict[str, dict] = {
     },
     "dnsrecon": {
         "name": "DNSRecon · enumerazione DNS",
-        "category": "Network", "mode": "oneshot", "runtime": "proot", "target": "host",
+        "category": ["Network", "OSINT"], "mode": "oneshot", "runtime": "proot", "target": "host",
         "cmd": ["dnsrecon", "-d"],
         "help": "Enumera record e prova zone transfer di un dominio (via Debian).",
         "params": [
@@ -318,7 +318,7 @@ TOOLS: dict[str, dict] = {
     # --- Network / OSINT ---------------------------------------------------
     "dnsenum": {
         "name": "DNSenum · enumerazione DNS",
-        "category": "Network", "mode": "oneshot", "runtime": "proot", "target": "host",
+        "category": ["Network", "OSINT"], "mode": "oneshot", "runtime": "proot", "target": "host",
         "cmd": ["dnsenum"], "catalog": True, "repo": "kali",
         "help": "Tipo: recon DNS. Sottodomini, record e tentativi di zone transfer.",
         "params": [
@@ -330,7 +330,7 @@ TOOLS: dict[str, dict] = {
     },
     "theharvester": {
         "name": "theHarvester · OSINT",
-        "category": "Network", "mode": "oneshot", "runtime": "proot", "target": "host",
+        "category": ["Network", "OSINT"], "mode": "oneshot", "runtime": "proot", "target": "host",
         "cmd": ["theHarvester", "-b", "all", "-d"], "catalog": True, "repo": "kali",
         "pkg": "theharvester",
         "help": "Tipo: OSINT. Raccoglie email, sottodomini e host da fonti pubbliche.",
@@ -397,7 +397,7 @@ TOOLS: dict[str, dict] = {
         "name": "hashID · identifica hash",
         # Preso dal repo Kali (pacchetto firmato) invece che da pip: più affidabile
         # e coerente con gli altri tool del profilo, che già passano dal Debian.
-        "category": "Cracking", "mode": "interactive", "runtime": "proot", "target": None,
+        "category": ["Cracking", "Forensics"], "mode": "interactive", "runtime": "proot", "target": None,
         "cmd": ["bash", "-lc", "echo 'Esempio: hashid \"5f4dcc3b5aa765d61d8327deb882cf99\"'; bash"],
         "catalog": True, "repo": "kali",
         "help": "Tipo: utility. Riconosce il tipo/algoritmo di un hash sconosciuto.",
@@ -411,7 +411,7 @@ TOOLS: dict[str, dict] = {
     },
     "cewl": {
         "name": "CeWL · wordlist da sito",
-        "category": "Cracking", "mode": "oneshot", "runtime": "proot", "target": "url",
+        "category": ["Cracking", "Web"], "mode": "oneshot", "runtime": "proot", "target": "url",
         "cmd": ["cewl"], "anon_ok": True, "catalog": True, "repo": "kali",
         "help": "Tipo: utility. Crea una wordlist dalle parole presenti in un sito.",
         "params": [
@@ -456,7 +456,7 @@ TOOLS: dict[str, dict] = {
     # --- Sistema / utility -------------------------------------------------
     "exiftool": {
         "name": "ExifTool · metadati file",
-        "category": "Sistema", "mode": "interactive", "runtime": "termux", "target": None,
+        "category": ["Forensics", "OSINT"], "mode": "interactive", "runtime": "termux", "target": None,
         "cmd": ["bash", "-lc", "echo 'Esempio: exiftool foto.jpg'; bash"],
         "catalog": True,
         "help": "Tipo: forense/OSINT. Legge e modifica i metadati di foto e file.",
@@ -596,7 +596,7 @@ _c("mitmproxy", "mitmproxy · proxy MITM", "Web", repo="kali",
 # --- Network / recon ---------------------------------------------------------
 _c("naabu", "Naabu · port scan", "Network", repo="kali",
    help="Tipo: port scan. Scanner di porte veloce (connect scan).")
-_c("dmitry", "DMitry · recon host", "Network", repo="kali",
+_c("dmitry", "DMitry · recon host", ["Network", "OSINT"], repo="kali",
    help="Tipo: recon. Info su un host: whois, sottodomini, porte.")
 _c("nbtscan", "NBTscan · NetBIOS", "Network", repo="kali",
    help="Tipo: enum. Scansione dei nomi NetBIOS in una rete.")
@@ -612,21 +612,21 @@ _c("sipvicious", "SIPVicious · VoIP", "Network", repo="kali", binn="svmap",
    pkg="sipvicious", help="Tipo: VoIP. Scanner di sistemi SIP/VoIP.")
 
 # --- OSINT -------------------------------------------------------------------
-_c("recon_ng", "Recon-ng · framework OSINT", "Network", repo="kali", binn="recon-ng",
+_c("recon_ng", "Recon-ng · framework OSINT", ["Network", "OSINT"], repo="kali", binn="recon-ng",
    help="Tipo: OSINT. Framework modulare di ricognizione.")
-_c("shodan", "Shodan CLI", "Network", "termux", pip=True,
+_c("shodan", "Shodan CLI", ["Network", "OSINT"], "termux", pip=True,
    help="Tipo: OSINT. CLI di Shodan (richiede API key).")
-_c("holehe", "Holehe · email OSINT", "Network", "termux", pip=True,
+_c("holehe", "Holehe · email OSINT", ["Network", "OSINT"], "termux", pip=True,
    help="Tipo: OSINT. Verifica se un'email e' registrata su vari siti.")
-_c("sherlock", "Sherlock · username OSINT", "Network", "termux", pip=True,
+_c("sherlock", "Sherlock · username OSINT", ["Network", "OSINT"], "termux", pip=True,
    help="Tipo: OSINT. Cerca uno username sui social network.")
-_c("subfinder", "Subfinder · sottodomini", "Network", repo="kali",
+_c("subfinder", "Subfinder · sottodomini", ["Network", "OSINT"], repo="kali",
    help="Tipo: OSINT. Enumerazione passiva di sottodomini.")
-_c("amass", "Amass · superficie d'attacco", "Network", repo="kali",
+_c("amass", "Amass · superficie d'attacco", ["Network", "OSINT"], repo="kali",
    help="Tipo: OSINT. Mappa i sottodomini e la superficie d'attacco.")
-_c("spiderfoot", "SpiderFoot · OSINT auto", "Network", repo="kali",
+_c("spiderfoot", "SpiderFoot · OSINT auto", ["Network", "OSINT"], repo="kali",
    help="Tipo: OSINT. Automazione OSINT con interfaccia web locale.")
-_c("metagoofil", "Metagoofil · metadati doc", "Network", repo="kali",
+_c("metagoofil", "Metagoofil · metadati doc", ["Network", "OSINT"], repo="kali",
    help="Tipo: OSINT. Estrae metadati da documenti pubblici.")
 
 # --- Cracking ----------------------------------------------------------------
@@ -636,11 +636,11 @@ _c("patator", "Patator · brute multiuso", "Cracking", repo="kali",
    help="Tipo: brute force. Brute forcer modulare multi-protocollo.")
 _c("crowbar", "Crowbar · brute", "Cracking", repo="kali",
    help="Tipo: brute force. Brute force per RDP/SSH/OpenVPN.")
-_c("fcrackzip", "fcrackzip · ZIP", "Cracking", repo="kali",
+_c("fcrackzip", "fcrackzip · ZIP", ["Cracking", "Forensics"], repo="kali",
    help="Tipo: cracking. Password di archivi ZIP.")
-_c("pdfcrack", "pdfcrack · PDF", "Cracking", repo="kali",
+_c("pdfcrack", "pdfcrack · PDF", ["Cracking", "Forensics"], repo="kali",
    help="Tipo: cracking. Password di file PDF.")
-_c("ophcrack", "Ophcrack · Windows", "Cracking", repo="kali",
+_c("ophcrack", "Ophcrack · Windows", ["Cracking", "Forensics"], repo="kali",
    pkg="ophcrack-cli", binn="ophcrack",
    help="Tipo: cracking. Password Windows via rainbow table.")
 
@@ -1325,11 +1325,31 @@ def exec_prefix(tool_id: str) -> list[str]:
     return [] if tool.get("runtime") == "termux" else list(PROOT)
 
 
+def _cats(t: dict) -> list[str]:
+    """Categorie di un tool. `category` può essere una stringa (una sola) o una
+    LISTA: in quel caso il tool compare sotto OGNI categoria elencata (es. exiftool
+    in Forensics e OSINT). La prima resta la principale."""
+    c = t.get("category")
+    if isinstance(c, (list, tuple)):
+        # de-duplica preservando l'ordine
+        seen, out = set(), []
+        for x in c:
+            if x and x not in seen:
+                seen.add(x); out.append(x)
+        return out or ["Sistema"]
+    return [c] if c else ["Sistema"]
+
+
 def tools_by_category() -> dict[str, list]:
-    """Elenco dei tool per la UI, raggruppati per categoria."""
+    """Elenco dei tool per la UI, raggruppati per categoria.
+
+    Un tool con più categorie compare in ciascuna (stessa scheda, stesso id):
+    la ricerca, i preferiti e l'installazione restano per-id, quindi nessun
+    doppione logico — solo più punti d'accesso nella navigazione.
+    """
     out: dict[str, list] = {}
     for tid, t in TOOLS.items():
-        out.setdefault(t["category"], []).append(
+        payload = (
             {"id": tid, "name": t["name"], "mode": t["mode"],
              "runtime": t.get("runtime"),      # "termux" | "proot" | None (native)
              "bin": BIN.get(tid),              # binario da rilevare
@@ -1349,6 +1369,8 @@ def tools_by_category() -> dict[str, list]:
              "cmdline": " ".join(t.get("cmd", [])),  # comando base per l'anteprima
              "anon_ok": t.get("anon_ok", False), "force_anon": t.get("force_anon", False)}
         )
+        for cat in _cats(t):
+            out.setdefault(cat, []).append(payload)
     return out
 
 
