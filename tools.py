@@ -922,13 +922,24 @@ _APT_INSTALL = (
 
 # Script (da eseguire DENTRO il Debian in proot) che abilita il repo Kali, così
 # diventano installabili i pacchetti di sicurezza di Kali. Idempotente.
+# Metodo ufficiale Kali: un Debian minimale spesso NON ha ca-certificates/gnupg,
+# quindi l'HTTPS e la verifica della firma fallivano e apt IGNORAVA il repo Kali
+# ("Unable to locate package"). Qui: (1) installo i prerequisiti dai repo Debian
+# (che funzionano); (2) scarico la chiave UFFICIALE Kali e la converto in keyring;
+# (3) aggiungo il repo con signed-by (firmato, niente --allow-insecure).
 _KALI_ENABLE_INNER = (
-    'echo "deb https://http.kali.org/kali kali-rolling main contrib non-free" '
+    'apt-get update || true; '
+    'DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends '
+    'ca-certificates gnupg curl wget || true; '
+    'install -d -m 0755 /usr/share/keyrings; '
+    'if [ ! -s /usr/share/keyrings/kali-archive-keyring.gpg ]; then '
+    '(curl -fsSL https://archive.kali.org/archive-key.asc '
+    '|| wget -qO- https://archive.kali.org/archive-key.asc) '
+    '| gpg --dearmor -o /usr/share/keyrings/kali-archive-keyring.gpg || true; fi; '
+    'echo "deb [signed-by=/usr/share/keyrings/kali-archive-keyring.gpg] '
+    'http://http.kali.org/kali kali-rolling main contrib non-free" '
     '> /etc/apt/sources.list.d/kali.list; '
-    'apt-get update -o Acquire::AllowInsecureRepositories=true '
-    '-o Acquire::AllowDowngradeToInsecureRepositories=true || true; '
-    'DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-unauthenticated '
-    'kali-archive-keyring || true; apt-get update'
+    'apt-get update'
 )
 
 
@@ -1147,17 +1158,10 @@ def system_command(action: str) -> list[str]:
                               "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade"]
     if action == "enable-kali":
         # Abilita (una volta sola) il repo Kali dentro il Debian in proot, cosi'
-        # diventano installabili i pacchetti di sicurezza di Kali.
-        script = (
-            'set -e; '
-            'echo "deb https://http.kali.org/kali kali-rolling main contrib non-free" '
-            '> /etc/apt/sources.list.d/kali.list; '
-            'apt-get update -o Acquire::AllowInsecureRepositories=true '
-            '-o Acquire::AllowDowngradeToInsecureRepositories=true || true; '
-            'DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-unauthenticated kali-archive-keyring; '
-            'apt-get update; echo "== Repo Kali abilitato =="'
-        )
-        return list(PROOT) + ["bash", "-lc", script]
+        # diventano installabili i pacchetti di sicurezza di Kali. Stesso metodo
+        # robusto (chiave ufficiale + signed-by) usato dagli installer dei tool.
+        return list(PROOT) + ["bash", "-lc",
+                              _KALI_ENABLE_INNER + '; echo "== Repo Kali abilitato =="']
     if action == "setup-autostart":
         repo = str(Path(__file__).parent)
         return ["bash", "-lc",

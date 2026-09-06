@@ -137,12 +137,18 @@ EOF'
 if [ "$ENABLE_KALI_REPO" = "yes" ]; then
     log "Abilito il repo di Kali dentro Debian (per i tool del catalogo)..."
     proot-distro login "$DISTRO" -- bash -c '
-        set -e
-        echo "deb https://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware" \
+        apt-get update || true
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            ca-certificates gnupg curl wget || true
+        install -d -m 0755 /usr/share/keyrings
+        if [ ! -s /usr/share/keyrings/kali-archive-keyring.gpg ]; then
+            (curl -fsSL https://archive.kali.org/archive-key.asc \
+                || wget -qO- https://archive.kali.org/archive-key.asc) \
+                | gpg --dearmor -o /usr/share/keyrings/kali-archive-keyring.gpg || true
+        fi
+        echo "deb [signed-by=/usr/share/keyrings/kali-archive-keyring.gpg] http://http.kali.org/kali kali-rolling main contrib non-free" \
             > /etc/apt/sources.list.d/kali.list
-        apt-get install -y --no-install-recommends kali-archive-keyring || \
-            apt-get install -y --no-install-recommends gnupg
-        apt-get update -y
+        apt-get update
     ' && log "Repo Kali abilitato: ora 'apt install <tool>' vede il catalogo Kali." \
       || warn "Abilitazione repo Kali fallita (continuo)."
 else
