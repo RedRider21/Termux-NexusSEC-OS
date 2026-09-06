@@ -1184,7 +1184,10 @@ function installProfile(prof){
   output.hidden=false; output.textContent=body; $("#copyBtn").hidden=false;
   const btn=document.createElement("button");
   btn.className="btn go"; btn.style.margin="14px"; btn.textContent="⬇ Installa ora ("+tools.length+" tool)";
-  btn.onclick=()=>openSysStream("install-profile", "Installo profilo "+prof.name, prof.key);
+  // A fine installazione apro direttamente la vista del profilo, così i tool
+  // appena installati si trovano tutti raggruppati e pronti all'uso.
+  btn.onclick=()=>openSysStream("install-profile", "Installo profilo "+prof.name, prof.key,
+                                ()=>selectProfile(prof.key));
   output.appendChild(btn);
   overlay.classList.add("open");
 }
@@ -1226,6 +1229,33 @@ function render(filter=""){
     const g=document.createElement("div"); g.className="grid";
     favs.forEach(t=>g.appendChild(toolCard(t)));
     app.appendChild(g);
+    return;
+  }
+
+  // Vista PROFILO: un unico blocco dedicato con i tool del profilo raggruppati,
+  // «Pronti all'uso» in cima così si trovano subito i programmi da usare.
+  if(prof){
+    const list=Object.values(ALL).flat().filter(t=>inProf.has(t.id)
+      && (!filter || (t.name+" "+(t.help||"")).toLowerCase().includes(filter)));
+    const ready=list.filter(t=>t.works!==false && t.installed!==false);
+    const todo =list.filter(t=>t.works!==false && t.installed===false);
+    const na   =list.filter(t=>t.works===false);
+    const sect=(icon,label,arr,hint)=>{
+      if(!arr.length) return;
+      const h=document.createElement("h2");
+      h.innerHTML=`<span class="ic">${icon}</span>${escapeHtml(label)} <span class="count">${arr.length}</span>`;
+      app.appendChild(h);
+      if(hint){ const d=document.createElement("div"); d.className="empty";
+        d.style.cssText="text-align:left;margin:2px 2px 10px;font-size:12px;opacity:.75"; d.textContent=hint; app.appendChild(d); }
+      const g=document.createElement("div"); g.className="grid";
+      arr.forEach(t=>g.appendChild(toolCard(t)));
+      app.appendChild(g);
+    };
+    sect("✓","Pronti all'uso",ready);
+    sect("⤓","Da installare",todo, todo.length?"Premi «⤓ Installa profilo» qui sopra per installarli tutti in blocco.":"");
+    sect("🔒","Non usabili su questo telefono",na);
+    if(!list.length){ const e=document.createElement("div"); e.className="empty";
+      e.textContent="Nessun tool del profilo corrisponde al filtro."; app.appendChild(e); }
     return;
   }
 

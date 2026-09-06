@@ -240,8 +240,9 @@ TOOLS: dict[str, dict] = {
     },
     "hydra": {
         "name": "Hydra (interattivo)",
-        "category": "Exploitation", "mode": "interactive", "runtime": "termux", "target": None,
-        "cmd": ["bash", "-lc", "hydra; bash"],
+        # Non esiste in Termux: si installa dal repo Kali dentro il Debian (proot).
+        "category": "Exploitation", "mode": "interactive", "runtime": "proot", "target": None,
+        "cmd": ["bash", "-lc", "hydra; bash"], "repo": "kali",
         "help": "Brute-force di login; usa la shell per comporre il comando",
     },
     # --- Cracking offline --------------------------------------------------
@@ -254,8 +255,10 @@ TOOLS: dict[str, dict] = {
     },
     "john": {
         "name": "John the Ripper (interattivo)",
-        "category": "Cracking", "mode": "interactive", "runtime": "termux", "target": None,
+        # Non affidabile in Termux: si installa dal repo Kali dentro il Debian (proot).
+        "category": "Cracking", "mode": "interactive", "runtime": "proot", "target": None,
         "cmd": ["bash", "-lc", "echo 'Esempio: john --wordlist=rockyou.txt hash.txt'; bash"],
+        "repo": "kali",
         "help": "Cracking di hash da file",
     },
     # --- Anonimato ---------------------------------------------------------
@@ -392,9 +395,11 @@ TOOLS: dict[str, dict] = {
     },
     "hashid": {
         "name": "hashID · identifica hash",
-        "category": "Cracking", "mode": "interactive", "runtime": "termux", "target": None,
+        # Preso dal repo Kali (pacchetto firmato) invece che da pip: più affidabile
+        # e coerente con gli altri tool del profilo, che già passano dal Debian.
+        "category": "Cracking", "mode": "interactive", "runtime": "proot", "target": None,
         "cmd": ["bash", "-lc", "echo 'Esempio: hashid \"5f4dcc3b5aa765d61d8327deb882cf99\"'; bash"],
-        "catalog": True,
+        "catalog": True, "repo": "kali",
         "help": "Tipo: utility. Riconosce il tipo/algoritmo di un hash sconosciuto.",
     },
     "crunch": {
@@ -699,14 +704,14 @@ _c("set", "SET · social eng", "Exploitation", repo="kali", pkg="set", binn="set
 _c("impacket", "Impacket", "Exploitation", repo="kali", pkg="impacket-scripts",
    binn="impacket-smbserver",
    help="Tipo: AD. Script per protocolli Windows/Active Directory.")
-_c("netexec", "NetExec (nxc)", "Exploitation", "termux", pip=True, binn="nxc",
+_c("netexec", "NetExec (nxc)", "Exploitation", repo="kali", binn="nxc",
    pkg="netexec", help="Tipo: AD. Esecuzione/enum su reti Windows (ex-CrackMapExec).")
 _c("evil_winrm", "Evil-WinRM", "Exploitation", repo="kali", binn="evil-winrm",
    help="Tipo: post-exploit. Shell WinRM verso host Windows.")
 _c("bloodhound_py", "BloodHound.py", "Exploitation", "termux", pip=True,
    pkg="bloodhound", binn="bloodhound-python",
    help="Tipo: AD. Raccoglie dati di Active Directory per BloodHound.")
-_c("smbmap", "SMBMap", "Exploitation", "termux", pip=True,
+_c("smbmap", "SMBMap", "Exploitation", repo="kali",
    help="Tipo: enum SMB. Enumera share e permessi SMB.")
 _c("beef_xss", "BeEF · browser exploit", "Exploitation", repo="kali", binn="beef-xss",
    help="Tipo: exploit web. Browser Exploitation Framework (server locale).")
