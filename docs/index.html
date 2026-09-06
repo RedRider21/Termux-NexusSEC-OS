@@ -77,6 +77,13 @@
 
   <h2><span class="n">1</span> Scarica Termux</h2>
 
+  <div class="warn">
+    🔑 <b>Regola d'oro:</b> installa <b>Termux e i suoi add-on</b> (Termux:Boot,
+    Termux:API) <b>dalla stessa fonte</b>. Le app Termux si scambiano i permessi in base
+    alla <b>firma</b>: se mescoli F-Droid e GitHub, gli add-on <b>non funzioneranno</b>.
+    Il modo più semplice e sicuro è <b>prendere tutto da F-Droid</b>.
+  </div>
+
   <div class="card">
     <p><b>Modo consigliato — F-Droid.</b> Si aggiorna da solo e sceglie in automatico
     l'APK giusto per il tuo telefono.</p>
@@ -142,6 +149,12 @@ python server.py</pre>
       <span class="e">🚀</span><span class="t">Termux:Boot<small>avvia il server all'accensione (F-Droid)</small></span></a>
     <a class="btn" href="https://f-droid.org/en/packages/com.termux.api/" rel="noopener">
       <span class="e">🔌</span><span class="t">Termux:API<small>notifiche, appunti, apri-URL… (F-Droid)</small></span></a>
+    <p class="muted" style="margin-top:10px">⚠️ Questi add-on sono su <b>F-Droid</b>: usali
+      solo se hai installato <b>anche Termux da F-Droid</b>. Se hai preso Termux dall'APK
+      GitHub, scarica gli add-on dalle <b>release GitHub</b>
+      (<a href="https://github.com/termux/termux-boot/releases/latest" style="color:var(--fg-dim)" rel="noopener">termux-boot</a>,
+      <a href="https://github.com/termux/termux-api/releases/latest" style="color:var(--fg-dim)" rel="noopener">termux-api</a>)
+      così le firme combaciano.</p>
     <p class="muted" style="margin-top:10px">L'interfaccia si apre nel <b>browser</b> del
       telefono. Puoi anche <b>aggiungerla alla schermata Home</b> per usarla a schermo
       intero come un'app.</p>
