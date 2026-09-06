@@ -1133,18 +1133,18 @@ function profileBanner(prof){
   const inst=all.filter(t=>t.installed!==false).length;
   const el=document.createElement("div"); el.className="pbanner";
   el.innerHTML=`<span class="pi">${prof.icon}</span>`
-    +`<span class="pt"><b>Profilo: ${escapeHtml(prof.name)}</b>`
-    +`<small>${escapeHtml(prof.desc)} · ${inst}/${all.length} installati</small></span>`;
-  const inb=document.createElement("button"); inb.className="go"; inb.textContent="⤓ Installa profilo";
+    +`<span class="pt"><b>${t("pb_profile")}: ${escapeHtml(prof.name)}</b>`
+    +`<small>${escapeHtml(prof.desc)} · ${inst}/${all.length} ${t("prof_installed")}</small></span>`;
+  const inb=document.createElement("button"); inb.className="go"; inb.textContent=t("pb_install");
   inb.onclick=()=>installProfile(prof);
   el.appendChild(inb);
   // "Rimuovi profilo": solo se c'è qualcosa da rimuovere (tool del catalogo installati)
   if(inst>0){
-    const rmb=document.createElement("button"); rmb.className="rm"; rmb.textContent="🗑 Rimuovi";
+    const rmb=document.createElement("button"); rmb.className="rm"; rmb.textContent=t("pb_remove");
     rmb.onclick=()=>uninstallProfile(prof);
     el.appendChild(rmb);
   }
-  const cl=document.createElement("button"); cl.textContent="✕ mostra tutti";
+  const cl=document.createElement("button"); cl.textContent=t("pb_showall");
   cl.onclick=clearProfile;
   el.appendChild(cl);
   return el;
@@ -1222,7 +1222,7 @@ function render(filter=""){
     const favs=Object.values(ALL).flat().filter(t=>FAV.has(t.id)
       && (!filter || (t.name+" "+(t.help||"")).toLowerCase().includes(filter)));
     const h=document.createElement("h2");
-    h.innerHTML=`<span class="ic">★</span>Preferiti <span class="count">${favs.length}</span>`;
+    h.innerHTML=`<span class="ic">★</span>${t("fav_title")} <span class="count">${favs.length}</span>`;
     app.appendChild(h);
     if(!favs.length){ const e=document.createElement("div"); e.className="empty";
       e.textContent="Nessun preferito. Tocca la ☆ su una scheda per aggiungerlo."; app.appendChild(e); return; }
@@ -1251,11 +1251,11 @@ function render(filter=""){
       arr.forEach(t=>g.appendChild(toolCard(t)));
       app.appendChild(g);
     };
-    sect("✓","Pronti all'uso",ready);
-    sect("⤓","Da installare",todo, todo.length?"Premi «⤓ Installa profilo» qui sopra per installarli tutti in blocco.":"");
-    sect("🔒","Non usabili su questo telefono",na);
+    sect("✓",t("pv_ready"),ready);
+    sect("⤓",t("pv_toinstall"),todo, todo.length?t("pv_hint"):"");
+    sect("🔒",t("pv_na"),na);
     if(!list.length){ const e=document.createElement("div"); e.className="empty";
-      e.textContent="Nessun tool del profilo corrisponde al filtro."; app.appendChild(e); }
+      e.textContent=t("pv_nofilter"); app.appendChild(e); }
     return;
   }
 
@@ -1275,7 +1275,7 @@ function render(filter=""){
     vis.forEach(t=>{ g.appendChild(toolCard(t)); shown++; });
     app.appendChild(g);
   }
-  if(!shown){ const e=document.createElement("div"); e.className="empty"; e.textContent="Nessun tool trovato."; app.appendChild(e); }
+  if(!shown){ const e=document.createElement("div"); e.className="empty"; e.textContent=t("empty_none"); app.appendChild(e); }
 }
 $("#search").addEventListener("input",e=>render(e.target.value));
 $("#catBtn").onclick=()=>{
@@ -1354,65 +1354,78 @@ function renderStartMenu(){
   const cat=(txt)=>{ const h=document.createElement("div"); h.className="sm-cat"; h.textContent=txt; body.appendChild(h); };
 
   // --- PROFILI ---
-  cat("PROFILI");
+  cat(t("cat_profiles"));
   const pg=document.createElement("div"); pg.className="sm-prof";
-  if(!PROFILES.length){ pg.innerHTML='<div class="sm-empty">Profili non disponibili.<br>Riavvia <b>server.py</b> (o il mock) e ricarica la pagina.</div>'; }
+  if(!PROFILES.length){ pg.innerHTML='<div class="sm-empty">'+t("profiles_na")+'</div>'; }
   PROFILES.forEach(p=>{
     const s=profileStats(p);
     const c=document.createElement("button"); c.className="sm-pcard";
     c.innerHTML=`<span class="h"><span class="e">${p.icon}</span>${escapeHtml(p.name)}</span>`
       +`<span class="d">${escapeHtml(p.desc)}</span>`
-      +`<span class="c">${s.inst}/${s.all} installati</span>`;
+      +`<span class="c">${s.inst}/${s.all} ${t("prof_installed")}</span>`;
     c.onclick=()=>{ closeStart(); selectProfile(p.key); };
     pg.appendChild(c);
   });
   body.appendChild(pg);
 
   // --- SISTEMA ---
-  cat("SISTEMA");
+  cat(t("cat_system"));
   const sys=document.createElement("div"); sys.className="sm-sys";
   const mk=(label,fn)=>{ const b=document.createElement("button"); b.textContent=label; b.onclick=fn; sys.appendChild(b); };
-  mk("⌨️ Shell (pannello)",()=>{ closeStart(); const sh=findTool("shell_live"); if(sh) openStream(sh); });
-  mk("▮ Terminale ttyd",()=>{ closeStart(); const sh=findTool("shell"); if(sh) openTerminal(sh); });
-  mk(anonMode?"🧅 Tor: ON":"🧅 Tor: off",()=>{ setTor(!anonMode).then(renderStartMenu); });
-  mk(showCatalog?"🧰 Catalogo: ON":"🧰 Catalogo",()=>{ $("#catBtn").click(); renderStartMenu(); });
-  mk("↻ Rileva tool",async()=>{ await refreshTools(); renderStartMenu(); });
-  mk("🕘 Storico",()=>{ closeStart(); $("#histBtn").click(); });
-  mk("📖 Guida",()=>{ closeStart(); showGuide(); });
-  if(activeProfile) mk("✕ Nessun profilo",()=>{ closeStart(); clearProfile(); });
+  mk(t("m_shell"),()=>{ closeStart(); const sh=findTool("shell_live"); if(sh) openStream(sh); });
+  mk(t("m_ttyd"),()=>{ closeStart(); const sh=findTool("shell"); if(sh) openTerminal(sh); });
+  mk(anonMode?t("m_tor_on"):t("m_tor_off"),()=>{ setTor(!anonMode).then(renderStartMenu); });
+  mk(showCatalog?t("m_cat_on"):t("m_cat_off"),()=>{ $("#catBtn").click(); renderStartMenu(); });
+  mk(t("m_detect"),async()=>{ await refreshTools(); renderStartMenu(); });
+  mk(t("m_history"),()=>{ closeStart(); $("#histBtn").click(); });
+  mk(t("m_guide"),()=>{ closeStart(); showGuide(); });
+  if(activeProfile) mk(t("m_noprof"),()=>{ closeStart(); clearProfile(); });
   // "Esci" chiude l'app: disponibile solo dentro il launcher APK (ponte NexusHost).
   if(window.NexusHost && window.NexusHost.exit)
-    mk("⏻ Esci dall'app",()=>{ try{ window.NexusHost.exit(); }catch(e){} });
+    mk(t("m_exit"),()=>{ try{ window.NexusHost.exit(); }catch(e){} });
+  // Combobox lingua (IT/EN): cambia lingua all'istante e la ricorda.
+  const langRow=document.createElement("label");
+  langRow.style.cssText="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;"
+    +"gap:8px;padding:8px 10px;font-size:13px;border:1px solid var(--line);border-radius:10px";
+  langRow.textContent=t("m_language");
+  const sel=document.createElement("select");
+  sel.style.cssText="background:var(--card2);color:var(--fg);border:1px solid var(--line);"
+    +"border-radius:8px;padding:5px 8px;font:inherit";
+  sel.innerHTML='<option value="it">Italiano</option><option value="en">English</option>';
+  sel.value=LANG;
+  sel.onchange=()=>{ setLang(sel.value); renderStartMenu(); };
+  langRow.appendChild(sel);
+  sys.appendChild(langRow);
   body.appendChild(sys);
 
   // --- MANUTENZIONE (tutto dalla PWA, senza toccare Termux) ---
-  cat("MANUTENZIONE");
+  cat(t("cat_maint"));
   const mnt=document.createElement("div"); mnt.className="sm-sys";
   const mkm=(label,fn)=>{ const b=document.createElement("button"); b.textContent=label; b.onclick=fn; mnt.appendChild(b); };
-  mkm("＋ Installa pacchetto",()=>{ closeStart(); openPkgInstall(); });
-  mkm("⟳ Aggiorna Termux",()=>{ closeStart(); openSysStream("update-termux","Aggiorno Termux"); });
+  mkm(t("mm_pkg"),()=>{ closeStart(); openPkgInstall(); });
+  mkm(t("mm_upterm"),()=>{ closeStart(); openSysStream("update-termux","Aggiorno Termux"); });
   // "Aggiorna app": se il repo è indietro, mostra un badge pulsante col n° di commit.
   const nUpd=(UPDATE_INFO && UPDATE_INFO.behind)||0;
   const bUpd=document.createElement("button");
-  bUpd.innerHTML = "⬇ Aggiorna app" + (nUpd>0
-      ? ' <span class="sm-upd">● '+nUpd+' aggiornament'+(nUpd===1?"o":"i")+'</span>' : "");
+  bUpd.innerHTML = t("mm_upapp") + (nUpd>0
+      ? ' <span class="sm-upd">● '+nUpd+(LANG==="en"?(nUpd===1?" update":" updates"):(nUpd===1?" aggiornamento":" aggiornamenti"))+'</span>' : "");
   // Dopo il git pull il server ha ancora il vecchio codice in memoria e la PWA
   // è in cache: riavvio il server (che poi ricarica la pagina) per applicare.
   bUpd.onclick=()=>{ closeStart(); openSysStream("update-app","Aggiorno l'app (git pull)",null,
       ()=>{ toast("Aggiornamento scaricato — riavvio per applicare…");
             setTimeout(restartServer, 1600); }); };
   mnt.appendChild(bUpd);
-  mkm("🐧 Aggiorna Debian",()=>{ closeStart(); openSysStream("update-debian","Aggiorno il Debian (proot)"); });
-  mkm("🐉 Abilita repo Kali",()=>{ closeStart(); openSysStream("enable-kali","Abilito il repo Kali nel Debian"); });
-  mkm("🚀 Abilita autostart",()=>{ closeStart(); openSysStream("setup-autostart","Abilito l'autostart all'accensione"); });
-  mkm("🛑 Disabilita autostart",()=>{ closeStart(); openSysStream("disable-autostart","Disabilito l'autostart"); });
-  mkm("⏻ Riavvia server",  ()=>{ closeStart(); restartServer(); });
+  mkm(t("mm_updeb"),()=>{ closeStart(); openSysStream("update-debian","Aggiorno il Debian (proot)"); });
+  mkm(t("mm_kali"),()=>{ closeStart(); openSysStream("enable-kali","Abilito il repo Kali nel Debian"); });
+  mkm(t("mm_auto_on"),()=>{ closeStart(); openSysStream("setup-autostart","Abilito l'autostart all'accensione"); });
+  mkm(t("mm_auto_off"),()=>{ closeStart(); openSysStream("disable-autostart","Disabilito l'autostart"); });
+  mkm(t("mm_restart"),  ()=>{ closeStart(); restartServer(); });
   body.appendChild(mnt);
 
   // --- RECENTI ---
   const h=loadHistory().slice(0,5);
   if(h.length){
-    cat("RECENTI");
+    cat(t("cat_recent"));
     const rec=document.createElement("div"); rec.className="sm-rec";
     h.forEach(it=>{
       const b=document.createElement("button");
@@ -1448,6 +1461,64 @@ const THEMES=[
   {id:"minimal-dark", name:"Minimal scuro", dot:"#5aa0ff", bg:"#131417", bar:"#2c2f36"},
   {id:"minimal-light",name:"Minimal chiaro",dot:"#2563eb", bg:"#f4f6f9", bar:"#e3e6ec"},
 ];
+/* ---------------- Lingua (i18n IT/EN) ---------------- */
+const I18N = {
+  it:{
+    search_ph:"cerca un tool…",
+    cat_profiles:"PROFILI", cat_system:"SISTEMA", cat_maint:"MANUTENZIONE", cat_recent:"RECENTI",
+    prof_installed:"installati", profiles_na:"Profili non disponibili.<br>Riavvia <b>server.py</b> (o il mock) e ricarica la pagina.",
+    m_shell:"⌨️ Shell (pannello)", m_ttyd:"▮ Terminale ttyd", m_tor_on:"🧅 Tor: ON", m_tor_off:"🧅 Tor: off",
+    m_cat_on:"🧰 Catalogo: ON", m_cat_off:"🧰 Catalogo", m_detect:"↻ Rileva tool", m_history:"🕘 Storico",
+    m_guide:"📖 Guida", m_noprof:"✕ Nessun profilo", m_exit:"⏻ Esci dall'app", m_language:"🌐 Lingua",
+    mm_pkg:"＋ Installa pacchetto", mm_upterm:"⟳ Aggiorna Termux", mm_upapp:"⬇ Aggiorna app",
+    mm_updeb:"🐧 Aggiorna Debian", mm_kali:"🐉 Abilita repo Kali", mm_auto_on:"🚀 Abilita autostart",
+    mm_auto_off:"🛑 Disabilita autostart", mm_restart:"⏻ Riavvia server",
+    pv_ready:"Pronti all'uso", pv_toinstall:"Da installare", pv_na:"Non usabili su questo telefono",
+    pv_hint:"Premi «⤓ Installa profilo» qui sopra per installarli tutti in blocco.",
+    pv_nofilter:"Nessun tool del profilo corrisponde al filtro.",
+    pb_profile:"Profilo", pb_install:"⤓ Installa profilo", pb_remove:"🗑 Rimuovi", pb_showall:"✕ mostra tutti",
+    fav_title:"Preferiti", empty_none:"Nessun tool trovato.",
+    tb_term:"Terminale (shell)", st_offline:"server non raggiungibile — avvia python server.py",
+    st_tools:"tool installati", st_catalog:"nel catalogo", st_profiles:"profili (▤)",
+  },
+  en:{
+    search_ph:"search a tool…",
+    cat_profiles:"PROFILES", cat_system:"SYSTEM", cat_maint:"MAINTENANCE", cat_recent:"RECENT",
+    prof_installed:"installed", profiles_na:"Profiles unavailable.<br>Restart <b>server.py</b> (or the mock) and reload the page.",
+    m_shell:"⌨️ Shell (panel)", m_ttyd:"▮ ttyd terminal", m_tor_on:"🧅 Tor: ON", m_tor_off:"🧅 Tor: off",
+    m_cat_on:"🧰 Catalog: ON", m_cat_off:"🧰 Catalog", m_detect:"↻ Detect tools", m_history:"🕘 History",
+    m_guide:"📖 Guide", m_noprof:"✕ No profile", m_exit:"⏻ Quit app", m_language:"🌐 Language",
+    mm_pkg:"＋ Install package", mm_upterm:"⟳ Update Termux", mm_upapp:"⬇ Update app",
+    mm_updeb:"🐧 Update Debian", mm_kali:"🐉 Enable Kali repo", mm_auto_on:"🚀 Enable autostart",
+    mm_auto_off:"🛑 Disable autostart", mm_restart:"⏻ Restart server",
+    pv_ready:"Ready to use", pv_toinstall:"To install", pv_na:"Not usable on this phone",
+    pv_hint:"Tap «⤓ Install profile» above to install them all at once.",
+    pv_nofilter:"No profile tool matches the filter.",
+    pb_profile:"Profile", pb_install:"⤓ Install profile", pb_remove:"🗑 Remove", pb_showall:"✕ show all",
+    fav_title:"Favorites", empty_none:"No tool found.",
+    tb_term:"Terminal (shell)", st_offline:"server unreachable — run python server.py",
+    st_tools:"tools installed", st_catalog:"in catalog", st_profiles:"profiles (▤)",
+  },
+};
+let LANG = (()=>{ try{ const s=localStorage.getItem("nexus_lang"); if(s==="it"||s==="en") return s; }catch{}
+                  return (navigator.language||"it").slice(0,2)==="en" ? "en" : "it"; })();
+let LAST_COUNTS = null;   // {ready,catN,profiles} per ricostruire la barra di stato al cambio lingua
+function t(k){ return (I18N[LANG]&&I18N[LANG][k]) || I18N.it[k] || k; }
+function setLang(l){
+  LANG=(l==="en")?"en":"it";
+  try{ localStorage.setItem("nexus_lang",LANG); }catch{}
+  applyI18n();
+  render($("#search").value);
+  if($("#startmenu").classList.contains("open")) renderStartMenu();
+}
+function applyI18n(){
+  document.documentElement.lang=LANG;
+  const s=$("#search"); if(s) s.placeholder=t("search_ph");
+  const tb=$("#tbTerm"); if(tb) tb.title=t("tb_term");
+  if(LAST_COUNTS){ const st=$("#status"); if(st)
+    st.textContent=`${LAST_COUNTS.ready} ${t("st_tools")} · ${LAST_COUNTS.catN} ${t("st_catalog")} · ${LAST_COUNTS.profiles} ${t("st_profiles")}`; }
+}
+
 const TKEY="nexus_theme";
 function applyTheme(id){
   const t=THEMES.find(x=>x.id===id)||THEMES[0];
@@ -1479,6 +1550,7 @@ $("#themeClose").onclick=closeThemes;
 $("#themeScrim").onclick=closeThemes;
 // applica subito il tema salvato (prima del load dati)
 applyTheme((()=>{try{return localStorage.getItem(TKEY)||"terminal";}catch{return "terminal";}})());
+applyI18n();   // lingua salvata: placeholder/titoli subito nella lingua giusta
 
 async function load(){
   try{
@@ -1487,7 +1559,8 @@ async function load(){
     const all=Object.values(ALL).flat();
     const ready=all.filter(t=>t.installed!==false).length;
     const catN=all.filter(t=>t.catalog).length;
-    $("#status").textContent=ready+" tool installati · "+catN+" nel catalogo · "+PROFILES.length+" profili (▤)";
+    LAST_COUNTS={ready, catN, profiles:PROFILES.length};
+    applyI18n();   // barra di stato + placeholder nella lingua scelta
     render();
     syncTor();
     syncHealth(); setInterval(syncHealth, 20000);
@@ -1498,7 +1571,7 @@ async function load(){
     // Al primissimo avvio mostra la guida (una volta sola).
     try{ if(!localStorage.getItem("nexus_seen_guide")){ localStorage.setItem("nexus_seen_guide","1"); showGuide(); } }catch{}
   }catch(e){
-    $("#status").textContent="server non raggiungibile — avvia python server.py";
+    $("#status").textContent=t("st_offline");
     $("#app").innerHTML='<div class="empty">Backend offline.</div>';
   }
 }
