@@ -1144,15 +1144,25 @@ def system_command(action: str) -> list[str]:
         return ["bash", "-lc", "pkg update -y && pkg upgrade -y"]
     if action == "update-app":
         repo = str(Path(__file__).parent)
-        # Prova il fast-forward; se la cronologia è divergente (es. dopo un
-        # rewrite/force-push sul repo) NON si blocca: allinea con reset --hard
-        # a origin/master (i file non tracciati restano). È un deploy di sola
-        # lettura: nessuna modifica locale da preservare.
-        return ["bash", "-lc",
-                f'cd "{repo}" && git fetch origin && '
-                '{ git merge --ff-only origin/master || '
-                '(echo "Cronologia divergente: allineo a origin/master…"; '
-                'git reset --hard origin/master); }']
+        # Deploy di sola lettura: prova il fast-forward, altrimenti allinea con
+        # reset --hard a origin/master (cronologia divergente o modifiche locali).
+        # Robusto + diagnostico: registra la dir come "safe" (in Termux git può
+        # dare "detected dubious ownership") e stampa l'errore VERO se qualcosa
+        # fallisce, così si capisce subito perché l'aggiornamento non riesce.
+        lines = [
+            f'cd "{repo}" || exit 1',
+            f'git config --global --add safe.directory "{repo}" 2>/dev/null || true',
+            'echo "== git fetch origin =="',
+            'git fetch origin || { echo "!! FETCH FALLITO — controlla la rete"; exit 1; }',
+            'if git merge --ff-only origin/master 2>/dev/null; then '
+            'echo "OK: aggiornato in fast-forward"; '
+            'else echo "Cronologia divergente o modifiche locali: allineo a origin/master…"; '
+            'git reset --hard origin/master || { echo "!! RESET FALLITO"; exit 1; }; '
+            'echo "OK: allineato a origin/master"; fi',
+            'echo "== versione ora installata =="',
+            'git log --oneline -1',
+        ]
+        return ["bash", "-lc", "; ".join(lines)]
     if action == "update-debian":
         return list(PROOT) + ["bash", "-lc",
                               "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade"]
