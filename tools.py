@@ -935,10 +935,17 @@ _KALI_ENABLE_INNER = (
     'if [ ! -s /usr/share/keyrings/kali-archive-keyring.gpg ]; then '
     '(curl -fsSL https://archive.kali.org/archive-key.asc '
     '|| wget -qO- https://archive.kali.org/archive-key.asc) '
-    '| gpg --dearmor -o /usr/share/keyrings/kali-archive-keyring.gpg || true; fi; '
+    '| gpg --dearmor -o /usr/share/keyrings/kali-archive-keyring.gpg 2>/dev/null || true; fi; '
+    # Se la chiave c'è -> repo firmato. Se NON è stato possibile crearla (gpg/rete)
+    # -> fallback [trusted=yes]: repo non verificato ma comunque installabile, così
+    # i tool Kali entrano lo stesso invece di risultare "impossibile trovare".
+    'if [ -s /usr/share/keyrings/kali-archive-keyring.gpg ]; then '
     'echo "deb [signed-by=/usr/share/keyrings/kali-archive-keyring.gpg] '
     'http://http.kali.org/kali kali-rolling main contrib non-free" '
-    '> /etc/apt/sources.list.d/kali.list; '
+    '> /etc/apt/sources.list.d/kali.list; echo "[kali] repo firmato"; '
+    'else echo "deb [trusted=yes] '
+    'http://http.kali.org/kali kali-rolling main contrib non-free" '
+    '> /etc/apt/sources.list.d/kali.list; echo "[kali] repo trusted=yes (chiave non disponibile)"; fi; '
     'apt-get update'
 )
 

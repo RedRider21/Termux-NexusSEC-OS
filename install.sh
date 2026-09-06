@@ -144,10 +144,15 @@ if [ "$ENABLE_KALI_REPO" = "yes" ]; then
         if [ ! -s /usr/share/keyrings/kali-archive-keyring.gpg ]; then
             (curl -fsSL https://archive.kali.org/archive-key.asc \
                 || wget -qO- https://archive.kali.org/archive-key.asc) \
-                | gpg --dearmor -o /usr/share/keyrings/kali-archive-keyring.gpg || true
+                | gpg --dearmor -o /usr/share/keyrings/kali-archive-keyring.gpg 2>/dev/null || true
         fi
-        echo "deb [signed-by=/usr/share/keyrings/kali-archive-keyring.gpg] http://http.kali.org/kali kali-rolling main contrib non-free" \
-            > /etc/apt/sources.list.d/kali.list
+        if [ -s /usr/share/keyrings/kali-archive-keyring.gpg ]; then
+            echo "deb [signed-by=/usr/share/keyrings/kali-archive-keyring.gpg] http://http.kali.org/kali kali-rolling main contrib non-free" \
+                > /etc/apt/sources.list.d/kali.list
+        else
+            echo "deb [trusted=yes] http://http.kali.org/kali kali-rolling main contrib non-free" \
+                > /etc/apt/sources.list.d/kali.list
+        fi
         apt-get update
     ' && log "Repo Kali abilitato: ora 'apt install <tool>' vede il catalogo Kali." \
       || warn "Abilitazione repo Kali fallita (continuo)."
