@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+# Termux-NexusSEC-OS — ambiente di pentesting su Android (no-root)
+# Copyright (C) 2026 RedRider21
+#
+# Questo programma è software libero: puoi ridistribuirlo e/o modificarlo secondo
+# i termini della GNU Affero General Public License come pubblicata dalla Free
+# Software Foundation, versione 3 della Licenza o (a tua scelta) una successiva.
+# È distribuito SENZA ALCUNA GARANZIA; senza neppure la garanzia implicita di
+# COMMERCIABILITÀ o IDONEITÀ A UNO SCOPO PARTICOLARE. Vedi la GNU AGPL per i
+# dettagli. Dovresti aver ricevuto una copia della licenza insieme al programma
+# (file LICENSE); altrimenti vedi <https://www.gnu.org/licenses/>.
 """
 server.py - Il "ponte" tra la PWA e i tool CLI.
 
@@ -23,6 +33,7 @@ from __future__ import annotations
 import asyncio
 import atexit
 import functools
+import json
 import os
 import re
 import shlex
@@ -36,7 +47,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -324,8 +335,63 @@ def run_oneshot(req: RunRequest):
     })
 
 
+# --------------------------------------------------------------------------- #
+# Tema del terminale (ttyd) + prompt stile Kali, coerenti col tema della PWA
+# --------------------------------------------------------------------------- #
+# Palette per ogni tema dell'app (deve rispecchiare THEMES in webapp/index.html):
+# bg = sfondo del terminale, fg = testo, accent = colore d'accento del prompt.
+THEME_PALETTE = {
+    "terminal":      {"bg": "#050705", "fg": "#3dff88", "accent": "#3dff88"},
+    "glass":         {"bg": "#0a0d12", "fg": "#cfe9e0", "accent": "#7fe7d0"},
+    "neon":          {"bg": "#05060a", "fg": "#c8f0ff", "accent": "#39f5c8"},
+    "minimal-dark":  {"bg": "#131417", "fg": "#d7e2ee", "accent": "#5aa0ff"},
+    "minimal-light": {"bg": "#f4f6f9", "fg": "#1b2430", "accent": "#2563eb"},
+}
+
+
+def _hex_to_ansi_rgb(h: str) -> str:
+    """'#rrggbb' -> 'R;G;B' per le sequenze ANSI truecolor (38;2;R;G;B)."""
+    h = h.lstrip("#")
+    return f"{int(h[0:2], 16)};{int(h[2:4], 16)};{int(h[4:6], 16)}"
+
+
+def _kali_ps1(accent_hex: str, fg_hex: str) -> str:
+    """Prompt stile Kali a DUE righe, colorato coi colori del tema (truecolor).
+        ┌──(nexus㉿host)-[~]
+        └─$
+    Le sequenze usano \\[..\\] così bash calcola bene la larghezza del prompt.
+    """
+    a = _hex_to_ansi_rgb(accent_hex)      # accento (cornice, utente, $)
+    f = _hex_to_ansi_rgb(fg_hex)          # testo (percorso)
+    A = f"\\[\\e[1;38;2;{a}m\\]"          # accento in grassetto
+    F = f"\\[\\e[0;38;2;{f}m\\]"          # testo normale
+    R = "\\[\\e[0m\\]"                    # reset
+    return (f"{A}\u250c\u2500\u2500({A}nexus\u327f"  # ┌──(nexus㉿
+            f"\\h{A})-[{F}\\w{A}]\\n"                 # \h)-[ \w ]  + a capo
+            f"{A}\u2514\u2500{A}\\$ {R}")             # └─$
+
+
+def _kali_shell_argv(prefix: list[str], accent_hex: str, fg_hex: str) -> list[str]:
+    """argv di una shell bash con prompt Kali a tema. Robusto: scrive un rcfile
+    temporaneo (che carica prima i bashrc di sistema/utente, così alias e PATH
+    restano) e apre bash su quello; se qualcosa va storto, ripiega su `bash`
+    normale — non lascia mai l'utente senza shell."""
+    ps1 = _kali_ps1(accent_hex, fg_hex)
+    # il valore di PS1 va scritto QUOTATO nel rcfile (contiene spazi/parentesi):
+    # shlex.quote produce un token shell sicuro attorno a "'PS1'".
+    ps1_line = "printf '%s\\n' " + shlex.quote("PS1=" + shlex.quote(ps1))
+    setup = (
+        'F=$(mktemp 2>/dev/null) || F=/tmp/.nexus_rc; '
+        '{ echo ". /etc/bash.bashrc 2>/dev/null"; '
+        'echo ". \\"$HOME/.bashrc\\" 2>/dev/null"; '
+        + ps1_line + '; } > "$F" 2>/dev/null; '
+        'exec bash --rcfile "$F" -i 2>/dev/null || exec bash'
+    )
+    return [*prefix, "bash", "-c", setup]
+
+
 @app.post("/api/terminal/{tool_id}")
-def open_terminal(tool_id: str):
+def open_terminal(tool_id: str, request: Request):
     """Avvia (lazy) un'istanza ttyd per un tool interattivo e ne ritorna l'URL."""
     tool = TOOLS.get(tool_id)
     if tool is None:
@@ -348,13 +414,24 @@ def open_terminal(tool_id: str):
     if existing and existing[0].poll() is None:
         return {"url": f"http://{HOST}:{existing[1]}"}
 
+    # Tema corrente della PWA (?theme=): colora sfondo/testo del terminale e, per
+    # la shell libera, il prompt stile Kali. Se assente/ignoto -> tema Terminale.
+    pal = THEME_PALETTE.get(request.query_params.get("theme", ""), THEME_PALETTE["terminal"])
+    ttyd_theme = json.dumps({
+        "background": pal["bg"], "foreground": pal["fg"],
+        "cursor": pal["accent"], "selection": pal["accent"],
+    })
+
+    # La shell libera (Debian/proot) riceve il prompt Kali a due righe; gli altri
+    # tool mantengono il proprio comando (hanno prompt/interfacce proprie).
+    if tool_id == "shell":
+        inner = _kali_shell_argv(prefix, pal["accent"], pal["fg"])
+    else:
+        inner = [*prefix, *tool["cmd"]]
+
     port = TTYD_BASE_PORT + len(_ttyd_procs)
-    # ttyd: -i localhost, -W abilita l'input da tastiera, -t per un tema scuro.
-    ttyd_cmd = [
-        "ttyd", "-i", HOST, "-p", str(port), "-W",
-        "-t", "theme={\"background\":\"#000000\"}",
-        *prefix, *tool["cmd"],
-    ]
+    # ttyd: -i localhost, -W abilita l'input da tastiera, -t per il tema.
+    ttyd_cmd = ["ttyd", "-i", HOST, "-p", str(port), "-W", "-t", f"theme={ttyd_theme}", *inner]
     proc = subprocess.Popen(ttyd_cmd)
     _ttyd_procs[tool_id] = (proc, port)
     return {"url": f"http://{HOST}:{port}"}

@@ -1,4 +1,11 @@
 <!DOCTYPE html>
+<!--
+  Termux-NexusSEC-OS — ambiente di pentesting su Android (no-root)
+  Copyright (C) 2026 RedRider21
+  Software libero sotto GNU Affero General Public License v3+ (vedi LICENSE).
+  Distribuito SENZA ALCUNA GARANZIA. https://www.gnu.org/licenses/
+  ⚠️ Solo per test autorizzati / apprendimento.
+-->
 <html lang="it">
 <head>
 <meta charset="utf-8">
@@ -909,7 +916,10 @@ async function openTerminal(tool){
   overlay.dataset.tool=tool.id;
   showOutput(tool.name,""); output.innerHTML='<span class="spin"></span> '+tr("avvio terminale…");
   try{
-    const r=await fetch("/api/terminal/"+tool.id,{method:"POST"});
+    // passa il tema corrente: il terminale ttyd userà gli stessi colori e, per la
+    // shell libera, un prompt stile Kali a due righe con l'accento del tema.
+    const th=(()=>{try{return localStorage.getItem("nexus_theme")||"terminal";}catch{return "terminal";}})();
+    const r=await fetch("/api/terminal/"+tool.id+"?theme="+encodeURIComponent(th),{method:"POST"});
     const d=await r.json();
     if(!r.ok){ showOutput(tool.name,tr("Errore: ")+(d.detail||r.status)); return; }
     showTerminal(tool.name, d.url);

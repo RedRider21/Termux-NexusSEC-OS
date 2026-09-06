@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Termux-NexusSEC-OS — ambiente di pentesting su Android (no-root)
+# Copyright (C) 2026 RedRider21
+# Software libero sotto GNU Affero General Public License v3+ (vedi LICENSE).
+# Distribuito SENZA ALCUNA GARANZIA. <https://www.gnu.org/licenses/>
 """
 mock_server.py - Backend FINTO per testare la webapp sul PC, senza Termux/Kali.
 

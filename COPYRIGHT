@@ -1,0 +1,55 @@
+Termux-NexusSEC-OS
+Copyright (C) 2026 RedRider21. Tutti i diritti riservati sull'opera originale.
+
+============================================================================
+ LICENZA
+============================================================================
+
+Questo progetto è distribuito sotto la GNU Affero General Public License,
+versione 3 o (a tua scelta) successiva (AGPL-3.0-or-later). Il testo completo
+è nel file LICENSE.
+
+In sintesi (NON sostituisce la licenza):
+  - Puoi usare, studiare, modificare e ridistribuire il software.
+  - Se lo distribuisci o lo OFFRI COME SERVIZIO IN RETE (es. accessibile via
+    web/API), devi rendere disponibile il codice sorgente completo, comprese
+    le tue modifiche, sotto la stessa licenza AGPL-3.0.
+  - Il software è fornito SENZA ALCUNA GARANZIA.
+
+============================================================================
+ LICENZA COMMERCIALE / SPONSOR (doppia licenza)
+============================================================================
+
+Il detentore del copyright (RedRider21) mantiene la piena titolarità dell'opera
+e può concederla anche con LICENZA COMMERCIALE separata, per chi voglia
+integrare o distribuire Termux-NexusSEC-OS senza gli obblighi di copyleft
+dell'AGPL (ad es. in prodotti proprietari o servizi chiusi).
+
+Aziende, sponsor o partner interessati a una licenza commerciale, a una
+sponsorizzazione o a un accordo di supporto possono contattare il titolare
+tramite il repository ufficiale:
+
+  https://github.com/RedRider21/Termux-NexusSEC-OS
+
+I contributi esterni al progetto possono richiedere la firma di un Contributor
+License Agreement (CLA), così che la titolarità resti consolidata e la doppia
+licenza resti possibile.
+
+============================================================================
+ AVVERTENZE D'USO (leggi prima di usare gli strumenti)
+============================================================================
+
+Termux-NexusSEC-OS raccoglie strumenti di sicurezza informatica e test di
+penetrazione. Sono destinati ESCLUSIVAMENTE a:
+
+  - sistemi, reti e dispositivi di tua proprietà, OPPURE
+  - target per cui possiedi un PERMESSO SCRITTO ed esplicito del proprietario,
+  - attività di studio/apprendimento in ambienti isolati e autorizzati.
+
+L'uso di questi strumenti contro sistemi terzi senza autorizzazione è
+ILLEGALE nella maggior parte delle giurisdizioni e può costituire reato.
+L'utente è l'UNICO responsabile dell'uso che ne fa. Gli autori e i
+contributori NON si assumono alcuna responsabilità per usi impropri, danni
+diretti o indiretti, o violazioni di legge derivanti dall'uso del software.
+
+Usa in modo etico. Nel dubbio, non farlo.

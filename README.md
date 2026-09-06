@@ -721,6 +721,8 @@ Termux-NexusSEC-OS/
 │   └── recon_demo.py   # script Python interattivo di esempio (modalità stream)
 ├── boot/
 │   └── start-nexussec.sh  # avvio automatico via Termux:Boot (autostart)
+├── LICENSE             # GNU Affero General Public License v3 (testo completo)
+├── COPYRIGHT           # titolarità, doppia licenza (sponsor/commerciale), avvertenze
 ├── README.md           # questo file
 ├── MANUALE.md          # manuale utente passo-passo (per utente medio)
 ├── style-backup/       # copia del look precedente (rollback estetica)
@@ -729,3 +731,38 @@ Termux-NexusSEC-OS/
     ├── manifest.json   # metadati PWA (installabile)
     └── sw.js           # service worker (HTML network-first, asset in cache)
 ```
+
+---
+
+## ⚠️ Avvertenze d'uso (leggi prima)
+
+**Termux-NexusSEC-OS raccoglie strumenti di sicurezza / penetration testing.**
+Usali **soltanto** su:
+
+- sistemi, reti e dispositivi **tuoi**, oppure
+- target per cui hai un **permesso scritto** ed esplicito del proprietario,
+- ambienti di studio **isolati e autorizzati** (lab, CTF, macchine tue).
+
+Usare questi strumenti contro sistemi di terzi **senza autorizzazione è illegale**
+nella maggior parte dei Paesi. **Sei l'unico responsabile** di ciò che fai: gli
+autori e i contributori **non** rispondono di usi impropri, danni o violazioni di
+legge. Il software è fornito **senza alcuna garanzia**. Usa in modo etico — nel
+dubbio, non farlo.
+
+---
+
+## Licenza
+
+Distribuito sotto **GNU Affero General Public License v3.0 o successiva**
+(**AGPL-3.0-or-later**) — testo completo nel file [`LICENSE`](LICENSE).
+
+In breve: puoi usarlo, studiarlo, modificarlo e ridistribuirlo; se lo distribuisci
+o lo **offri come servizio in rete**, devi rendere disponibile il **codice
+sorgente** completo (comprese le tue modifiche) sotto la stessa licenza.
+
+**Copyright © 2026 RedRider21.** Il titolare mantiene la piena titolarità
+dell'opera e può concederla anche con **licenza commerciale** separata: aziende
+o **sponsor** che vogliano integrare/distribuire il progetto senza gli obblighi
+di copyleft dell'AGPL possono richiedere una licenza commerciale (vedi
+[`COPYRIGHT`](COPYRIGHT)). I contributi esterni possono richiedere la firma di un
+**CLA** per mantenere consolidata la titolarità.

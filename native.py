@@ -1,3 +1,7 @@
+# Termux-NexusSEC-OS — ambiente di pentesting su Android (no-root)
+# Copyright (C) 2026 RedRider21
+# Software libero sotto GNU Affero General Public License v3+ (vedi LICENSE).
+# Distribuito SENZA ALCUNA GARANZIA. <https://www.gnu.org/licenses/>
 """
 native.py - Tool "nativi": funzioni che il server esegue direttamente via HTTP,
 senza proot. Interrogano servizi esterni pubblici (es. RDAP per il whois).
