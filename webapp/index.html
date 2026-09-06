@@ -701,6 +701,50 @@ const GUIDE_EN = `
   <p>"Server unreachable"? Go back to Termux and check that <code>python server.py</code> is running, then reopen <code>http://127.0.0.1:8000</code>.</p>
   <div class="tip warn">⚠️ <span class="b">Authorized testing only.</span> Use these tools solely on systems you own or have written permission for.</div>
   <p>Full manual: <a href="https://github.com/RedRider21/Termux-NexusSEC-OS/blob/master/MANUALE.md" target="_blank" rel="noopener">MANUALE.md on GitHub</a>.</p>`;
+// Pannello «Info e licenza»: mostra le note legali richieste dall'AGPL
+// (autore, copyright, licenza, assenza di garanzia, link al sorgente), bilingue.
+const REPO_URL="https://github.com/RedRider21/Termux-NexusSEC-OS";
+function showAbout(){
+  resetOverlay();
+  const en=(LANG==="en");
+  $("#ovtitle").textContent=en?"About & license":"Info e licenza";
+  const g=$("#guide");
+  g.innerHTML = en ? `
+    <h3>🛡️ Termux-NexusSEC-OS</h3>
+    <p>Android pentesting environment (no root): a PWA that drives CLI security tools inside Termux.</p>
+    <p><b>Copyright © 2026 RedRider21.</b> All rights reserved on the original work.</p>
+    <h4>License</h4>
+    <p>Released under the <b>GNU Affero General Public License v3.0 or later</b> (AGPL-3.0-or-later).
+       You may use, study, modify and redistribute it; if you distribute it or <b>offer it as a network service</b>,
+       you must make the complete <b>source code</b> (including your changes) available under the same license.</p>
+    <p>Full text: <a href="${REPO_URL}/blob/master/LICENSE" target="_blank" rel="noopener">LICENSE</a> ·
+       <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">gnu.org/licenses</a></p>
+    <p><b>Source code:</b> <a href="${REPO_URL}" target="_blank" rel="noopener">${REPO_URL}</a></p>
+    <h4>Commercial license / sponsors</h4>
+    <p>The copyright holder keeps full ownership and can also grant a separate <b>commercial license</b>
+       (to integrate/ship without AGPL copyleft). See <a href="${REPO_URL}/blob/master/COPYRIGHT" target="_blank" rel="noopener">COPYRIGHT</a>.</p>
+    <div class="tip">⚠️ <span class="b">No warranty.</span> The software is provided "as is", without any warranty.</div>
+    <div class="tip warn">⚠️ <span class="b">Authorized testing only.</span> Use these tools solely on systems you own or have written permission for. Misuse may be illegal; you are solely responsible.</div>
+  ` : `
+    <h3>🛡️ Termux-NexusSEC-OS</h3>
+    <p>Ambiente di pentesting su Android (senza root): una PWA che pilota strumenti di sicurezza a riga di comando dentro Termux.</p>
+    <p><b>Copyright © 2026 RedRider21.</b> Tutti i diritti riservati sull'opera originale.</p>
+    <h4>Licenza</h4>
+    <p>Distribuito sotto <b>GNU Affero General Public License v3.0 o successiva</b> (AGPL-3.0-or-later).
+       Puoi usarlo, studiarlo, modificarlo e ridistribuirlo; se lo distribuisci o lo <b>offri come servizio in rete</b>,
+       devi rendere disponibile il <b>codice sorgente</b> completo (comprese le tue modifiche) sotto la stessa licenza.</p>
+    <p>Testo completo: <a href="${REPO_URL}/blob/master/LICENSE" target="_blank" rel="noopener">LICENSE</a> ·
+       <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">gnu.org/licenses</a></p>
+    <p><b>Codice sorgente:</b> <a href="${REPO_URL}" target="_blank" rel="noopener">${REPO_URL}</a></p>
+    <h4>Licenza commerciale / sponsor</h4>
+    <p>Il titolare mantiene la piena proprietà e può concedere anche una <b>licenza commerciale</b> separata
+       (per integrare/distribuire senza il copyleft AGPL). Vedi <a href="${REPO_URL}/blob/master/COPYRIGHT" target="_blank" rel="noopener">COPYRIGHT</a>.</p>
+    <div class="tip">⚠️ <span class="b">Nessuna garanzia.</span> Il software è fornito "così com'è", senza alcuna garanzia.</div>
+    <div class="tip warn">⚠️ <span class="b">Solo test autorizzati.</span> Usa questi strumenti unicamente su sistemi tuoi o per cui hai un permesso scritto. L'uso improprio può essere illegale; sei l'unico responsabile.</div>
+  `;
+  g.hidden=false; overlay.classList.add("open");
+  const body=document.querySelector(".obody"); if(body) body.scrollTop=0;
+}
 function showOutput(title, text, meta){
   resetOverlay();
   $("#ovtitle").textContent=tr(title); output.hidden=false; output.textContent=text;
@@ -1449,6 +1493,7 @@ function renderStartMenu(){
   mk(t("m_detect"),async()=>{ await refreshTools(); renderStartMenu(); });
   mk(t("m_history"),()=>{ closeStart(); $("#histBtn").click(); });
   mk(t("m_guide"),()=>{ closeStart(); showGuide(); });
+  mk(t("m_about"),()=>{ closeStart(); showAbout(); });
   if(activeProfile) mk(t("m_noprof"),()=>{ closeStart(); clearProfile(); });
   // "Esci" chiude l'app: disponibile solo dentro il launcher APK (ponte NexusHost).
   if(window.NexusHost && window.NexusHost.exit)
@@ -1540,6 +1585,7 @@ const I18N = {
     m_shell:"⌨️ Shell (pannello)", m_ttyd:"▮ Terminale ttyd", m_tor_on:"🧅 Tor: ON", m_tor_off:"🧅 Tor: off",
     m_cat_on:"🧰 Catalogo: ON", m_cat_off:"🧰 Catalogo", m_detect:"↻ Rileva tool", m_history:"🕘 Storico",
     m_guide:"📖 Guida", m_noprof:"✕ Nessun profilo", m_exit:"⏻ Esci dall'app", m_language:"🌐 Lingua",
+    m_about:"ℹ️ Info e licenza",
     mm_pkg:"＋ Installa pacchetto", mm_upterm:"⟳ Aggiorna Termux", mm_upapp:"⬇ Aggiorna app",
     mm_updeb:"🐧 Aggiorna Debian", mm_kali:"🐉 Abilita repo Kali", mm_auto_on:"🚀 Abilita autostart",
     mm_auto_off:"🛑 Disabilita autostart", mm_restart:"⏻ Riavvia server",
@@ -1558,6 +1604,7 @@ const I18N = {
     m_shell:"⌨️ Shell (panel)", m_ttyd:"▮ ttyd terminal", m_tor_on:"🧅 Tor: ON", m_tor_off:"🧅 Tor: off",
     m_cat_on:"🧰 Catalog: ON", m_cat_off:"🧰 Catalog", m_detect:"↻ Detect tools", m_history:"🕘 History",
     m_guide:"📖 Guide", m_noprof:"✕ No profile", m_exit:"⏻ Quit app", m_language:"🌐 Language",
+    m_about:"ℹ️ About & license",
     mm_pkg:"＋ Install package", mm_upterm:"⟳ Update Termux", mm_upapp:"⬇ Update app",
     mm_updeb:"🐧 Update Debian", mm_kali:"🐉 Enable Kali repo", mm_auto_on:"🚀 Enable autostart",
     mm_auto_off:"🛑 Disable autostart", mm_restart:"⏻ Restart server",
