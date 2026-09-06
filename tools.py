@@ -572,7 +572,7 @@ def _n(tid, name, cat, *, reason, help=""):
 
 
 # --- Web ---------------------------------------------------------------------
-_c("ffuf", "Ffuf · fuzzing web", "Web", "termux",
+_c("ffuf", "Ffuf · fuzzing web", "Web", repo="kali",
    help="Tipo: fuzzing web. Brute force veloce di path e parametri.")
 _c("nuclei", "Nuclei · scanner vuln", "Web", repo="kali",
    help="Tipo: scanner vuln. Scansione basata su template della community.")
