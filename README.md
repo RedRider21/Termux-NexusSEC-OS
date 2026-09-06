@@ -72,7 +72,7 @@ Termux **non** è aggiornato sul Play Store: serve l'**APK ufficiale**, e quello
 adatto all'architettura del telefono. Per comodità c'è una **pagina di download**
 da aprire direttamente sul telefono:
 
-👉 **https://dplusos21.github.io/Termux-NexusSEC-OS/**
+👉 **https://redrider21.github.io/Termux-NexusSEC-OS/**
 
 Ha i pulsanti per **F-Droid** (consigliato) e per l'APK ufficiale di GitHub per ogni
 architettura — quasi tutti i telefoni sono **arm64-v8a**; se non sei sicuro,
@@ -93,7 +93,7 @@ Da un Termux appena installato, **una riga** fa tutto (aggiorna, scarica, instal
 avvia il server e apre l'app):
 
 ```bash
-pkg install -y curl && curl -fsSL https://raw.githubusercontent.com/dPlusOS21/Termux-NexusSEC-OS/master/nexussec-setup.sh | bash
+pkg install -y curl && curl -fsSL https://raw.githubusercontent.com/RedRider21/Termux-NexusSEC-OS/master/nexussec-setup.sh | bash
 ```
 
 Opzioni: `AUTOSTART=1` configura l'avvio automatico, `KALI=1` abilita il repo Kali,
@@ -113,7 +113,7 @@ server non risponde, offre **Apri Termux** / **Riprova**.
 > aperto, chiudilo e riaprilo (o `termux-reload-settings`).
 
 **Scarica l'APK** dall'ultima release:
-[**NexusSEC-x-Android.apk**](https://github.com/dPlusOS21/Termux-NexusSEC-OS/releases/latest)
+[**NexusSEC-x-Android.apk**](https://github.com/RedRider21/Termux-NexusSEC-OS/releases/latest)
 · sorgenti in [`android-launcher/`](android-launcher/). Il motore resta `server.py`
 in Termux (idealmente in autostart). Vedi anche [`MANUALE.md`](MANUALE.md).
 
@@ -129,7 +129,7 @@ termux-setup-storage
 
 # 2) Scarica il progetto da GitHub
 pkg install -y git python
-git clone https://github.com/dPlusOS21/Termux-NexusSEC-OS.git
+git clone https://github.com/RedRider21/Termux-NexusSEC-OS.git
 cd Termux-NexusSEC-OS
 
 # 3) Installa tutto: tool nativi Termux + Debian minimale con whatweb/nikto
@@ -404,7 +404,7 @@ Il progetto è pubblico su GitHub:
 
 ```bash
 pkg install -y git python
-git clone https://github.com/dPlusOS21/Termux-NexusSEC-OS.git
+git clone https://github.com/RedRider21/Termux-NexusSEC-OS.git
 cd Termux-NexusSEC-OS
 ```
 

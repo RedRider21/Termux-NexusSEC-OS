@@ -24,7 +24,7 @@ Guida semplice, passo per passo, per un utente medio. Ti serve solo un telefono
 Scegli **uno** di questi modi:
 
 - **Consigliato — pagina download del progetto:**
-  apri sul telefono → **https://dplusos21.github.io/Termux-NexusSEC-OS/**
+  apri sul telefono → **https://redrider21.github.io/Termux-NexusSEC-OS/**
   e tocca il pulsante giusto (di solito **arm64-v8a**).
 - **Oppure F-Droid:** https://f-droid.org/en/packages/com.termux/
 - **Oppure APK ufficiale GitHub:** https://github.com/termux/termux-app/releases/latest
@@ -43,11 +43,11 @@ Fa tutto da sola: aggiorna, scarica, installa, avvia il server e apre l'app.
 Scarica ~700 MB–1 GB: **meglio sotto Wi-Fi**.
 
 ```bash
-pkg install -y curl && curl -fsSL https://raw.githubusercontent.com/dPlusOS21/Termux-NexusSEC-OS/master/nexussec-setup.sh | bash
+pkg install -y curl && curl -fsSL https://raw.githubusercontent.com/RedRider21/Termux-NexusSEC-OS/master/nexussec-setup.sh | bash
 ```
 
 > Vuoi anche l'avvio automatico all'accensione? Usa:
-> `pkg install -y curl && curl -fsSL https://raw.githubusercontent.com/dPlusOS21/Termux-NexusSEC-OS/master/nexussec-setup.sh | AUTOSTART=1 bash`
+> `pkg install -y curl && curl -fsSL https://raw.githubusercontent.com/RedRider21/Termux-NexusSEC-OS/master/nexussec-setup.sh | AUTOSTART=1 bash`
 
 Quando finisce, sei già pronto: salta al **Passo 4** (l'app è su `http://127.0.0.1:8000`).
 
@@ -57,7 +57,7 @@ Quando finisce, sei già pronto: salta al **Passo 4** (l'app è su `http://127.0
 pkg update -y && pkg upgrade -y
 termux-setup-storage
 pkg install -y git python
-git clone https://github.com/dPlusOS21/Termux-NexusSEC-OS.git
+git clone https://github.com/RedRider21/Termux-NexusSEC-OS.git
 cd Termux-NexusSEC-OS
 bash install.sh
 ```

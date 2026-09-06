@@ -53,7 +53,7 @@ public class MainActivity extends Activity {
     private static final String PREFS = "nexus";
     private static final String SETUP_CMD =
             "pkg install -y curl && curl -fsSL "
-          + "https://raw.githubusercontent.com/dPlusOS21/Termux-NexusSEC-OS/master/"
+          + "https://raw.githubusercontent.com/RedRider21/Termux-NexusSEC-OS/master/"
           + "nexussec-setup.sh | bash";
     private static final String UPDATE_CMD =
             "cd ~/Termux-NexusSEC-OS && git pull && bash install.sh";

@@ -4,7 +4,7 @@
 #
 # Uso rapido (dentro Termux, una volta sola):
 #   pkg install -y curl && \
-#   curl -fsSL https://raw.githubusercontent.com/dPlusOS21/Termux-NexusSEC-OS/master/nexussec-setup.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/RedRider21/Termux-NexusSEC-OS/master/nexussec-setup.sh | bash
 #
 # Oppure, se hai già il repo:  bash nexussec-setup.sh
 #
@@ -15,7 +15,7 @@
 #
 set -e
 
-REPO_URL="https://github.com/dPlusOS21/Termux-NexusSEC-OS.git"
+REPO_URL="https://github.com/RedRider21/Termux-NexusSEC-OS.git"
 DEST="$HOME/Termux-NexusSEC-OS"
 PORT=8000
 
