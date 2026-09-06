@@ -973,6 +973,24 @@ def install_command(tool_id: str) -> list[str]:
                           f"{_APT_INSTALL} {pkg}"]
 
 
+def _with_report(body: str, title: str, count_label: str, count: int,
+                 ok_msg: str, fail_label: str) -> str:
+    """Avvolge lo script di install/rimozione profilo: mostra l'output live
+    (copiandolo in un file con `tee`) e alla fine stampa un piccolo RESOCONTO,
+    ricavando l'elenco dei falliti dai marcatori '!!' emessi da ogni blocco.
+    """
+    return (
+        'R="$HOME/.nexus-last-report.txt"; : > "$R"; '
+        '{ ' + body + ' ; } 2>&1 | tee "$R"; '
+        'echo; echo "===== RESOCONTO · ' + title + ' ====="; '
+        f'echo "{count_label}: {count}"; '
+        'if grep -q "!!" "$R" 2>/dev/null; then '
+        f'echo "{fail_label}:"; grep "!!" "$R" | sed "s/^!! //"; '
+        'else echo "' + ok_msg + '"; fi; '
+        'rm -f "$R"'
+    )
+
+
 def install_profile_command(key: str, skip: set | None = None) -> list[str]:
     """argv (bash -lc) che installa i tool MANCANTI di un profilo, in blocchi
     per runtime (Termux / pip / Debian). `skip` = id gia' installati da saltare.
@@ -1029,7 +1047,15 @@ def install_profile_command(key: str, skip: set | None = None) -> list[str]:
         parts.append('echo "== nel Debian (proot) =="; '
                      "proot-distro login debian -- bash -lc '" + inner + "'")
 
-    script = " ; ".join(parts) if parts else 'echo "Niente da installare: tutto gia\' presente."'
+    if not parts:
+        return ["bash", "-lc",
+                'echo "Profilo ' + prof["name"] + ': niente da installare, tutto gia presente. 🎉"']
+    attempted = len(set(termux) | set(pip) | set(debian))
+    script = _with_report(
+        " ; ".join(parts), "Installazione profilo " + prof["name"],
+        "Pacchetti elaborati", attempted,
+        "✓ Tutti i pacchetti del profilo sono stati installati.",
+        "⚠ NON installati (riprova il profilo o installali dal catalogo 🧰)")
     return ["bash", "-lc", script]
 
 
@@ -1105,8 +1131,15 @@ def uninstall_profile_command(key: str) -> list[str]:
         parts.append('echo "== rimuovo (Debian/proot) =="; '
                      "proot-distro login debian -- bash -lc '" + inner + "'")
 
-    script = (" ; ".join(parts) if parts
-              else 'echo "Niente da rimuovere: solo tool di base o condivisi con altri profili."')
+    if not parts:
+        return ["bash", "-lc",
+                'echo "Niente da rimuovere: solo tool di base o condivisi con altri profili."']
+    removable = len(set(termux) | set(pip) | set(debian))
+    script = _with_report(
+        " ; ".join(parts), "Rimozione profilo " + prof["name"],
+        "Pacchetti considerati", removable,
+        "✓ Rimozione completata (dipendenze inutili liberate).",
+        "⚠ NON rimossi")
     return ["bash", "-lc", script]
 
 
