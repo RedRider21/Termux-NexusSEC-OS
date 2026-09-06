@@ -1241,23 +1241,27 @@ def system_command(action: str, lang: str = "it") -> list[str]:
         return ["bash", "-lc", "pkg update -y && pkg upgrade -y"]
     if action == "update-app":
         repo = str(Path(__file__).parent)
-        # Deploy di sola lettura: prova il fast-forward, altrimenti allinea con
-        # reset --hard a origin/master (cronologia divergente o modifiche locali).
-        # Robusto + diagnostico: registra la dir come "safe" (in Termux git può
-        # dare "detected dubious ownership") e stampa l'errore VERO se qualcosa
-        # fallisce, così si capisce subito perché l'aggiornamento non riesce.
+        # Deploy di sola lettura: allinea SEMPRE e in modo pulito a origin/master
+        # con `git reset --hard` (un solo esito possibile → un solo messaggio, e
+        # uscita 0 al successo). Prima si tentava `merge --ff-only` e SOLO in caso
+        # di fallimento si faceva reset: ma con permessi file diversi/modifiche
+        # locali l'ff-only falliva al PRIMO giro, mostrando un messaggio ambiguo
+        # ("modifiche locali…") che sembrava un errore; al secondo giro, ormai
+        # allineato, l'ff-only passava e sembrava "ok". Ora è deterministico.
+        # safe.directory: in Termux git può dare "detected dubious ownership".
         lines = [
             f'cd "{repo}" || exit 1',
             f'git config --global --add safe.directory "{repo}" 2>/dev/null || true',
-            'echo "== git fetch origin =="',
+            'echo "' + _L(lang, "== controllo aggiornamenti ==", "== checking for updates ==") + '"',
+            'B=$(git rev-parse --short HEAD 2>/dev/null)',
             'git fetch origin || { echo "' + _L(lang, "!! FETCH FALLITO — controlla la rete",
                                                        "!! FETCH FAILED — check the network") + '"; exit 1; }',
-            'if git merge --ff-only origin/master 2>/dev/null; then '
-            'echo "' + _L(lang, "OK: aggiornato in fast-forward", "OK: updated (fast-forward)") + '"; '
-            'else echo "' + _L(lang, "Cronologia divergente o modifiche locali: allineo a origin/master…",
-                                     "Diverged history or local changes: aligning to origin/master…") + '"; '
-            'git reset --hard origin/master || { echo "' + _L(lang, "!! RESET FALLITO", "!! RESET FAILED") + '"; exit 1; }; '
-            'echo "' + _L(lang, "OK: allineato a origin/master", "OK: aligned to origin/master") + '"; fi',
+            'git reset --hard origin/master || { echo "' + _L(lang, "!! AGGIORNAMENTO NON RIUSCITO",
+                                                                     "!! UPDATE FAILED") + '"; exit 1; }',
+            'A=$(git rev-parse --short HEAD 2>/dev/null)',
+            'if [ "$B" = "$A" ]; then echo "' + _L(lang, "OK: già all'ultima versione (niente da aggiornare).",
+                                                          "OK: already up to date (nothing to update).") + '"; '
+            'else echo "' + _L(lang, "OK: aggiornato ($B → $A).", "OK: updated ($B → $A).") + '"; fi',
             'echo "' + _L(lang, "== versione ora installata ==", "== version now installed ==") + '"',
             'git log --oneline -1',
         ]
