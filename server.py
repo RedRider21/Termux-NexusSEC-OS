@@ -547,7 +547,7 @@ def health():
 # Stato aggiornamenti: quanti commit è indietro il repo locale rispetto a
 # origin. Il risultato è in cache (evita un `git fetch` a ogni apertura).
 _UPDATE_CACHE: dict = {"ts": 0.0, "data": None}
-_UPDATE_TTL = 1800  # 30 minuti
+_UPDATE_TTL = 600  # 10 minuti (più reattivo nel mostrare il pallino aggiornamenti)
 
 
 def _compute_update() -> dict:
@@ -555,8 +555,12 @@ def _compute_update() -> dict:
     data = {"ok": False, "behind": 0, "current": None, "remote": None}
 
     def git(*a, t=8):
-        return subprocess.run(["git", "-C", repo, *a],
-                              capture_output=True, text=True, timeout=t)
+        # safe.directory: in Termux git può rifiutare il repo per "dubious
+        # ownership" e far fallire in silenzio il controllo -> niente pallino.
+        return subprocess.run(
+            ["git", "-c", f"safe.directory={repo}", "-c", "safe.directory=*",
+             "-C", repo, *a],
+            capture_output=True, text=True, timeout=t)
     try:
         git("fetch", "--quiet", "origin", t=12)   # aggiorna origin/* (se online)
         cur = git("rev-parse", "--short", "HEAD")
