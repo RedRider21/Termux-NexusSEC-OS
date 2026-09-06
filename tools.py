@@ -1209,9 +1209,16 @@ def system_command(action: str) -> list[str]:
     if action == "enable-kali":
         # Abilita (una volta sola) il repo Kali dentro il Debian in proot, cosi'
         # diventano installabili i pacchetti di sicurezza di Kali. Stesso metodo
-        # robusto (chiave ufficiale + signed-by) usato dagli installer dei tool.
+        # robusto (chiave ufficiale + signed-by, fallback trusted=yes) usato dagli
+        # installer dei tool. Alla fine VERIFICA da solo se il repo e' davvero
+        # attivo (senza far digitare nulla all'utente).
         return list(PROOT) + ["bash", "-lc",
-                              _KALI_ENABLE_INNER + '; echo "== Repo Kali abilitato =="']
+            _KALI_ENABLE_INNER + '; echo; echo "===== VERIFICA REPO KALI ====="; '
+            'if apt-cache policy ffuf 2>/dev/null | grep -qE "Candidate:[[:space:]]*[0-9]"; then '
+            'echo "✓ Repo Kali ATTIVO — i tool Kali (ffuf, wpscan, ...) ora si installano."; '
+            'else echo "⚠ Repo Kali NON attivo: apt non vede ancora i pacchetti Kali."; '
+            'echo "  Ultime righe di apt-get update qui sotto:"; '
+            'apt-get update 2>&1 | tail -6; fi']
     if action == "setup-autostart":
         repo = str(Path(__file__).parent)
         return ["bash", "-lc",
