@@ -911,12 +911,22 @@ _TERMUX_EXTRA_REPOS = "root-repo tur-repo"
 _PROOT_APT_PREP = (
     'mkdir -p /usr/sbin && printf "#!/bin/sh\\nexit 101\\n" > /usr/sbin/policy-rc.d '
     '&& chmod +x /usr/sbin/policy-rc.d; '
+    'export DEBIAN_FRONTEND=noninteractive; '
     # Recupera un dpkg lasciato a metà da un'installazione interrotta ("dpkg was
     # interrupted, you must manually run dpkg --configure -a"): senza questo, OGNI
     # apt-get install successivo fallisce subito. policy-rc.d (sopra) evita che la
     # riconfigurazione provi ad avviare servizi. Poi -f install sistema le rotture.
-    'DEBIAN_FRONTEND=noninteractive dpkg --configure -a 2>/dev/null || true; '
-    'DEBIAN_FRONTEND=noninteractive apt-get install -f -y 2>/dev/null || true; '
+    'dpkg --configure -a 2>/dev/null || true; '
+    'apt-get install -f -y 2>/dev/null || true; '
+    # Se restano pacchetti in stato ROTTO (Unpacked/half-conFigured/Half-installed
+    # — tipico: il database di metasploit che non si configura in proot), questi
+    # BLOCCANO ogni apt install successivo. Li rimuovo per ripristinare uno stato
+    # pulito (awk: 2° char dello stato dpkg in U/F/H; \\$ così arriva ad awk, non
+    # viene espanso dalla shell). È mirato: i pacchetti sani (ii) non si toccano.
+    'B=$(dpkg -l 2>/dev/null | awk "substr(\\$1,2,1) ~ /[UFH]/ {print \\$2}"); '
+    '[ -n "$B" ] && { echo "Rimuovo pacchetti rotti che bloccano apt: $B"; '
+    'apt-get purge -y $B 2>/dev/null || dpkg --remove --force-all $B 2>/dev/null || true; '
+    'dpkg --configure -a 2>/dev/null || true; }; '
 )
 
 # apt in proot: niente Recommends (installazioni più leggere, non trascina
