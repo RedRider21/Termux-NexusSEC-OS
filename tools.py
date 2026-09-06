@@ -708,8 +708,8 @@ _c("netexec", "NetExec (nxc)", "Exploitation", repo="kali", binn="nxc",
    pkg="netexec", help="Tipo: AD. Esecuzione/enum su reti Windows (ex-CrackMapExec).")
 _c("evil_winrm", "Evil-WinRM", "Exploitation", repo="kali", binn="evil-winrm",
    help="Tipo: post-exploit. Shell WinRM verso host Windows.")
-_c("bloodhound_py", "BloodHound.py", "Exploitation", "termux", pip=True,
-   pkg="bloodhound", binn="bloodhound-python",
+_c("bloodhound_py", "BloodHound.py", "Exploitation", repo="kali",
+   pkg="bloodhound.py", binn="bloodhound-python",
    help="Tipo: AD. Raccoglie dati di Active Directory per BloodHound.")
 _c("smbmap", "SMBMap", "Exploitation", repo="kali",
    help="Tipo: enum SMB. Enumera share e permessi SMB.")
@@ -948,7 +948,9 @@ def install_command(tool_id: str) -> list[str]:
         raise ValueError("Questo elemento non richiede installazione.")
     pkg = _pkg_of(tool_id, t)
     if t.get("pip"):
-        return ["pip", "install", pkg]
+        # --prefer-binary: usa i wheel pre-compilati quando esistono, evitando
+        # build da sorgente che su Termux spesso falliscono.
+        return ["pip", "install", "--prefer-binary", pkg]
     if t.get("runtime") == "termux":
         return ["bash", "-lc",
                 f"pkg install -y {pkg} || "
@@ -1000,7 +1002,7 @@ def install_profile_command(key: str, skip: set | None = None) -> list[str]:
         pkgs = " ".join(sorted(set(pip)))
         parts.append(
             'echo "== tool Python (pip) =="; '
-            f'F=""; for p in {pkgs}; do pip install "$p" || F="$F $p"; done; '
+            f'F=""; for p in {pkgs}; do pip install --prefer-binary "$p" || F="$F $p"; done; '
             '[ -n "$F" ] && echo "!! pip non installati:$F" || echo "pip: ok"')
     if debian:
         pkgs = " ".join(sorted(set(debian)))
