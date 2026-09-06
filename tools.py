@@ -845,10 +845,13 @@ PROFILES: dict[str, dict] = {
     "web": {
         "name": "Web", "icon": "🕸️",
         "desc": "Sicurezza di siti e applicazioni web.",
+        # beef_xss escluso dal set di default: è molto pesante (Ruby+Node.js+gem
+        # compilate) e poco pratico su telefono. Resta nel catalogo, installabile
+        # singolarmente da chi lo vuole davvero.
         "tools": ["whatweb", "nikto", "wafw00f", "wfuzz", "sqlmap", "gobuster",
                   "dirb", "ffuf", "nuclei", "feroxbuster", "wapiti", "joomscan",
                   "sslscan", "dalfox", "wpscan", "commix", "weevely", "mitmproxy",
-                  "cewl", "httrack", "beef_xss"],
+                  "cewl", "httrack"],
     },
     "osint": {
         "name": "OSINT", "icon": "🔎",
