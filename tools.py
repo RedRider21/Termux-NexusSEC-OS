@@ -1068,23 +1068,28 @@ def uninstall_profile_command(key: str) -> list[str]:
         else:
             debian.append(pkg)
 
+    # Rimozione: si tenta SOLO su ciò che è davvero installato (dpkg/pip show);
+    # un pacchetto non installato non è un errore (non c'è nulla da togliere),
+    # così non compare più nel falso elenco "non rimossi".
     parts = []
     if termux:
         pkgs = " ".join(sorted(set(termux)))
         parts.append('echo "== rimuovo (Termux) =="; F=""; '
-                     f'for p in {pkgs}; do pkg uninstall -y "$p" || F="$F $p"; done; '
+                     f'for p in {pkgs}; do dpkg -s "$p" >/dev/null 2>&1 || continue; '
+                     'pkg uninstall -y "$p" || F="$F $p"; done; '
                      '[ -n "$F" ] && echo "!! non rimossi:$F" || echo "Termux: ok"')
     if pip:
         pkgs = " ".join(sorted(set(pip)))
         parts.append('echo "== rimuovo (pip) =="; F=""; '
-                     f'for p in {pkgs}; do pip uninstall -y "$p" || F="$F $p"; done; '
+                     f'for p in {pkgs}; do pip show "$p" >/dev/null 2>&1 || continue; '
+                     'pip uninstall -y "$p" || F="$F $p"; done; '
                      '[ -n "$F" ] && echo "!! non rimossi:$F" || echo "pip: ok"')
     if debian:
         pkgs = " ".join(sorted(set(debian)))
         inner = ('F=""; '
-                 f'for p in {pkgs}; do DEBIAN_FRONTEND=noninteractive '
-                 'apt-get remove -y "$p" || F="$F $p"; done; '
-                 'DEBIAN_FRONTEND=noninteractive apt-get autoremove -y; '
+                 f'for p in {pkgs}; do dpkg -s "$p" >/dev/null 2>&1 || continue; '
+                 'DEBIAN_FRONTEND=noninteractive apt-get remove -y "$p" || F="$F $p"; done; '
+                 'DEBIAN_FRONTEND=noninteractive apt-get autoremove -y || true; '
                  '[ -n "$F" ] && echo "!! non rimossi:$F" || echo "Debian: ok"')
         parts.append('echo "== rimuovo (Debian/proot) =="; '
                      "proot-distro login debian -- bash -lc '" + inner + "'")
