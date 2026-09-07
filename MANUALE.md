@@ -119,8 +119,9 @@ Questa è l'interfaccia (una web-app). Da qui in poi comandi da qui.
 
 <table>
 <tr>
-<td align="center" width="50%"><img src="docs/screens/25-wizard-pannello.png" width="200"><br><sub><b>1.</b> Pannello Wizard aperto</sub></td>
-<td align="center" width="50%"><img src="docs/screens/26-wizard-lancio.png" width="200"><br><sub><b>2.</b> Bersaglio + avvio sequenza</sub></td>
+<td align="center" width="33%"><img src="docs/screens/25-wizard-pannello.png" width="180"><br><sub><b>1.</b> Pannello (＋ Nuovo / Duplica)</sub></td>
+<td align="center" width="33%"><img src="docs/screens/26-wizard-lancio.png" width="180"><br><sub><b>2.</b> Bersaglio + avvio sequenza</sub></td>
+<td align="center" width="33%"><img src="docs/screens/27-wizard-editor.png" width="180"><br><sub><b>3.</b> Editor: crea il tuo wizard</sub></td>
 </tr>
 </table>
 

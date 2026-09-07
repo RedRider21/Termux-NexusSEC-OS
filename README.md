@@ -271,8 +271,9 @@ tutto schermo** e **a tema**.
 
 <table>
 <tr>
-<td align="center" width="50%"><img src="docs/screens/25-wizard-pannello.png" width="230"><br><sub><b>Pannello aperto</b> — un wizard per profilo, con icona e anteprima dei passi</sub></td>
-<td align="center" width="50%"><img src="docs/screens/26-wizard-lancio.png" width="230"><br><sub><b>Lancio</b> — inserisci il bersaglio e parte la sequenza (output live, ■ Stop)</sub></td>
+<td align="center" width="33%"><img src="docs/screens/25-wizard-pannello.png" width="210"><br><sub><b>Pannello</b> — un wizard per profilo (＋ Nuovo, Duplica)</sub></td>
+<td align="center" width="33%"><img src="docs/screens/26-wizard-lancio.png" width="210"><br><sub><b>Lancio</b> — bersaglio → sequenza live (■ Stop)</sub></td>
+<td align="center" width="33%"><img src="docs/screens/27-wizard-editor.png" width="210"><br><sub><b>Editor</b> — crea il tuo: programma + parametri</sub></td>
 </tr>
 </table>
 
