@@ -134,8 +134,23 @@
     border-radius:8px; padding:8px 10px}
   .wizerr{color:var(--red); font-size:11.5px; min-height:14px}
   .wizgo{background:var(--fg); color:var(--on-accent); border:none; border-radius:12px; padding:13px;
-    font-family:inherit; font-size:15px; font-weight:800; cursor:pointer}
+    font-family:inherit; font-size:15px; font-weight:800; cursor:pointer; width:100%}
   .wizgo:active{transform:scale(.98)}
+  /* editor */
+  .wizsel{width:100%; background:var(--card2); color:var(--text); border:1px solid var(--line);
+    border-radius:10px; padding:10px 11px; font-family:inherit; font-size:13.5px}
+  .wizacts{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap}
+  .wizact{background:var(--card2); color:var(--fg); border:1px solid var(--line); border-radius:8px;
+    padding:6px 9px; font-family:inherit; font-size:11px; cursor:pointer}
+  .wizact:active{transform:scale(.95)}
+  .wizact.del, .wizback.del{color:var(--red); border-color:var(--red-bd)}
+  .wizcard .nm .badge{font-size:9px; padding:1px 5px; border:1px solid var(--fg-dim); border-radius:6px;
+    color:var(--fg-dim); vertical-align:middle}
+  .wizstep{border:1px solid var(--line); border-radius:12px; padding:10px; margin-bottom:10px; background:var(--card2)}
+  .wizstep-h{display:flex; align-items:center; font-weight:800; color:var(--white); font-size:13px}
+  .wizstep-ctr{margin-left:auto; display:flex; gap:6px}
+  .wizadv{margin-top:8px; border-top:1px dashed var(--line); padding-top:6px}
+  .wizadv summary{cursor:pointer; font-size:11.5px; color:var(--fg-dim); user-select:none}
   .brand b{color:var(--white)}
   .grow{flex:1}
   .iconbtn{
@@ -1701,19 +1716,179 @@ async function loadWizards(){
 async function renderWizList(){
   const body=$("#wizBody"); body.innerHTML="";
   const list=await loadWizards();
+  const nw=document.createElement("button"); nw.className="wizgo"; nw.style.marginBottom="12px";
+  nw.textContent="＋ "+t("wiz_new"); nw.onclick=()=>renderWizEditor(null);
+  body.appendChild(nw);
   const grid=document.createElement("div"); grid.className="wizgrid";
-  if(!list.length){ body.innerHTML='<div class="empty">'+t("wiz_none")+'</div>'; return; }
   list.forEach(w=>{
-    const c=document.createElement("button"); c.className="wizcard";
+    const c=document.createElement("div"); c.className="wizcard";
+    const acts = w.builtin
+      ? `<button class="wizact" data-a="dup">⧉ ${t("wiz_dup")}</button>`
+      : `<button class="wizact" data-a="edit">✎ ${t("wiz_edit")}</button>`
+        +`<button class="wizact del" data-a="del">🗑 ${t("wiz_del")}</button>`;
     c.innerHTML=`<span class="ic">${w.icon}</span>`
-      +`<span class="nm">${escapeHtml(w.name)}</span>`
+      +`<span class="nm">${escapeHtml(w.name)}${w.builtin?'':' <span class="badge">'+t("wiz_mine")+'</span>'}</span>`
       +`<span class="ds">${escapeHtml(w.desc)}</span>`
-      +`<span class="st">${w.steps.length} ${t("wiz_steps")}</span>`;
+      +`<span class="st">${w.steps.length} ${t("wiz_steps")}</span>`
+      +`<span class="wizacts">${acts}</span>`;
     c.onclick=()=>renderWizDetail(w);
+    c.querySelectorAll(".wizact").forEach(b=>{ b.onclick=async(e)=>{
+      e.stopPropagation();
+      const a=b.dataset.a;
+      if(a==="del"){ if(!confirm(t("wiz_del_q")+" “"+w.name+"”?")) return;
+        try{ await fetch("/api/wizard/"+encodeURIComponent(w.id),{method:"DELETE"}); }catch{}
+        WIZARDS=null; toast("Wizard eliminato"); renderWizList(); return; }
+      // edit / dup: carico la definizione editabile dal server
+      try{ const d=await (await fetch("/api/wizard/"+encodeURIComponent(w.id)+"/def?lang="+LANG)).json();
+        if(a==="dup") d.id="";           // duplica -> nuovo
+        renderWizEditor(d);
+      }catch{ toast("Errore nel caricare il wizard"); }
+    }; });
     grid.appendChild(c);
   });
   body.appendChild(grid);
 }
+
+/* ---- Editor wizard (Fase 2): titolo, tipo input, icona, passi (programma+parametri) ---- */
+const WIZ_ICONS=["🧙","🛠️","🧭","📦","🚀","🎛️","🔧","🧨","🛰️","🔬","🕸️","🎯","🔎","🧪","🧩","⚡"];
+function wizProgramOptions(){
+  // Programmi selezionabili: tool con binario e runtime noti (così il passo eredita
+  // runtime e "needs" corretti -> niente falso "non installato").
+  return allTools().filter(t=>t.bin && (t.runtime==="termux"||t.runtime==="proot"))
+    .map(t=>({id:t.id, name:t.name, bin:t.bin, runtime:t.runtime}))
+    .sort((a,b)=>a.name.localeCompare(b.name));
+}
+function renderWizEditor(def){
+  const body=$("#wizBody"); body.innerHTML="";
+  const editing = def && def.id;
+  const model = def ? JSON.parse(JSON.stringify(def)) : {id:"",icon:"🧙",name:"",desc:"",input:{type:"host"},steps:[]};
+  if(!model.steps.length) model.steps.push({title:"",run:"",runtime:"termux",needs:"",produce:{},skip_if_empty:[]});
+  const progs=wizProgramOptions();
+
+  const wrap=document.createElement("div"); wrap.className="wizdet";
+  const back=document.createElement("button"); back.className="wizback";
+  back.textContent="‹ "+t("wiz_back"); back.onclick=renderWizList; wrap.appendChild(back);
+  const h=document.createElement("div"); h.className="top";
+  h.innerHTML=`<div><div class="nm">${editing?"✎ "+t("wiz_edit_t"):"＋ "+t("wiz_new")}</div>`
+    +`<div class="ds">${t("wiz_editor_help")}</div></div>`;
+  wrap.appendChild(h);
+
+  const form=document.createElement("div"); form.className="wizform";
+  // titolo
+  form.appendChild(mkLabel(t("wiz_f_name")));
+  const inName=mkInput(model.name, t("wiz_f_name_ph")); inName.oninput=()=>model.name=inName.value; form.appendChild(inName);
+  // descrizione
+  form.appendChild(mkLabel(t("wiz_f_desc")));
+  const inDesc=mkInput(model.desc, ""); inDesc.oninput=()=>model.desc=inDesc.value; form.appendChild(inDesc);
+  // icona + tipo input (riga)
+  const row=document.createElement("div"); row.style.cssText="display:flex;gap:8px;flex-wrap:wrap";
+  const icBox=document.createElement("div"); icBox.style.flex="1";
+  icBox.appendChild(mkLabel(t("wiz_f_icon")));
+  const icSel=document.createElement("select"); icSel.className="wizsel";
+  WIZ_ICONS.forEach(e=>{ const o=document.createElement("option"); o.value=e; o.textContent=e; icSel.appendChild(o); });
+  icSel.value=model.icon||"🧙"; icSel.onchange=()=>model.icon=icSel.value; icBox.appendChild(icSel);
+  const tyBox=document.createElement("div"); tyBox.style.flex="2";
+  tyBox.appendChild(mkLabel(t("wiz_f_type")));
+  const tySel=document.createElement("select"); tySel.className="wizsel";
+  [["host",t("wiz_ty_host")],["url",t("wiz_ty_url")],["path",t("wiz_ty_path")]].forEach(([v,l])=>{
+    const o=document.createElement("option"); o.value=v; o.textContent=l; tySel.appendChild(o); });
+  tySel.value=model.input.type||"host"; tySel.onchange=()=>model.input.type=tySel.value; tyBox.appendChild(tySel);
+  row.appendChild(icBox); row.appendChild(tyBox); form.appendChild(row);
+  wrap.appendChild(form);
+
+  // passi
+  const stepsCat=document.createElement("div"); stepsCat.className="sm-cat"; stepsCat.textContent=t("wiz_f_steps"); wrap.appendChild(stepsCat);
+  const stepsBox=document.createElement("div"); wrap.appendChild(stepsBox);
+  function renderSteps(){
+    stepsBox.innerHTML="";
+    model.steps.forEach((st,i)=>stepsBox.appendChild(mkStepRow(st,i)));
+  }
+  function mkStepRow(st,i){
+    const d=document.createElement("div"); d.className="wizstep";
+    const hd=document.createElement("div"); hd.className="wizstep-h";
+    hd.innerHTML=`<span>${i+1}.</span>`;
+    const ctr=document.createElement("span"); ctr.className="wizstep-ctr";
+    const up=mkMini("↑",()=>{ if(i>0){ [model.steps[i-1],model.steps[i]]=[model.steps[i],model.steps[i-1]]; renderSteps(); } });
+    const dn=mkMini("↓",()=>{ if(i<model.steps.length-1){ [model.steps[i+1],model.steps[i]]=[model.steps[i],model.steps[i+1]]; renderSteps(); } });
+    const rm=mkMini("✕",()=>{ model.steps.splice(i,1); if(!model.steps.length) model.steps.push({title:"",run:"",runtime:"termux",needs:"",produce:{},skip_if_empty:[]}); renderSteps(); });
+    rm.classList.add("del"); ctr.append(up,dn,rm); hd.appendChild(ctr); d.appendChild(hd);
+    // programma
+    d.appendChild(mkLabel(t("wiz_s_prog")));
+    const pSel=document.createElement("select"); pSel.className="wizsel";
+    const o0=document.createElement("option"); o0.value=""; o0.textContent="— "+t("wiz_s_free")+" —"; pSel.appendChild(o0);
+    progs.forEach(p=>{ const o=document.createElement("option"); o.value=p.id; o.textContent=p.name+" ["+p.runtime+"]"; pSel.appendChild(o); });
+    d.appendChild(pSel);
+    // comando
+    d.appendChild(mkLabel(t("wiz_s_cmd")));
+    const cmd=mkInput(st.run, "es. nmap -sV {target}"); cmd.oninput=()=>st.run=cmd.value; d.appendChild(cmd);
+    // riga runtime + inserisci {target}
+    const r2=document.createElement("div"); r2.style.cssText="display:flex;gap:8px;align-items:center;margin-top:6px";
+    const rt=document.createElement("select"); rt.className="wizsel"; rt.style.flex="1";
+    [["termux","Termux"],["proot","proot/Kali"]].forEach(([v,l])=>{ const o=document.createElement("option"); o.value=v; o.textContent=l; rt.appendChild(o); });
+    rt.value=st.runtime||"termux"; rt.onchange=()=>st.runtime=rt.value; r2.appendChild(rt);
+    const insT=mkMini("{target}",()=>{ st.run=(st.run||"")+ (st.run&&!st.run.endsWith(" ")?" ":"") +"{target}"; cmd.value=st.run; cmd.focus(); });
+    insT.style.width="auto"; insT.style.padding="0 10px"; r2.appendChild(insT);
+    d.appendChild(r2);
+    // quando scelgo un programma: prefill comando (se vuoto) + runtime + needs
+    pSel.onchange=()=>{
+      const p=progs.find(x=>x.id===pSel.value);
+      if(!p){ st.needs=""; return; }
+      st.needs=p.bin; st.runtime=p.runtime; rt.value=p.runtime;
+      if(!st.run.trim()){ st.run=p.bin+" {target}"; cmd.value=st.run; }
+    };
+    if(st.needs){ const found=progs.find(x=>x.bin===st.needs); if(found) pSel.value=found.id; }
+    // avanzate: estrai variabile + salta se vuoto
+    const det=document.createElement("details"); det.className="wizadv";
+    const sum=document.createElement("summary"); sum.textContent=t("wiz_s_adv"); det.appendChild(sum);
+    det.appendChild(mkLabel(t("wiz_s_prod")));
+    const pk=Object.keys(st.produce||{})[0]||"";
+    const pv=pk?st.produce[pk].regex:"";
+    const rr=document.createElement("div"); rr.style.cssText="display:flex;gap:8px";
+    const vN=mkInput(pk,"nome (es. ports)"); vN.style.flex="1";
+    const vR=mkInput(pv,"regex (gruppo 1)"); vR.style.flex="2";
+    const syncProd=()=>{ const nm=(vN.value||"").trim(), rx=vR.value||""; st.produce = (nm&&rx)?{[nm]:{regex:rx,join:","}}:{}; };
+    vN.oninput=syncProd; vR.oninput=syncProd; rr.append(vN,vR); det.appendChild(rr);
+    det.appendChild(mkLabel(t("wiz_s_skip")));
+    const sk=mkInput((st.skip_if_empty||[]).join(","),"es. ports"); sk.oninput=()=>st.skip_if_empty=(sk.value||"").split(",").map(x=>x.trim()).filter(Boolean); det.appendChild(sk);
+    d.appendChild(det);
+    return d;
+  }
+  renderSteps();
+  const addb=document.createElement("button"); addb.className="wizback"; addb.style.marginTop="8px";
+  addb.textContent="＋ "+t("wiz_s_add"); addb.onclick=()=>{ model.steps.push({title:"",run:"",runtime:"termux",needs:"",produce:{},skip_if_empty:[]}); renderSteps(); };
+  wrap.appendChild(addb);
+
+  // errore + azioni
+  const err=document.createElement("div"); err.className="wizerr"; err.style.marginTop="8px"; wrap.appendChild(err);
+  const go=document.createElement("button"); go.className="wizgo"; go.style.marginTop="4px"; go.textContent="💾 "+t("wiz_save");
+  go.onclick=async()=>{
+    if(!model.name.trim()){ err.textContent=t("wiz_name_req"); return; }
+    // titolo passo di default = primo token del comando
+    model.steps.forEach(s=>{ if(!s.title||!s.title.trim()) s.title=(s.run||"").trim().split(/\s+/)[0]||"passo"; });
+    err.textContent="";
+    try{
+      const r=await fetch("/api/wizards",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(model)});
+      const dd=await r.json();
+      if(!r.ok) throw new Error(dd.detail||"errore");
+      WIZARDS=null; toast(t("wiz_saved")); renderWizList();
+    }catch(e){ err.textContent=t("wiz_save_err")+" "+(e.message||""); }
+  };
+  wrap.appendChild(go);
+  if(editing && !def.builtin){
+    const del=document.createElement("button"); del.className="wizback del"; del.style.marginTop="8px"; del.style.width="100%";
+    del.textContent="🗑 "+t("wiz_del"); del.onclick=async()=>{
+      if(!confirm(t("wiz_del_q")+" “"+model.name+"”?")) return;
+      try{ await fetch("/api/wizard/"+encodeURIComponent(model.id),{method:"DELETE"}); WIZARDS=null; toast("Wizard eliminato"); renderWizList(); }catch{ toast("Errore"); }
+    };
+    wrap.appendChild(del);
+  }
+  body.appendChild(wrap);
+}
+function mkLabel(txt){ const l=document.createElement("label"); l.textContent=txt; l.style.cssText="font-size:12px;color:var(--fg-dim);margin-top:8px;display:block"; return l; }
+function mkInput(val,ph){ const i=document.createElement("input"); i.value=val||""; i.placeholder=ph||""; i.autocapitalize="off"; i.autocorrect="off"; i.spellcheck=false;
+  i.style.cssText="width:100%;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 11px;font-family:inherit;font-size:13.5px"; return i; }
+function mkMini(txt,fn){ const b=document.createElement("button"); b.textContent=txt; b.onclick=fn;
+  b.style.cssText="background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:8px;width:30px;height:30px;font-family:inherit;font-size:13px;cursor:pointer"; return b; }
 function renderWizDetail(w){
   const body=$("#wizBody"); body.innerHTML="";
   const wrap=document.createElement("div"); wrap.className="wizdet";
@@ -1792,6 +1967,15 @@ const I18N = {
     wiz_run:"Avvia sequenza", wiz_ph_host:"es. scanme.nmap.org oppure 192.168.1.10",
     wiz_ph_path:"es. /sdcard/Download/file.bin", wiz_need_target:"Inserisci un valore.",
     wiz_bad_target:"Non può iniziare con «-».",
+    wiz_new:"Nuovo wizard", wiz_edit:"Modifica", wiz_del:"Elimina", wiz_dup:"Duplica",
+    wiz_mine:"mio", wiz_del_q:"Eliminare", wiz_edit_t:"Modifica wizard",
+    wiz_editor_help:"Dai un titolo, scegli il tipo di bersaglio e componi i passi (programma + parametri). Usa {target} e le variabili estratte.",
+    wiz_f_name:"Titolo", wiz_f_name_ph:"es. Il mio recon web", wiz_f_desc:"Descrizione (opzionale)",
+    wiz_f_icon:"Icona", wiz_f_type:"Tipo bersaglio", wiz_ty_host:"Host / IP / dominio", wiz_ty_url:"URL", wiz_ty_path:"Percorso file",
+    wiz_f_steps:"PASSI", wiz_s_prog:"Programma", wiz_s_free:"Comando libero", wiz_s_cmd:"Comando",
+    wiz_s_add:"Aggiungi passo", wiz_s_adv:"Avanzate (estrai variabile / salta)",
+    wiz_s_prod:"Estrai variabile dall'output (nome + regex, gruppo 1)", wiz_s_skip:"Salta il passo se queste variabili sono vuote (separate da virgola)",
+    wiz_save:"Salva wizard", wiz_saved:"Wizard salvato", wiz_save_err:"Salvataggio non riuscito:", wiz_name_req:"Inserisci un titolo.",
     tb_term:"Terminale (shell)", st_offline:"server non raggiungibile — avvia python server.py",
     st_tools:"tool installati", st_catalog:"nel catalogo", st_profiles:"profili (▤)",
   },
@@ -1817,6 +2001,15 @@ const I18N = {
     wiz_run:"Run sequence", wiz_ph_host:"e.g. scanme.nmap.org or 192.168.1.10",
     wiz_ph_path:"e.g. /sdcard/Download/file.bin", wiz_need_target:"Enter a value.",
     wiz_bad_target:"Cannot start with “-”.",
+    wiz_new:"New wizard", wiz_edit:"Edit", wiz_del:"Delete", wiz_dup:"Duplicate",
+    wiz_mine:"mine", wiz_del_q:"Delete", wiz_edit_t:"Edit wizard",
+    wiz_editor_help:"Give it a title, pick the target type and compose steps (program + parameters). Use {target} and the extracted variables.",
+    wiz_f_name:"Title", wiz_f_name_ph:"e.g. My web recon", wiz_f_desc:"Description (optional)",
+    wiz_f_icon:"Icon", wiz_f_type:"Target type", wiz_ty_host:"Host / IP / domain", wiz_ty_url:"URL", wiz_ty_path:"File path",
+    wiz_f_steps:"STEPS", wiz_s_prog:"Program", wiz_s_free:"Free command", wiz_s_cmd:"Command",
+    wiz_s_add:"Add step", wiz_s_adv:"Advanced (extract variable / skip)",
+    wiz_s_prod:"Extract variable from output (name + regex, group 1)", wiz_s_skip:"Skip the step if these variables are empty (comma-separated)",
+    wiz_save:"Save wizard", wiz_saved:"Wizard saved", wiz_save_err:"Save failed:", wiz_name_req:"Enter a title.",
     tb_term:"Terminal (shell)", st_offline:"server unreachable — run python server.py",
     st_tools:"tools installed", st_catalog:"in catalog", st_profiles:"profiles (▤)",
   },

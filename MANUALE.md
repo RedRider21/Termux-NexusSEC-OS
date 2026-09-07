@@ -108,6 +108,23 @@ Questa è l'interfaccia (una web-app). Da qui in poi comandi da qui.
   (pannello)** = una shell dentro l'app dove scrivi comandi liberi (consigliata sul
   telefono: niente auto-maiuscola), 🧅 Tor, orologio. Dal menu trovi anche **▮
   Terminale ttyd** (terminale vero, ma la maiuscola dipende dalla tastiera).
+- **🧙 Wizard:** tocca il **riquadro `>_`** in alto a sinistra per aprire il pannello
+  (a tutto schermo). Sono **sequenze automatiche di comandi** per profilo: scegli un
+  wizard, inserisci il bersaglio (IP/host o file) e parte la catena — **l'output di
+  un passo alimenta il successivo** (es. le porte trovate da nmap vanno in Nikto).
+  Ci sono 6 wizard pronti (Pentest, Pentest Lite, Web, OSINT, Forensics, Reverse) e
+  puoi **crearne di tuoi** con **＋ Nuovo wizard** (scegli programma + parametri;
+  runtime e verifica "installato" si impostano da soli), **modificarli** o
+  **eliminarli**; i predefiniti si **duplicano** per partire da una base.
+
+<table>
+<tr>
+<td align="center" width="50%"><img src="docs/screens/25-wizard-pannello.png" width="200"><br><sub><b>1.</b> Pannello Wizard aperto</sub></td>
+<td align="center" width="50%"><img src="docs/screens/26-wizard-lancio.png" width="200"><br><sub><b>2.</b> Bersaglio + avvio sequenza</sub></td>
+</tr>
+</table>
+
+> I wizard eseguono comandi veri: **solo su sistemi autorizzati**.
 
 ---
 

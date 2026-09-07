@@ -20,8 +20,14 @@ Fase 1: wizard PREDEFINITI (uno per profilo). La modifica/creazione utente
 """
 from __future__ import annotations
 
+import json
 import re
 import shlex
+import time
+from pathlib import Path
+
+# Wizard personalizzati dell'utente: un file JSON per wizard (Fase 2, CRUD).
+USER_DIR = Path.home() / ".nexus-wizards"
 
 # Il pacchetto che fornisce il binario, quando il nome differisce dall'eseguibile,
 # serve solo per i messaggi (qui teniamo i messaggi generici).
@@ -181,26 +187,28 @@ WIZARDS: list[dict] = [
                        "incorporate (binwalk) → stringhe leggibili.",
                  "en": "SHA-256 hash → file type → metadata (exiftool) → embedded "
                        "signatures (binwalk) → readable strings."},
-        "note": {"it": "Il file dev'essere accessibile dal Debian in proot.",
-                 "en": "The file must be reachable from the proot Debian."},
+        "note": {"it": "I tool (exiftool/binwalk) sono in Termux: usa un percorso "
+                       "accessibile da Termux (es. ~/storage/... dopo termux-setup-storage).",
+                 "en": "Tools (exiftool/binwalk) live in Termux: use a Termux-accessible "
+                       "path (e.g. ~/storage/... after termux-setup-storage)."},
         "input": {"type": "path",
                   "label": {"it": "Percorso del file", "en": "File path"}},
         "steps": [
             {"title": {"it": "Impronta SHA-256", "en": "SHA-256 hash"},
-             "runtime": "proot", "needs": "sha256sum",
+             "runtime": "termux", "needs": "sha256sum",
              "run": "sha256sum {target}"},
             {"title": {"it": "Tipo file", "en": "File type"},
-             "runtime": "proot", "needs": "file",
+             "runtime": "termux", "needs": "file",
              "run": "file {target}"},
             {"title": {"it": "Metadati (exiftool)", "en": "Metadata (exiftool)"},
-             "runtime": "proot", "needs": "exiftool",
+             "runtime": "termux", "needs": "exiftool",
              "run": "exiftool {target}"},
             {"title": {"it": "Firme incorporate (binwalk)",
                        "en": "Embedded signatures (binwalk)"},
-             "runtime": "proot", "needs": "binwalk",
+             "runtime": "termux", "needs": "binwalk",
              "run": "binwalk {target}"},
             {"title": {"it": "Stringhe leggibili", "en": "Readable strings"},
-             "runtime": "proot", "needs": "strings",
+             "runtime": "termux", "needs": "strings",
              "run": "strings -n 6 {target} | head -120"},
         ],
     },
@@ -213,24 +221,26 @@ WIZARDS: list[dict] = [
                        "(rabin2 -i) → stringhe delle sezioni dati (rabin2 -z).",
                  "en": "file type → binary info/protections (rabin2 -I) → imports "
                        "(rabin2 -i) → data-section strings (rabin2 -z)."},
-        "note": {"it": "Il file dev'essere accessibile dal Debian in proot.",
-                 "en": "The file must be reachable from the proot Debian."},
+        "note": {"it": "rabin2 (radare2) è in Termux: usa un percorso accessibile "
+                       "da Termux (es. ~/storage/... dopo termux-setup-storage).",
+                 "en": "rabin2 (radare2) lives in Termux: use a Termux-accessible path "
+                       "(e.g. ~/storage/... after termux-setup-storage)."},
         "input": {"type": "path",
                   "label": {"it": "Percorso del binario", "en": "Binary path"}},
         "steps": [
             {"title": {"it": "Tipo file", "en": "File type"},
-             "runtime": "proot", "needs": "file",
+             "runtime": "termux", "needs": "file",
              "run": "file {target}"},
             {"title": {"it": "Info e protezioni (rabin2 -I)",
                        "en": "Info & protections (rabin2 -I)"},
-             "runtime": "proot", "needs": "rabin2",
+             "runtime": "termux", "needs": "rabin2",
              "run": "rabin2 -I {target}"},
             {"title": {"it": "Import (rabin2 -i)", "en": "Imports (rabin2 -i)"},
-             "runtime": "proot", "needs": "rabin2",
+             "runtime": "termux", "needs": "rabin2",
              "run": "rabin2 -i {target}"},
             {"title": {"it": "Stringhe sezioni dati (rabin2 -z)",
                        "en": "Data-section strings (rabin2 -z)"},
-             "runtime": "proot", "needs": "rabin2",
+             "runtime": "termux", "needs": "rabin2",
              "run": "rabin2 -z {target}"},
         ],
     },
@@ -239,27 +249,171 @@ WIZARDS: list[dict] = [
 _BY_ID = {w["id"]: w for w in WIZARDS}
 
 
-def list_wizards(lang: str = "it") -> list[dict]:
-    """Elenco localizzato per il pannello (drawer)."""
+def _default_label(itype: str, lang: str) -> str:
+    return {"host": _L(lang, "Host / IP / dominio", "Host / IP / domain"),
+            "url": "URL",
+            "path": _L(lang, "Percorso del file", "File path")}.get(itype, "Input")
+
+
+def _view(w: dict, lang: str, builtin: bool) -> dict:
+    """Vista localizzata (per il drawer) di un wizard (predefinito o utente)."""
+    return {
+        "id": w["id"],
+        "builtin": builtin,
+        "profile": w.get("profile", ""),
+        "icon": w.get("icon", "🧙"),
+        "name": _pk(w["name"], lang),
+        "desc": _pk(w.get("desc", ""), lang),
+        "note": _pk(w.get("note", ""), lang),
+        "input": {"type": w["input"]["type"],
+                  "label": _pk(w["input"].get("label"), lang)
+                  or _default_label(w["input"]["type"], lang)},
+        "steps": [{"title": _pk(s["title"], lang), "run": s["run"]}
+                  for s in w["steps"]],
+    }
+
+
+def _user_wizards() -> list[dict]:
+    """Carica i wizard utente da ~/.nexus-wizards/*.json (ignora i malformati)."""
     out = []
-    for w in WIZARDS:
-        out.append({
-            "id": w["id"],
-            "profile": w["profile"],
-            "icon": w["icon"],
-            "name": _pk(w["name"], lang),
-            "desc": _pk(w["desc"], lang),
-            "note": _pk(w.get("note", ""), lang),
-            "input": {"type": w["input"]["type"],
-                      "label": _pk(w["input"]["label"], lang)},
-            "steps": [{"title": _pk(s["title"], lang), "run": s["run"]}
-                      for s in w["steps"]],
-        })
+    if not USER_DIR.is_dir():
+        return out
+    for f in sorted(USER_DIR.glob("*.json")):
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+            if isinstance(d, dict) and d.get("id") and d.get("steps"):
+                out.append(d)
+        except (OSError, ValueError):
+            continue
+    return out
+
+
+def list_wizards(lang: str = "it") -> list[dict]:
+    """Elenco localizzato per il pannello: prima i predefiniti, poi quelli utente."""
+    out = [_view(w, lang, True) for w in WIZARDS]
+    out += [_view(w, lang, False) for w in _user_wizards()]
     return out
 
 
 def get_wizard(wid: str) -> dict | None:
-    return _BY_ID.get(wid)
+    """Definizione grezza (per l'esecuzione): predefinito o utente."""
+    if wid in _BY_ID:
+        return _BY_ID[wid]
+    for w in _user_wizards():
+        if w.get("id") == wid:
+            return w
+    return None
+
+
+# --------------------------------------------------------------------------- #
+# CRUD wizard utente (Fase 2)
+# --------------------------------------------------------------------------- #
+_ID_RE = re.compile(r"[^a-z0-9]+")
+
+
+def _slug(name: str) -> str:
+    s = _ID_RE.sub("-", (name or "").lower()).strip("-")
+    return (s or "wizard")[:32]
+
+
+def _validate_def(data: dict) -> dict:
+    """Valida/ripulisce un wizard utente in arrivo dall'editor. Solleva ValueError."""
+    if not isinstance(data, dict):
+        raise ValueError("Formato non valido.")
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise ValueError("Titolo mancante.")
+    itype = (data.get("input") or {}).get("type", "host")
+    if itype not in ("host", "url", "path"):
+        raise ValueError("Tipo input non valido.")
+    raw_steps = data.get("steps") or []
+    if not isinstance(raw_steps, list) or not raw_steps:
+        raise ValueError("Serve almeno un passo.")
+    steps = []
+    for s in raw_steps:
+        run = (s.get("run") or "").strip()
+        if not run:
+            raise ValueError("Un passo ha il comando vuoto.")
+        rt = s.get("runtime")
+        if rt not in ("termux", "proot"):
+            raise ValueError("Runtime del passo non valido.")
+        step = {"title": (s.get("title") or run.split()[0])[:80],
+                "run": run, "runtime": rt}
+        if s.get("needs"):
+            step["needs"] = str(s["needs"]).split()[0][:60]
+        prod = s.get("produce")
+        if isinstance(prod, dict) and prod:
+            clean = {}
+            for var, spec in prod.items():
+                v = _ID_RE.sub("_", str(var).lower()).strip("_")
+                rx = (spec or {}).get("regex", "")
+                if not v or not rx:
+                    continue
+                try:
+                    re.compile(rx)
+                except re.error:
+                    raise ValueError(f"Regex non valida nel passo (variabile {v}).")
+                clean[v] = {"regex": rx, "join": (spec.get("join") or ",")[:3]}
+            if clean:
+                step["produce"] = clean
+        skip = s.get("skip_if_empty")
+        if isinstance(skip, list) and skip:
+            step["skip_if_empty"] = [_ID_RE.sub("_", str(x).lower()).strip("_")
+                                     for x in skip if str(x).strip()]
+        steps.append(step)
+    icon = (data.get("icon") or "🧙").strip()[:4] or "🧙"
+    return {"name": name[:80], "desc": (data.get("desc") or "").strip()[:200],
+            "icon": icon, "input": {"type": itype}, "steps": steps}
+
+
+def save_wizard(data: dict) -> str:
+    """Crea o aggiorna un wizard utente. Ritorna l'id. I predefiniti sono protetti."""
+    clean = _validate_def(data)
+    wid = (data.get("id") or "").strip()
+    if wid in _BY_ID:
+        raise ValueError("Un wizard predefinito non è modificabile (duplicalo).")
+    if not re.fullmatch(r"u_[a-z0-9-]{1,48}", wid or ""):
+        wid = f"u_{_slug(clean['name'])}-{int(time.time()) % 100000}"
+    clean["id"] = wid
+    clean["builtin"] = False
+    USER_DIR.mkdir(parents=True, exist_ok=True)
+    (USER_DIR / f"{wid}.json").write_text(
+        json.dumps(clean, ensure_ascii=False, indent=2), encoding="utf-8")
+    return wid
+
+
+def delete_wizard(wid: str) -> bool:
+    """Elimina un wizard utente (i predefiniti non si toccano)."""
+    if wid in _BY_ID:
+        raise ValueError("Un wizard predefinito non è eliminabile.")
+    f = USER_DIR / f"{wid}.json"
+    if f.is_file():
+        f.unlink()
+        return True
+    return False
+
+
+def get_wizard_def(wid: str, lang: str = "it") -> dict | None:
+    """Definizione EDITABILE per l'editor: wizard utente così com'è, oppure un
+    predefinito convertito in stringhe semplici (per 'Duplica')."""
+    if wid in _BY_ID:
+        w = _BY_ID[wid]
+        return {
+            "id": "", "builtin": False, "icon": w.get("icon", "🧙"),
+            "name": _pk(w["name"], lang) + _L(lang, " (copia)", " (copy)"),
+            "desc": _pk(w.get("desc", ""), lang),
+            "input": {"type": w["input"]["type"]},
+            "steps": [{"title": _pk(s["title"], lang), "run": s["run"],
+                       "runtime": s.get("runtime", "termux"),
+                       "needs": s.get("needs", ""),
+                       "produce": s.get("produce", {}),
+                       "skip_if_empty": s.get("skip_if_empty", [])}
+                      for s in w["steps"]],
+        }
+    for w in _user_wizards():
+        if w.get("id") == wid:
+            return w
+    return None
 
 
 # --------------------------------------------------------------------------- #

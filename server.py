@@ -645,8 +645,43 @@ async def sys_stream(ws: WebSocket, action: str) -> None:
 # --------------------------------------------------------------------------- #
 @app.get("/api/wizards")
 def wizards_list(lang: str = "it"):
-    """Elenco dei wizard predefiniti, localizzato, per il pannello laterale."""
+    """Elenco dei wizard (predefiniti + utente), localizzato, per il pannello."""
     return wizards.list_wizards("en" if lang == "en" else "it")
+
+
+@app.get("/api/wizard/{wizard_id}/def")
+def wizard_def(wizard_id: str, lang: str = "it"):
+    """Definizione editabile di un wizard (utente) o copia di un predefinito."""
+    d = wizards.get_wizard_def(wizard_id, "en" if lang == "en" else "it")
+    if d is None:
+        raise HTTPException(404, "Wizard non trovato.")
+    return d
+
+
+@app.post("/api/wizards")
+async def wizard_save(request: Request):
+    """Crea o aggiorna un wizard utente (editor Fase 2)."""
+    try:
+        data = await request.json()
+    except (ValueError, json.JSONDecodeError):
+        raise HTTPException(400, "JSON non valido.")
+    try:
+        wid = wizards.save_wizard(data)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True, "id": wid}
+
+
+@app.delete("/api/wizard/{wizard_id}")
+def wizard_delete(wizard_id: str):
+    """Elimina un wizard utente."""
+    try:
+        ok = wizards.delete_wizard(wizard_id)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    if not ok:
+        raise HTTPException(404, "Wizard non trovato.")
+    return {"ok": True}
 
 
 async def _wiz_capture(ws: WebSocket, argv: list[str],

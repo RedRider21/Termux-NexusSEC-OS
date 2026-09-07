@@ -46,6 +46,14 @@ non esistono in Termux, o come **richieste HTTP dirette** quando basta un'API.
 - **◈ Flusso live (WebSocket).** Alcuni strumenti (es. *Recon demo*) mostrano
   l'output **in diretta** in un pannello nativo dell'app e ti fanno **rispondere
   alle domande** — interazione bidirezionale, non solo un terminale incorporato.
+- **🧙 Wizard (sequenze automatiche).** Un **pannello laterale a tutto schermo**
+  (si apre dal riquadro `>_` in alto) con **catene di comandi automatiche per
+  profilo**: dato un IP/host (o un file) il wizard esegue i passi **in sequenza**,
+  passando i dati da uno all'altro (**l'output di un passo diventa l'input del
+  successivo** — es. le porte trovate da nmap finiscono in Nikto). 6 wizard
+  professionali predefiniti (Pentest, Pentest Lite, Web, OSINT, Forensics, Reverse)
+  e puoi **crearne di tuoi**, modificarli ed eliminarli (programma + parametri).
+  Vedi [Wizard](#-wizard-sequenze-automatiche).
 - **🎨 Temi.** Aspetto cambiabile al volo: *Terminale*, *Glass*, *Neon*, *Minimal
   chiaro/scuro* (scelta salvata; anche via link `?theme=<id>`).
 - **🌐 Multilingua (Italiano / English).** L'app è **interamente localizzata**:
@@ -252,6 +260,46 @@ segnala con un **pallino arancione** pulsante sul pulsante **☰ NexusSEC**.
 
 ---
 
+## 🧙 Wizard (sequenze automatiche)
+
+I **Wizard** automatizzano le attività tipiche di un profilo: dato un bersaglio
+(IP/host, URL o percorso di un file) eseguono una **catena di comandi in sequenza**,
+dove **l'output di un passo alimenta il successivo** (non una pipe grezza: ogni passo
+**estrae** ciò che serve — host vivi, porte, URL — e lo **inietta** come argomento del
+passo dopo). Il pannello si apre dal **riquadro `>_`** in alto a sinistra ed è **a
+tutto schermo** e **a tema**.
+
+<table>
+<tr>
+<td align="center" width="50%"><img src="docs/screens/25-wizard-pannello.png" width="230"><br><sub><b>Pannello aperto</b> — un wizard per profilo, con icona e anteprima dei passi</sub></td>
+<td align="center" width="50%"><img src="docs/screens/26-wizard-lancio.png" width="230"><br><sub><b>Lancio</b> — inserisci il bersaglio e parte la sequenza (output live, ■ Stop)</sub></td>
+</tr>
+</table>
+
+**6 wizard predefiniti (professionali):**
+
+| Wizard | Sequenza |
+|---|---|
+| 🎯 **Pentest** | discovery porte (top 1000) → enumerazione servizi `-sC -sV` → script vuln NSE |
+| ⚡ **Pentest Lite** | scan rapido → versioni servizi → whois |
+| 🕸️ **Web** | WhatWeb → wafw00f → porte web → Nikto sulle porte → Nuclei (sev ≥ media) |
+| 🔎 **OSINT** | whois → DNS → subfinder → theHarvester → dnsrecon |
+| 🧪 **Forensics** | SHA-256 → tipo file → exiftool → binwalk → strings *(file in Termux)* |
+| 🧩 **Reverse** | tipo file → `rabin2 -I` (protezioni) → import → stringhe sezioni dati |
+
+**Crea i tuoi wizard.** Con **＋ Nuovo wizard** dai un titolo, scegli il tipo di
+bersaglio e componi i passi selezionando **programma + parametri** (il runtime
+Termux/proot e la verifica «tool installato» si impostano da soli in base al
+programma scelto). Puoi usare `{target}` e le **variabili estratte** dai passi
+precedenti, e nelle *Avanzate* definire l'estrazione (nome + regex) e il «salta se
+vuoto». I wizard personalizzati sono **modificabili/eliminabili** e salvati in
+`~/.nexus-wizards/`; i predefiniti si possono **duplicare** per partire da una base.
+
+> I wizard eseguono comandi reali: usali **solo su sistemi autorizzati**. Se un passo
+> richiede un tool non installato, il wizard te lo dice e prosegue con i successivi.
+
+---
+
 ## Cos'è (l'idea in due righe)
 
 Non riscriviamo Android e non compiliamo un kernel. Costruiamo tre strati leggeri:
@@ -296,6 +344,7 @@ All'utente sembra una app; sotto, gira il minimo indispensabile.
 |------|-----------|-------|
 | `install.sh` | Termux | Bootstrap: Termux base, tool nativi, Python, Debian minimale + whatweb/nikto |
 | `tools.py` | ovunque | Registry dei tool + `runtime` + validazione input (nessuna dipendenza) |
+| `wizards.py` | ovunque | Registry/CRUD dei **Wizard** (sequenze automatiche): schema, chaining a variabili, validazione, wizard utente in `~/.nexus-wizards/` |
 | `native.py` | ovunque | Tool "nativi": richieste HTTP dirette (es. RDAP), senza proot |
 | `server.py` | Termux | Backend **reale**: esegue i tool in Termux o proot (ttyd / native / **WebSocket stream**), gestione sistema, Tor |
 | `mock_server.py` | PC | Backend **finto** per sviluppare la UI senza Termux (solo stdlib; niente WebSocket) |
