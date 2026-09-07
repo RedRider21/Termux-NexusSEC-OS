@@ -151,6 +151,14 @@
   .wizstep-ctr{margin-left:auto; display:flex; gap:6px}
   .wizadv{margin-top:8px; border-top:1px dashed var(--line); padding-top:6px}
   .wizadv summary{cursor:pointer; font-size:11.5px; color:var(--fg-dim); user-select:none}
+  .wizchips{display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; align-items:center}
+  .wizchips-l{font-size:10.5px; color:var(--fg-dim); width:100%}
+  .wizchip{background:var(--accent-b); color:var(--fg); border:1px solid var(--line); border-radius:999px;
+    padding:3px 9px; font-family:inherit; font-size:11px; cursor:pointer}
+  .wizchip:active{transform:scale(.94)}
+  .wizta{width:100%; min-height:220px; background:var(--card2); color:var(--text); border:1px solid var(--line);
+    border-radius:10px; padding:11px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px;
+    white-space:pre; resize:vertical}
   .brand b{color:var(--white)}
   .grow{flex:1}
   .iconbtn{
@@ -1716,9 +1724,12 @@ async function loadWizards(){
 async function renderWizList(){
   const body=$("#wizBody"); body.innerHTML="";
   const list=await loadWizards();
-  const nw=document.createElement("button"); nw.className="wizgo"; nw.style.marginBottom="12px";
+  const bar=document.createElement("div"); bar.style.cssText="display:flex;gap:8px;margin-bottom:12px";
+  const nw=document.createElement("button"); nw.className="wizgo"; nw.style.flex="2";
   nw.textContent="＋ "+t("wiz_new"); nw.onclick=()=>renderWizEditor(null);
-  body.appendChild(nw);
+  const imp=document.createElement("button"); imp.className="wizback"; imp.style.flex="1"; imp.style.margin="0";
+  imp.textContent="⇩ "+t("wiz_import"); imp.onclick=()=>renderWizImport();
+  bar.appendChild(nw); bar.appendChild(imp); body.appendChild(bar);
   const grid=document.createElement("div"); grid.className="wizgrid";
   list.forEach(w=>{
     const c=document.createElement("div"); c.className="wizcard";
@@ -1755,7 +1766,7 @@ function wizProgramOptions(){
   // Programmi selezionabili: tool con binario e runtime noti (così il passo eredita
   // runtime e "needs" corretti -> niente falso "non installato").
   return allTools().filter(t=>t.bin && (t.runtime==="termux"||t.runtime==="proot"))
-    .map(t=>({id:t.id, name:t.name, bin:t.bin, runtime:t.runtime}))
+    .map(t=>({id:t.id, name:t.name, bin:t.bin, runtime:t.runtime, hints:t.hints||[]}))
     .sort((a,b)=>a.name.localeCompare(b.name));
 }
 function renderWizEditor(def){
@@ -1826,17 +1837,29 @@ function renderWizEditor(def){
     const rt=document.createElement("select"); rt.className="wizsel"; rt.style.flex="1";
     [["termux","Termux"],["proot","proot/Kali"]].forEach(([v,l])=>{ const o=document.createElement("option"); o.value=v; o.textContent=l; rt.appendChild(o); });
     rt.value=st.runtime||"termux"; rt.onchange=()=>st.runtime=rt.value; r2.appendChild(rt);
-    const insT=mkMini("{target}",()=>{ st.run=(st.run||"")+ (st.run&&!st.run.endsWith(" ")?" ":"") +"{target}"; cmd.value=st.run; cmd.focus(); });
+    const insT=mkMini("{target}",()=>{ appendToCmd("{target}"); });
     insT.style.width="auto"; insT.style.padding="0 10px"; r2.appendChild(insT);
     d.appendChild(r2);
-    // quando scelgo un programma: prefill comando (se vuoto) + runtime + needs
+    // helper: aggiunge un token al comando (con spazio) e aggiorna il modello
+    function appendToCmd(tok){ st.run=(st.run||"")+((st.run&&!st.run.endsWith(" "))?" ":"")+tok; cmd.value=st.run; cmd.focus(); }
+    // parametri guidati: chip dei flag suggeriti dal programma scelto (Fase 3)
+    const chips=document.createElement("div"); chips.className="wizchips"; d.appendChild(chips);
+    function renderChips(hints){
+      chips.innerHTML="";
+      if(!hints||!hints.length) return;
+      const lbl=document.createElement("span"); lbl.className="wizchips-l"; lbl.textContent=t("wiz_s_flags"); chips.appendChild(lbl);
+      hints.forEach(h=>{ const b=document.createElement("button"); b.type="button"; b.className="wizchip"; b.textContent=h;
+        b.onclick=()=>appendToCmd(h); chips.appendChild(b); });
+    }
+    // quando scelgo un programma: prefill comando (se vuoto) + runtime + needs + chip
     pSel.onchange=()=>{
       const p=progs.find(x=>x.id===pSel.value);
-      if(!p){ st.needs=""; return; }
+      if(!p){ st.needs=""; renderChips([]); return; }
       st.needs=p.bin; st.runtime=p.runtime; rt.value=p.runtime;
       if(!st.run.trim()){ st.run=p.bin+" {target}"; cmd.value=st.run; }
+      renderChips(p.hints);
     };
-    if(st.needs){ const found=progs.find(x=>x.bin===st.needs); if(found) pSel.value=found.id; }
+    if(st.needs){ const found=progs.find(x=>x.bin===st.needs); if(found){ pSel.value=found.id; renderChips(found.hints); } }
     // avanzate: estrai variabile + salta se vuoto
     const det=document.createElement("details"); det.className="wizadv";
     const sum=document.createElement("summary"); sum.textContent=t("wiz_s_adv"); det.appendChild(sum);
@@ -1925,9 +1948,60 @@ function renderWizDetail(w){
   go.onclick=launch;
   inp.onkeydown=(e)=>{ if(e.key==="Enter"){ e.preventDefault(); launch(); } };
   form.appendChild(go);
+  // Esporta (condividi) questo wizard come JSON
+  const exp=document.createElement("button"); exp.className="wizback"; exp.style.marginTop="8px"; exp.style.width="100%";
+  exp.textContent="⇪ "+t("wiz_export"); exp.onclick=()=>renderWizExport(w);
+  form.appendChild(exp);
   wrap.appendChild(form);
   body.appendChild(wrap);
   setTimeout(()=>inp.focus(),120);
+}
+
+/* ---- Fase 3: Export/Import (condivisione) dei wizard ---- */
+async function renderWizExport(w){
+  const body=$("#wizBody"); body.innerHTML="";
+  const wrap=document.createElement("div"); wrap.className="wizdet";
+  const back=document.createElement("button"); back.className="wizback";
+  back.textContent="‹ "+t("wiz_back"); back.onclick=renderWizList; wrap.appendChild(back);
+  const h=document.createElement("div"); h.className="top";
+  h.innerHTML=`<span class="ic">${w.icon}</span><div><div class="nm">⇪ ${t("wiz_export")}</div>`
+    +`<div class="ds">${t("wiz_export_hint")}</div></div>`;
+  wrap.appendChild(h);
+  let json="{}";
+  try{ const d=await (await fetch("/api/wizard/"+encodeURIComponent(w.id)+"/def?lang="+LANG)).json();
+    delete d.builtin; json=JSON.stringify(d,null,2);
+  }catch{ json="{}"; }
+  const ta=document.createElement("textarea"); ta.className="wizta"; ta.readOnly=true; ta.value=json; wrap.appendChild(ta);
+  const cp=document.createElement("button"); cp.className="wizgo"; cp.style.marginTop="8px"; cp.textContent="⧉ "+t("wiz_copy");
+  cp.onclick=async()=>{ try{ await navigator.clipboard.writeText(ta.value); toast("Copiato"); }
+    catch{ ta.select(); try{ document.execCommand("copy"); toast("Copiato"); }catch{ toast("Copia non riuscita"); } } };
+  wrap.appendChild(cp);
+  body.appendChild(wrap);
+}
+function renderWizImport(){
+  const body=$("#wizBody"); body.innerHTML="";
+  const wrap=document.createElement("div"); wrap.className="wizdet";
+  const back=document.createElement("button"); back.className="wizback";
+  back.textContent="‹ "+t("wiz_back"); back.onclick=renderWizList; wrap.appendChild(back);
+  const h=document.createElement("div"); h.className="top";
+  h.innerHTML=`<div><div class="nm">⇩ ${t("wiz_import")}</div><div class="ds">${t("wiz_import_hint")}</div></div>`;
+  wrap.appendChild(h);
+  const ta=document.createElement("textarea"); ta.className="wizta"; ta.placeholder='{ "name": "...", "steps": [...] }'; wrap.appendChild(ta);
+  const err=document.createElement("div"); err.className="wizerr"; err.style.marginTop="6px"; wrap.appendChild(err);
+  const go=document.createElement("button"); go.className="wizgo"; go.style.marginTop="4px"; go.textContent="⇩ "+t("wiz_import_do");
+  go.onclick=async()=>{
+    let obj; try{ obj=JSON.parse(ta.value); }catch{ err.textContent=t("wiz_import_badjson"); return; }
+    if(obj) delete obj.id;          // importa SEMPRE come nuovo (niente sovrascritture)
+    err.textContent="";
+    try{
+      const r=await fetch("/api/wizards",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(obj)});
+      const dd=await r.json(); if(!r.ok) throw new Error(dd.detail||"errore");
+      WIZARDS=null; toast(t("wiz_imported")); renderWizList();
+    }catch(e){ err.textContent=t("wiz_import_err")+" "+(e.message||""); }
+  };
+  wrap.appendChild(go);
+  body.appendChild(wrap);
+  setTimeout(()=>ta.focus(),120);
 }
 
 // orologio della tray
@@ -1976,6 +2050,11 @@ const I18N = {
     wiz_s_add:"Aggiungi passo", wiz_s_adv:"Avanzate (estrai variabile / salta)",
     wiz_s_prod:"Estrai variabile dall'output (nome + regex, gruppo 1)", wiz_s_skip:"Salta il passo se queste variabili sono vuote (separate da virgola)",
     wiz_save:"Salva wizard", wiz_saved:"Wizard salvato", wiz_save_err:"Salvataggio non riuscito:", wiz_name_req:"Inserisci un titolo.",
+    wiz_s_flags:"flag suggeriti (tocca per aggiungere):",
+    wiz_export:"Esporta / condividi", wiz_export_hint:"Copia questo JSON e invialo: chi lo riceve lo incolla in «Importa».",
+    wiz_copy:"Copia JSON", wiz_import:"Importa", wiz_import_do:"Importa wizard",
+    wiz_import_hint:"Incolla qui il JSON di un wizard condiviso. Verrà aggiunto come nuovo.",
+    wiz_import_badjson:"JSON non valido.", wiz_imported:"Wizard importato", wiz_import_err:"Import non riuscito:",
     tb_term:"Terminale (shell)", st_offline:"server non raggiungibile — avvia python server.py",
     st_tools:"tool installati", st_catalog:"nel catalogo", st_profiles:"profili (▤)",
   },
@@ -2010,6 +2089,11 @@ const I18N = {
     wiz_s_add:"Add step", wiz_s_adv:"Advanced (extract variable / skip)",
     wiz_s_prod:"Extract variable from output (name + regex, group 1)", wiz_s_skip:"Skip the step if these variables are empty (comma-separated)",
     wiz_save:"Save wizard", wiz_saved:"Wizard saved", wiz_save_err:"Save failed:", wiz_name_req:"Enter a title.",
+    wiz_s_flags:"suggested flags (tap to add):",
+    wiz_export:"Export / share", wiz_export_hint:"Copy this JSON and send it: the recipient pastes it into “Import”.",
+    wiz_copy:"Copy JSON", wiz_import:"Import", wiz_import_do:"Import wizard",
+    wiz_import_hint:"Paste here a shared wizard JSON. It will be added as new.",
+    wiz_import_badjson:"Invalid JSON.", wiz_imported:"Wizard imported", wiz_import_err:"Import failed:",
     tb_term:"Terminal (shell)", st_offline:"server unreachable — run python server.py",
     st_tools:"tools installed", st_catalog:"in catalog", st_profiles:"profiles (▤)",
   },

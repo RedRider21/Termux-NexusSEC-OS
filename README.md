@@ -292,8 +292,12 @@ bersaglio e componi i passi selezionando **programma + parametri** (il runtime
 Termux/proot e la verifica «tool installato» si impostano da soli in base al
 programma scelto). Puoi usare `{target}` e le **variabili estratte** dai passi
 precedenti, e nelle *Avanzate* definire l'estrazione (nome + regex) e il «salta se
-vuoto». I wizard personalizzati sono **modificabili/eliminabili** e salvati in
+vuoto». Scegliendo un programma compaiono anche i **flag suggeriti** come chip
+tappabili. I wizard personalizzati sono **modificabili/eliminabili** e salvati in
 `~/.nexus-wizards/`; i predefiniti si possono **duplicare** per partire da una base.
+
+**Condividili.** Con **⇪ Esporta** ottieni il JSON del wizard (da copiare e inviare);
+chi lo riceve lo incolla in **⇩ Importa** e se lo ritrova pronto tra i suoi.
 
 > I wizard eseguono comandi reali: usali **solo su sistemi autorizzati**. Se un passo
 > richiede un tool non installato, il wizard te lo dice e prosegue con i successivi.
