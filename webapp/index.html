@@ -604,6 +604,18 @@ function runtimeBadge(rt){
 }
 
 let ALL = {};          // categorie -> tool
+// Lista appiattita di TUTTI i tool SENZA duplicati: dato che un tool può stare
+// in più categorie, allTools() lo restituirebbe più volte. Qui
+// tengo la prima occorrenza per ogni id, così preferiti/profilo/conteggi non
+// mostrano lo stesso programma due volte.
+function allTools(){
+  const seen=new Set(), out=[];
+  for(const t of Object.values(ALL).flat()){
+    if(seen.has(t.id)) continue;
+    seen.add(t.id); out.push(t);
+  }
+  return out;
+}
 let PROFILES = [];     // profili (set di tool installabili insieme)
 let activeProfile = null; // profilo attivo che filtra la pagina
 let activeCategory = null; // categoria selezionata dalle chip (null = tutte)
@@ -1229,7 +1241,7 @@ function selectProfile(key){ activeProfile=key; render($("#search").value); wind
 function clearProfile(){ activeProfile=null; render($("#search").value); }
 function profileBanner(prof){
   const ids=new Set(prof.tools);
-  const all=Object.values(ALL).flat().filter(t=>ids.has(t.id));
+  const all=allTools().filter(t=>ids.has(t.id));
   const inst=all.filter(t=>t.installed!==false).length;
   const el=document.createElement("div"); el.className="pbanner";
   el.innerHTML=`<span class="pi">${prof.icon}</span>`
@@ -1252,7 +1264,7 @@ function profileBanner(prof){
 function uninstallProfile(prof){
   const ids=new Set(prof.tools);
   // tool del catalogo installati (i soli che verranno rimossi; base e condivisi restano)
-  const rimovibili=Object.values(ALL).flat()
+  const rimovibili=allTools()
     .filter(t=>ids.has(t.id) && t.catalog && t.installed!==false && t.works!==false);
   if(!rimovibili.length){ toast("Niente da rimuovere (solo tool di base o condivisi)."); return; }
   const en=(LANG==="en");
@@ -1269,7 +1281,7 @@ function uninstallProfile(prof){
 }
 function installProfile(prof){
   const ids=new Set(prof.tools);
-  const tools=Object.values(ALL).flat().filter(t=>ids.has(t.id) && t.installed===false && t.works!==false);
+  const tools=allTools().filter(t=>ids.has(t.id) && t.installed===false && t.works!==false);
   const en=(LANG==="en");
   if(!tools.length){ overlay.dataset.tool=prof.key; showOutput((en?"Profile ":"Profilo ")+prof.name, tr("Tutti i tool di questo profilo risultano già installati. 🎉")); return; }
   const g={termux:[],pip:[],debian:[],kali:[]};
@@ -1329,7 +1341,7 @@ function render(filter=""){
 
   // Sezione PREFERITI: attraversa tutte le categorie, mostra solo i preferiti.
   if(activeCategory==="__fav__"){
-    const favs=Object.values(ALL).flat().filter(t=>FAV.has(t.id)
+    const favs=allTools().filter(t=>FAV.has(t.id)
       && (!filter || (t.name+" "+(t.help||"")).toLowerCase().includes(filter)));
     const h=document.createElement("h2");
     h.innerHTML=`<span class="ic">★</span>${t("fav_title")} <span class="count">${favs.length}</span>`;
@@ -1345,7 +1357,7 @@ function render(filter=""){
   // Vista PROFILO: un unico blocco dedicato con i tool del profilo raggruppati,
   // «Pronti all'uso» in cima così si trovano subito i programmi da usare.
   if(prof){
-    const list=Object.values(ALL).flat().filter(t=>inProf.has(t.id)
+    const list=allTools().filter(t=>inProf.has(t.id)
       && (!filter || (t.name+" "+(t.help||"")).toLowerCase().includes(filter)));
     const ready=list.filter(t=>t.works!==false && t.installed!==false);
     const todo =list.filter(t=>t.works!==false && t.installed===false);
@@ -1460,7 +1472,7 @@ function renderTaskbarWins(){
 // Non ripete la griglia della pagina: quella resta l'elenco completo dei tool.
 function profileStats(p){
   const ids=new Set(p.tools);
-  const all=Object.values(ALL).flat().filter(t=>ids.has(t.id));
+  const all=allTools().filter(t=>ids.has(t.id));
   return {all:all.length, inst:all.filter(t=>t.installed!==false).length};
 }
 function renderStartMenu(){
@@ -2022,7 +2034,7 @@ async function load(){
   try{
     ALL=await (await fetch("/api/tools")).json();
     try{ PROFILES=await (await fetch("/api/profiles")).json(); }catch{ PROFILES=[]; }
-    const all=Object.values(ALL).flat();
+    const all=allTools();
     const ready=all.filter(t=>t.installed!==false).length;
     const catN=all.filter(t=>t.catalog).length;
     LAST_COUNTS={ready, catN, profiles:PROFILES.length};
