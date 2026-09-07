@@ -950,6 +950,31 @@ _APT_INSTALL = (
     '-o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold'
 )
 
+# metasploit-framework tira dentro postgresql. In un Debian minimale sotto proot
+# il postinst di postgresql fallisce perché `initdb` non trova una locale generata
+# (oltre al fatto che non può avviare servizi, già bloccato da policy-rc.d): resta
+# così un pacchetto ROTTO che blocca apt e che la pulizia pre-apt rimacina a OGNI
+# installazione (la "montagna" che ricompare sempre). Forzando LC_ALL=C usiamo la
+# locale C, sempre presente: initdb riesce, il cluster si crea (non si avvia), e
+# metasploit atterra "installato pulito". Applicato SOLO al pacchetto metasploit.
+_MSF_PKG = "metasploit-framework"
+_MSF_ENV = "export LC_ALL=C LANG=C; "
+
+
+def _msf_finalize(lang: str = "it") -> str:
+    """Chiude l'installazione di metasploit: completa eventuali configurazioni
+    rimaste in sospeso e verifica che msfconsole sia davvero disponibile."""
+    ok = _L(lang, "[msf] ok: msfconsole disponibile.",
+                  "[msf] ok: msfconsole available.")
+    ko = _L(lang, "!! [msf] msfconsole non trovato: installazione non completata.",
+                  "!! [msf] msfconsole not found: install did not complete.")
+    return (
+        "dpkg --configure -a 2>/dev/null || "
+        "DEBIAN_FRONTEND=noninteractive apt-get install -f -y 2>/dev/null || true; "
+        'if command -v msfconsole >/dev/null 2>&1; then echo "' + ok + '"; '
+        'else echo "' + ko + '"; fi'
+    )
+
 # Script (da eseguire DENTRO il Debian in proot) che abilita il repo Kali, così
 # diventano installabili i pacchetti di sicurezza di Kali. Idempotente.
 # Metodo ufficiale Kali: un Debian minimale spesso NON ha ca-certificates/gnupg,
@@ -1011,9 +1036,12 @@ def install_command(tool_id: str, lang: str = "it") -> list[str]:
                 f"(pkg install -y {_TERMUX_EXTRA_REPOS} && pkg install -y {pkg})"]
     # proot: se il tool richiede il repo Kali, abilitalo prima (idempotente).
     pre = (_kali_enable_inner(lang) + "; ") if t.get("repo") == "kali" else ""
+    # metasploit: locale C per far riuscire initdb + finalizzazione/verifica.
+    env = _MSF_ENV if pkg == _MSF_PKG else ""
+    post = ("; " + _msf_finalize(lang)) if pkg == _MSF_PKG else ""
     return list(PROOT) + ["bash", "-lc",
-                          f"{_proot_apt_prep(lang)}{pre}apt-get update; "
-                          f"{_APT_INSTALL} {pkg}"]
+                          f"{_proot_apt_prep(lang)}{pre}{env}apt-get update; "
+                          f"{_APT_INSTALL} {pkg}{post}"]
 
 
 def _with_report(body: str, title: str, count_label: str, count: int,
@@ -1085,11 +1113,15 @@ def install_profile_command(key: str, skip: set | None = None,
             f'F=""; for p in {pkgs}; do pip install --prefer-binary "$p" || F="$F $p"; done; '
             f'[ -n "$F" ] && echo "{ni_pip}$F" || echo "pip: ok"')
     if debian:
-        pkgs = " ".join(sorted(set(debian)))
+        dset = sorted(set(debian))
+        pkgs = " ".join(dset)
+        has_msf = _MSF_PKG in dset       # metasploit nel profilo -> immunizzalo
+        env = _MSF_ENV if has_msf else ""
+        post = ("; " + _msf_finalize(lang)) if has_msf else ""
         inner = (
-            'apt-get update; F=""; '
+            f'{env}apt-get update; F=""; '
             f'for p in {pkgs}; do {_APT_INSTALL} "$p" || F="$F $p"; done; '
-            f'[ -n "$F" ] && echo "{ni_deb}$F" || echo "Debian: ok"')
+            f'[ -n "$F" ] && echo "{ni_deb}$F" || echo "Debian: ok"{post}')
         if needs_kali:            # abilita il repo Kali prima di installare
             inner = _kali_enable_inner(lang) + "; " + inner
         inner = _proot_apt_prep(lang) + inner   # niente avvio servizi in proot
