@@ -1097,11 +1097,11 @@ function openSysStream(action, title, arg, onEnd, opts){
     onEnd:()=>{ if(!opts.noRefresh) setTimeout(()=>refreshTools().catch(()=>{}), 800); if(onEnd) onEnd(); }});
 }
 let RESTARTING=false;   // vero durante un riavvio volontario del server
-async function restartServer(){
+async function restartServer(msg){
   RESTARTING=true;   // così eventuali fetch interrotte dal restart non allarmano
   try{
     await fetch("/api/system/restart",{method:"POST"});
-    toast("Riavvio in corso… ricarico tra poco");
+    toast(msg||"Riavvio in corso… ricarico tra poco");
     setTimeout(()=>location.reload(), 3500);
   }catch{ toast("Riavvio non riuscito"); }
 }
@@ -1565,6 +1565,11 @@ function renderStartMenu(){
       ()=>{ toast("Aggiornamento scaricato — riavvio per applicare…");
             setTimeout(restartServer, 1600); }, {noRefresh:true}); };
   mnt.appendChild(bUpd);
+  // "Controlla aggiornamenti": di fatto riavvia il server, che azzera la cache del
+  // controllo (/api/update, TTL 10 min); al reload il pallino ● compare subito se
+  // c'è un aggiornamento, senza attendere la scadenza della cache. Il bottone
+  // "Riavvia server" resta comunque disponibile qui sotto.
+  mkm(t("mm_check"), ()=>{ closeStart(); restartServer("Controllo aggiornamenti…"); });
   mkm(t("mm_updeb"),()=>{ closeStart(); openSysStream("update-debian",tr("Aggiorno il Debian (proot)")); });
   mkm(t("mm_kali"),()=>{ closeStart(); openSysStream("enable-kali",tr("Abilito il repo Kali nel Debian")); });
   mkm(t("mm_auto_on"),()=>{ closeStart(); openSysStream("setup-autostart",tr("Abilito l'autostart all'accensione")); });
@@ -1623,6 +1628,7 @@ const I18N = {
     m_guide:"📖 Guida", m_noprof:"✕ Nessun profilo", m_exit:"⏻ Esci dall'app", m_language:"🌐 Lingua",
     m_about:"ℹ️ Info e licenza",
     mm_pkg:"＋ Installa pacchetto", mm_upterm:"⟳ Aggiorna Termux", mm_upapp:"⬇ Aggiorna app",
+    mm_check:"🔄 Controlla aggiornamenti",
     mm_updeb:"🐧 Aggiorna Debian", mm_kali:"🐉 Abilita repo Kali", mm_auto_on:"🚀 Abilita autostart",
     mm_auto_off:"🛑 Disabilita autostart", mm_restart:"⏻ Riavvia server",
     pv_ready:"Pronti all'uso", pv_toinstall:"Da installare", pv_na:"Non usabili su questo telefono",
@@ -1642,6 +1648,7 @@ const I18N = {
     m_guide:"📖 Guide", m_noprof:"✕ No profile", m_exit:"⏻ Quit app", m_language:"🌐 Language",
     m_about:"ℹ️ About & license",
     mm_pkg:"＋ Install package", mm_upterm:"⟳ Update Termux", mm_upapp:"⬇ Update app",
+    mm_check:"🔄 Check for updates",
     mm_updeb:"🐧 Update Debian", mm_kali:"🐉 Enable Kali repo", mm_auto_on:"🚀 Enable autostart",
     mm_auto_off:"🛑 Disable autostart", mm_restart:"⏻ Restart server",
     pv_ready:"Ready to use", pv_toinstall:"To install", pv_na:"Not usable on this phone",
@@ -1715,7 +1722,7 @@ const EN = {
   "FLARE FLOSS · stringhe":"FLARE FLOSS · strings",
   // --- descrizioni profili ---
   "Scansione, exploit, brute force, Active Directory.":"Scanning, exploitation, brute force, Active Directory.",
-  "Essenziale e leggero: recon, scan, injection, brute, cracking, SMB. Senza Metasploit/Exploit-DB.":"Essential and lightweight: recon, scan, injection, brute, cracking, SMB. Without Metasploit/Exploit-DB.",
+  "Essenziale e leggero: recon, scan, injection, brute, cracking, SMB + scoperta exploit (searchsploit/routersploit). Senza Metasploit.":"Essential and lightweight: recon, scan, injection, brute, cracking, SMB + exploit discovery (searchsploit/routersploit). Without Metasploit.",
   "Sicurezza di siti e applicazioni web.":"Security of websites and web applications.",
   "Ricognizione da fonti pubbliche.":"Reconnaissance from public sources.",
   "Analisi forense, steganografia, malware.":"Forensic analysis, steganography, malware.",
@@ -1925,6 +1932,7 @@ const EN = {
   "Copiato":"Copied", "Copia non riuscita":"Copy failed", "Salvato: ":"Saved: ",
   "Scaricato":"Downloaded", "Salvataggio non riuscito":"Save failed",
   "Riavvio in corso… ricarico tra poco":"Restarting… reloading shortly", "Riavvio non riuscito":"Restart failed",
+  "Controllo aggiornamenti…":"Checking for updates…",
   "Tool non disponibile":"Tool unavailable", "Storico svuotato":"History cleared",
   "Aggiunto ai preferiti":"Added to favorites", "Rimosso dai preferiti":"Removed from favorites",
   "Niente da rimuovere (solo tool di base o condivisi).":"Nothing to remove (only base or shared tools).",

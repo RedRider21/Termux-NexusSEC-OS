@@ -840,11 +840,14 @@ PROFILES: dict[str, dict] = {
     "pentest_lite": {
         "name": "Pen Testing Lite", "icon": "⚡",
         "desc": "Essenziale e leggero: recon, scan, injection, brute, cracking, "
-                "SMB. Senza Metasploit/Exploit-DB.",
+                "SMB + scoperta exploit (searchsploit/routersploit). Senza Metasploit.",
         # john sostituisce hashcat (CPU, niente OpenCL); hashid identifica gli hash.
+        # searchsploit (scoperta exploit, solo file, leggero) e routersploit
+        # (framework Python) danno un tassello "exploitation" SENZA la montagna
+        # Ruby+PostgreSQL di Metasploit, che resta solo nel profilo Pen Testing.
         "tools": ["nmap_quick", "nmap_ping", "dig", "naabu", "sqlmap", "nuclei",
                   "hydra", "john", "hashid", "enum4linux", "smbmap", "netexec",
-                  "ncat", "socat"],
+                  "searchsploit", "routersploit", "ncat", "socat"],
     },
     "web": {
         "name": "Web", "icon": "🕸️",
