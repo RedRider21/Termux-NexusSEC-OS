@@ -1084,14 +1084,21 @@ function runStream(url, title, opts){
   if(opts.input) setTimeout(()=>inp.focus(),100);
 }
 function openStream(tool){ runStream("/api/stream/"+encodeURIComponent(tool.id), tool.name, {input:true}); }
-function openSysStream(action, title, arg, onEnd){
+function openSysStream(action, title, arg, onEnd, opts){
+  opts=opts||{};
   // Passa la lingua della UI: così anche l'output delle procedure (install/
   // rimozione/aggiornamento + resoconto) esce nella lingua scelta.
   const q = "?lang="+LANG + (arg ? ("&arg="+encodeURIComponent(arg)) : "");
   runStream("/api/sysstream/"+encodeURIComponent(action)+q, title, {input:false,
-    onEnd:()=>{ setTimeout(()=>refreshTools().catch(()=>{}), 800); if(onEnd) onEnd(); }});
+    // opts.noRefresh: per "Aggiorna app" NON rileviamo di nuovo i tool (operazione
+    // lenta via proot) subito prima del riavvio: la fetch verrebbe uccisa dal
+    // restart e mostrerebbe un falso "Aggiornamento non riuscito". Tanto dopo il
+    // riavvio la pagina si ricarica e i tool vengono rilevati da capo.
+    onEnd:()=>{ if(!opts.noRefresh) setTimeout(()=>refreshTools().catch(()=>{}), 800); if(onEnd) onEnd(); }});
 }
+let RESTARTING=false;   // vero durante un riavvio volontario del server
 async function restartServer(){
+  RESTARTING=true;   // così eventuali fetch interrotte dal restart non allarmano
   try{
     await fetch("/api/system/restart",{method:"POST"});
     toast("Riavvio in corso… ricarico tra poco");
@@ -1556,7 +1563,7 @@ function renderStartMenu(){
   // è in cache: riavvio il server (che poi ricarica la pagina) per applicare.
   bUpd.onclick=()=>{ closeStart(); openSysStream("update-app",tr("Aggiorno l'app (git pull)"),null,
       ()=>{ toast("Aggiornamento scaricato — riavvio per applicare…");
-            setTimeout(restartServer, 1600); }); };
+            setTimeout(restartServer, 1600); }, {noRefresh:true}); };
   mnt.appendChild(bUpd);
   mkm(t("mm_updeb"),()=>{ closeStart(); openSysStream("update-debian",tr("Aggiorno il Debian (proot)")); });
   mkm(t("mm_kali"),()=>{ closeStart(); openSysStream("enable-kali",tr("Abilito il repo Kali nel Debian")); });
@@ -1581,7 +1588,8 @@ function renderStartMenu(){
 }
 async function refreshTools(){
   try{ ALL=await (await fetch("/api/tools/refresh",{method:"POST"})).json(); render($("#search").value); toast("Elenco tool aggiornato"); }
-  catch{ toast("Aggiornamento non riuscito"); }
+  // Se un riavvio volontario ha interrotto la fetch, non è un errore vero: taccio.
+  catch{ if(!RESTARTING) toast("Aggiornamento non riuscito"); }
 }
 function openStart(){ renderStartMenu(); $("#startmenu").classList.add("open"); $("#scrim").classList.add("open"); }
 function closeStart(){ $("#startmenu").classList.remove("open"); $("#scrim").classList.remove("open"); }
