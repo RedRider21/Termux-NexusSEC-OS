@@ -80,6 +80,62 @@
   }
   .hrow{display:flex; align-items:center; gap:10px; max-width:760px; margin:0 auto}
   .brand{font-size:15.5px; letter-spacing:.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
+  /* Toggle Wizard: la scritta ">_ NexusSEC" resta identica; attorno a ">_" c'è
+     un riquadro piccolo e sottile che fa capire che è un bottone. Eredita colore
+     e font, così il testo non cambia aspetto. */
+  .wiztoggle{cursor:pointer; color:inherit; font:inherit; font-weight:inherit;
+    user-select:none; display:inline-block; border:1px solid var(--fg-dim);
+    border-radius:5px; padding:0 4px; margin-right:2px; line-height:1.15;
+    transition:background .15s, border-color .15s}
+  .wiztoggle:active{transform:scale(.94); background:var(--accent-a)}
+  .wiztoggle.on{border-color:var(--amber); color:var(--amber)}
+  /* pannello Wizard: drawer a TUTTO SCHERMO che entra da sinistra, a tema. */
+  .wizpanel{position:fixed; inset:0; z-index:70; background:var(--bg);
+    display:flex; flex-direction:column; transform:translateX(-100%);
+    transition:transform .26s cubic-bezier(.4,0,.2,1); visibility:hidden}
+  .wizpanel.open{transform:none; visibility:visible}
+  .wizhead{display:flex; align-items:center; gap:10px; padding:14px 14px 10px;
+    border-bottom:1px solid var(--line); background:linear-gradient(180deg,var(--bg2),transparent)}
+  .wizhead .t{font-size:16px; font-weight:800; color:var(--white); display:flex; align-items:center; gap:8px}
+  .wizhead .s{color:var(--muted); font-size:11px; margin-top:2px}
+  .wizhead .x{margin-left:auto; background:var(--card); color:var(--fg); border:1px solid var(--line);
+    border-radius:10px; padding:8px 12px; font-family:inherit; font-size:14px; cursor:pointer}
+  .wizhead .x:active{transform:scale(.94)}
+  .wizbody{flex:1; overflow-y:auto; padding:14px}
+  .wizgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px}
+  .wizcard{text-align:left; cursor:pointer; font-family:inherit; color:var(--white);
+    background:linear-gradient(180deg,var(--card),var(--card2)); border:1px solid var(--line);
+    border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px}
+  .wizcard:active{transform:scale(.97)}
+  .wizcard .ic{font-size:34px; line-height:1}
+  .wizcard .nm{font-size:13.5px; font-weight:800}
+  .wizcard .ds{color:var(--muted); font-size:11px; line-height:1.35}
+  .wizcard .st{color:var(--fg-dim); font-size:10.5px; margin-top:auto}
+  /* dettaglio wizard */
+  .wizdet .top{display:flex; align-items:center; gap:12px; margin-bottom:8px}
+  .wizdet .top .ic{font-size:40px}
+  .wizdet .top .nm{font-size:17px; font-weight:800; color:var(--white)}
+  .wizdet .top .ds{color:var(--muted); font-size:12px; line-height:1.4; margin-top:3px}
+  .wizback{background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:10px;
+    padding:8px 12px; font-family:inherit; font-size:13px; cursor:pointer; margin-bottom:12px}
+  .wizsteps{list-style:none; padding:0; margin:12px 0; counter-reset:wz}
+  .wizsteps li{position:relative; padding:8px 10px 8px 40px; border:1px solid var(--line);
+    border-radius:10px; margin-bottom:6px; background:var(--card2); font-size:12px}
+  .wizsteps li::before{counter-increment:wz; content:counter(wz); position:absolute; left:10px; top:50%;
+    transform:translateY(-50%); width:20px; height:20px; border-radius:50%; background:var(--accent-a);
+    color:var(--fg); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800}
+  .wizsteps li .tt{font-weight:700; color:var(--white)}
+  .wizsteps li .cm{display:block; color:var(--fg-dim); font-size:10.5px; margin-top:2px; word-break:break-all}
+  .wizform{display:flex; flex-direction:column; gap:8px; margin-top:6px}
+  .wizform label{font-size:12px; color:var(--fg-dim)}
+  .wizform input{background:var(--card2); color:var(--text); border:1px solid var(--line);
+    border-radius:10px; padding:11px 12px; font-family:inherit; font-size:14px}
+  .wiznote{color:var(--amber); font-size:11px; background:var(--accent-b); border:1px solid var(--amber-bd);
+    border-radius:8px; padding:8px 10px}
+  .wizerr{color:var(--red); font-size:11.5px; min-height:14px}
+  .wizgo{background:var(--fg); color:var(--on-accent); border:none; border-radius:12px; padding:13px;
+    font-family:inherit; font-size:15px; font-weight:800; cursor:pointer}
+  .wizgo:active{transform:scale(.98)}
   .brand b{color:var(--white)}
   .grow{flex:1}
   .iconbtn{
@@ -412,7 +468,7 @@
 
 <header>
   <div class="hrow">
-    <span class="brand">&gt;_ <b>NexusSEC</b></span>
+    <span class="brand"><span id="wizToggle" class="wiztoggle" title="Wizard" role="button" tabindex="0"><span class="ar">&gt;</span>_</span> <b>NexusSEC</b></span>
     <span class="grow"></span>
     <button class="iconbtn" id="torBtn" title="Tor: off — instrada il traffico via Tor">🧅</button>
     <button class="iconbtn" id="catBtn" title="Mostra i tool installabili dal catalogo">🧰</button>
@@ -503,6 +559,18 @@
     <button class="iconbtn" id="smClose">✕</button>
   </div>
   <div class="sm-body" id="smBody"></div>
+</div>
+
+<!-- pannello Wizard: drawer a tutto schermo da sinistra (toggle sul '>' del brand) -->
+<div class="wizpanel" id="wizPanel" aria-hidden="true">
+  <div class="wizhead">
+    <div>
+      <div class="t"><span>🧙</span><span id="wizTitle">Wizard</span></div>
+      <div class="s" id="wizSub">Sequenze automatiche per profilo</div>
+    </div>
+    <button class="x" id="wizClose" title="Chiudi">✕</button>
+  </div>
+  <div class="wizbody" id="wizBody"></div>
 </div>
 
 <!-- taskbar stile desktop -->
@@ -1604,6 +1672,89 @@ $("#scrim").onclick=closeStart;
 $("#tbTerm").onclick=()=>{ const sh=findTool("shell_live"); if(sh) openStream(sh); else toast("Shell non disponibile"); };
 $("#smRefresh").onclick=async()=>{ await refreshTools(); renderStartMenu(); };
 
+/* ---------------- Pannello WIZARD (drawer laterale, a tutto schermo) ---------------- */
+let WIZARDS=null;                 // cache lista wizard (fetch una volta)
+const wizPanel=$("#wizPanel"), wizToggle=$("#wizToggle");
+function wizIsOpen(){ return wizPanel.classList.contains("open"); }
+function wizArrow(ch){ const a=wizToggle.querySelector(".ar"); if(a) a.textContent=ch; }
+async function openWiz(){
+  wizPanel.classList.add("open"); wizPanel.setAttribute("aria-hidden","false");
+  wizArrow("<"); wizToggle.classList.add("on");
+  $("#wizTitle").textContent=t("wiz_title"); $("#wizSub").textContent=t("wiz_sub");
+  await renderWizList();
+}
+function closeWiz(){
+  wizPanel.classList.remove("open"); wizPanel.setAttribute("aria-hidden","true");
+  wizArrow(">"); wizToggle.classList.remove("on");
+}
+function toggleWiz(){ wizIsOpen()?closeWiz():openWiz(); }
+wizToggle.onclick=toggleWiz;
+wizToggle.onkeydown=(e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); toggleWiz(); } };
+$("#wizClose").onclick=closeWiz;
+
+async function loadWizards(){
+  if(WIZARDS) return WIZARDS;
+  try{ WIZARDS=await (await fetch("/api/wizards?lang="+LANG)).json(); }
+  catch{ WIZARDS=[]; }
+  return WIZARDS;
+}
+async function renderWizList(){
+  const body=$("#wizBody"); body.innerHTML="";
+  const list=await loadWizards();
+  const grid=document.createElement("div"); grid.className="wizgrid";
+  if(!list.length){ body.innerHTML='<div class="empty">'+t("wiz_none")+'</div>'; return; }
+  list.forEach(w=>{
+    const c=document.createElement("button"); c.className="wizcard";
+    c.innerHTML=`<span class="ic">${w.icon}</span>`
+      +`<span class="nm">${escapeHtml(w.name)}</span>`
+      +`<span class="ds">${escapeHtml(w.desc)}</span>`
+      +`<span class="st">${w.steps.length} ${t("wiz_steps")}</span>`;
+    c.onclick=()=>renderWizDetail(w);
+    grid.appendChild(c);
+  });
+  body.appendChild(grid);
+}
+function renderWizDetail(w){
+  const body=$("#wizBody"); body.innerHTML="";
+  const wrap=document.createElement("div"); wrap.className="wizdet";
+  const back=document.createElement("button"); back.className="wizback";
+  back.textContent="‹ "+t("wiz_back"); back.onclick=renderWizList; wrap.appendChild(back);
+  const top=document.createElement("div"); top.className="top";
+  top.innerHTML=`<span class="ic">${w.icon}</span>`
+    +`<div><div class="nm">${escapeHtml(w.name)}</div><div class="ds">${escapeHtml(w.desc)}</div></div>`;
+  wrap.appendChild(top);
+  if(w.note){ const nt=document.createElement("div"); nt.className="wiznote"; nt.textContent="⚠ "+w.note; wrap.appendChild(nt); }
+  // Anteprima sequenza
+  const ol=document.createElement("ol"); ol.className="wizsteps";
+  w.steps.forEach(s=>{ const li=document.createElement("li");
+    li.innerHTML=`<span class="tt">${escapeHtml(s.title)}</span><code class="cm">${escapeHtml(s.run)}</code>`;
+    ol.appendChild(li); });
+  wrap.appendChild(ol);
+  // Form target + avvio
+  const form=document.createElement("div"); form.className="wizform";
+  const lbl=document.createElement("label"); lbl.textContent=w.input.label; form.appendChild(lbl);
+  const inp=document.createElement("input");
+  inp.placeholder=w.input.type==="path"?t("wiz_ph_path"):(w.input.type==="url"?"https://…":t("wiz_ph_host"));
+  inp.autocapitalize="off"; inp.autocorrect="off"; inp.spellcheck=false; form.appendChild(inp);
+  const err=document.createElement("div"); err.className="wizerr"; form.appendChild(err);
+  const go=document.createElement("button"); go.className="wizgo"; go.textContent="▶ "+t("wiz_run");
+  const launch=()=>{
+    const v=(inp.value||"").trim();
+    if(!v){ err.textContent=t("wiz_need_target"); return; }
+    if(v.startsWith("-")){ err.textContent=t("wiz_bad_target"); return; }
+    err.textContent="";
+    closeWiz();
+    runStream("/api/wizard/"+encodeURIComponent(w.id)
+      +"?target="+encodeURIComponent(v)+"&lang="+LANG, w.name, {input:false});
+  };
+  go.onclick=launch;
+  inp.onkeydown=(e)=>{ if(e.key==="Enter"){ e.preventDefault(); launch(); } };
+  form.appendChild(go);
+  wrap.appendChild(form);
+  body.appendChild(wrap);
+  setTimeout(()=>inp.focus(),120);
+}
+
 // orologio della tray
 function tickClock(){ const d=new Date();
   $("#clock").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
@@ -1636,6 +1787,11 @@ const I18N = {
     pv_nofilter:"Nessun tool del profilo corrisponde al filtro.",
     pb_profile:"Profilo", pb_install:"⤓ Installa profilo", pb_remove:"🗑 Rimuovi", pb_showall:"✕ mostra tutti",
     fav_title:"Preferiti", empty_none:"Nessun tool trovato.",
+    wiz_title:"Wizard", wiz_sub:"Sequenze automatiche di comandi per profilo",
+    wiz_none:"Nessun wizard disponibile.", wiz_steps:"passi", wiz_back:"Indietro",
+    wiz_run:"Avvia sequenza", wiz_ph_host:"es. scanme.nmap.org oppure 192.168.1.10",
+    wiz_ph_path:"es. /sdcard/Download/file.bin", wiz_need_target:"Inserisci un valore.",
+    wiz_bad_target:"Non può iniziare con «-».",
     tb_term:"Terminale (shell)", st_offline:"server non raggiungibile — avvia python server.py",
     st_tools:"tool installati", st_catalog:"nel catalogo", st_profiles:"profili (▤)",
   },
@@ -1656,6 +1812,11 @@ const I18N = {
     pv_nofilter:"No profile tool matches the filter.",
     pb_profile:"Profile", pb_install:"⤓ Install profile", pb_remove:"🗑 Remove", pb_showall:"✕ show all",
     fav_title:"Favorites", empty_none:"No tool found.",
+    wiz_title:"Wizard", wiz_sub:"Automated command sequences per profile",
+    wiz_none:"No wizard available.", wiz_steps:"steps", wiz_back:"Back",
+    wiz_run:"Run sequence", wiz_ph_host:"e.g. scanme.nmap.org or 192.168.1.10",
+    wiz_ph_path:"e.g. /sdcard/Download/file.bin", wiz_need_target:"Enter a value.",
+    wiz_bad_target:"Cannot start with “-”.",
     tb_term:"Terminal (shell)", st_offline:"server unreachable — run python server.py",
     st_tools:"tools installed", st_catalog:"in catalog", st_profiles:"profiles (▤)",
   },
@@ -1978,6 +2139,8 @@ function setLang(l){
   applyI18n();
   render($("#search").value);
   if($("#startmenu").classList.contains("open")) renderStartMenu();
+  WIZARDS=null;   // ricarica i wizard nella nuova lingua
+  if(typeof wizIsOpen==="function" && wizIsOpen()) renderWizList();
 }
 // Testi FISSI nell'HTML: coppie [selettore, proprietà, testo IT].
 // Traduce con tr() quando LANG=en; in italiano ripristina l'originale.

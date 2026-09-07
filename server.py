@@ -57,6 +57,7 @@ from tools import (PROOT, TOOLS, TOR_SOCKS_PORT, detection_targets, exec_prefix,
                   inner_command, install_command, install_package_command,
                   install_profile_command, profiles_list, system_command,
                   tools_by_category, uninstall_profile_command, validate_target)
+import wizards
 
 # --------------------------------------------------------------------------- #
 # Configurazione
@@ -637,6 +638,144 @@ async def sys_stream(ws: WebSocket, action: str) -> None:
     # Dopo "Aggiorna app" (git pull), azzera la cache dello stato aggiornamenti.
     if action == "update-app":
         _UPDATE_CACHE.update(ts=0.0, data=None)
+
+
+# --------------------------------------------------------------------------- #
+# Wizard: sequenze automatiche di comandi per profilo (pannello laterale)
+# --------------------------------------------------------------------------- #
+@app.get("/api/wizards")
+def wizards_list(lang: str = "it"):
+    """Elenco dei wizard predefiniti, localizzato, per il pannello laterale."""
+    return wizards.list_wizards("en" if lang == "en" else "it")
+
+
+async def _wiz_capture(ws: WebSocket, argv: list[str],
+                       abort: asyncio.Event) -> tuple[int, str]:
+    """Esegue UN passo del wizard: streaming live + testo catturato (per estrarre
+    le variabili). Nessun input (i wizard sono non interattivi)."""
+    env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"
+    try:
+        proc = subprocess.Popen(
+            argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, bufsize=0, start_new_session=True, env=env)
+    except OSError as e:
+        await ws.send_json({"type": "out", "data": f"!! {e}\n"})
+        return 127, ""
+    loop = asyncio.get_running_loop()
+    buf, fd = [], proc.stdout.fileno()
+    while True:
+        if abort.is_set():
+            _terminate(proc)
+            break
+        data = await loop.run_in_executor(None, _read_chunk, fd)
+        if not data:
+            break
+        s = data.decode(errors="replace")
+        buf.append(s)
+        try:
+            await ws.send_json({"type": "out", "data": s})
+        except (WebSocketDisconnect, RuntimeError):
+            _terminate(proc)
+            break
+    rc = proc.poll()
+    if rc is None:
+        rc = await loop.run_in_executor(None, proc.wait)
+    return (rc if rc is not None else 0), "".join(buf)
+
+
+@app.websocket("/api/wizard/{wizard_id}")
+async def wizard_stream(ws: WebSocket, wizard_id: str) -> None:
+    await ws.accept()
+    lang = "en" if ws.query_params.get("lang", "it") == "en" else "it"
+    wz = wizards.get_wizard(wizard_id)
+    if wz is None:
+        await ws.send_json({"type": "error",
+                            "data": "Wizard not found." if lang == "en"
+                            else "Wizard sconosciuto."})
+        await ws.close()
+        return
+    # Valida l'input (host/url/path) come per i tool: niente iniezioni.
+    try:
+        clean = wizards.validate_input(wz["input"]["type"],
+                                       ws.query_params.get("target", ""))
+    except ValueError as e:
+        await ws.send_json({"type": "error", "data": str(e)})
+        await ws.close()
+        return
+    # I passi in proot richiedono proot-distro.
+    if any(s.get("runtime") == "proot" for s in wz["steps"]) \
+            and shutil.which("proot-distro") is None:
+        await ws.send_json({"type": "error",
+                            "data": "proot-distro not found. Run install.sh first."
+                            if lang == "en"
+                            else "proot-distro non trovato. Lancia prima install.sh."})
+        await ws.close()
+        return
+
+    variables = wizards.initial_vars(clean)
+    abort = asyncio.Event()
+
+    async def _reader() -> None:            # ascolta lo Stop dal pannello
+        try:
+            while True:
+                m = await ws.receive_json()
+                if m.get("type") == "sig":
+                    abort.set()
+                    break
+        except (WebSocketDisconnect, RuntimeError):
+            abort.set()
+
+    reader = asyncio.create_task(_reader())
+    n = len(wz["steps"])
+    await ws.send_json({"type": "start", "data": wizards._pk(wz["name"], lang)})
+    try:
+        for i, step in enumerate(wz["steps"], 1):
+            if abort.is_set():
+                break
+            title = wizards._pk(step["title"], lang)
+            hdr = (f"\n══ {'Step' if lang == 'en' else 'Passo'} {i}/{n} · {title} ══\n")
+            missing = [v for v in step.get("skip_if_empty", []) if not variables.get(v)]
+            if missing:
+                skip = ("(skipped: previous step produced no data)" if lang == "en"
+                        else "(saltato: il passo precedente non ha prodotto dati)")
+                await ws.send_json({"type": "out", "data": hdr + skip + "\n"})
+                continue
+            cmd = wizards.subst(step["run"], variables)
+            # Guardia "tool non installato": messaggio chiaro invece di errori criptici.
+            needs = step.get("needs")
+            if needs:
+                miss_msg = (f"⚠ {needs} not installed: install the matching profile "
+                            f"or package." if lang == "en"
+                            else f"⚠ {needs} non installato: installa il profilo o il "
+                                 f"pacchetto corrispondente.")
+                cmd = (f"command -v {shlex.quote(needs)} >/dev/null 2>&1 || "
+                       f"{{ echo {shlex.quote(miss_msg)}; exit 127; }}; " + cmd)
+            await ws.send_json({"type": "out", "data": hdr + "$ " + cmd + "\n"})
+            argv = (list(PROOT) if step.get("runtime") == "proot" else []) \
+                + ["bash", "-lc", cmd]
+            rc, text = await _wiz_capture(ws, argv, abort)
+            if step.get("produce"):
+                variables.update(wizards.extract(text, step["produce"]))
+            if rc not in (0, None):
+                note = (f"[exit {rc}]\n" if lang == "en" else f"[uscita {rc}]\n")
+                await ws.send_json({"type": "out", "data": note})
+        done = ("\n══ Wizard finished ══\n" if lang == "en"
+                else "\n══ Wizard completato ══\n")
+        if abort.is_set():
+            done = ("\n══ Wizard aborted ══\n" if lang == "en"
+                    else "\n══ Wizard interrotto ══\n")
+        await ws.send_json({"type": "out", "data": done})
+        await ws.send_json({"type": "end", "data": 0})
+    except (WebSocketDisconnect, RuntimeError):
+        pass
+    finally:
+        abort.set()
+        reader.cancel()
+        try:
+            await ws.close()
+        except (RuntimeError, WebSocketDisconnect):
+            pass
 
 
 @app.get("/api/health")
