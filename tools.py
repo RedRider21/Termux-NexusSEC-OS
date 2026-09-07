@@ -1254,10 +1254,15 @@ def system_command(action: str, lang: str = "it") -> list[str]:
             f'git config --global --add safe.directory "{repo}" 2>/dev/null || true',
             'echo "' + _L(lang, "== controllo aggiornamenti ==", "== checking for updates ==") + '"',
             'B=$(git rev-parse --short HEAD 2>/dev/null)',
-            'git fetch origin || { echo "' + _L(lang, "!! FETCH FALLITO — controlla la rete",
-                                                       "!! FETCH FAILED — check the network") + '"; exit 1; }',
-            'git reset --hard origin/master || { echo "' + _L(lang, "!! AGGIORNAMENTO NON RIUSCITO",
-                                                                     "!! UPDATE FAILED") + '"; exit 1; }',
+            # Cattura l'output reale di git: se fetch/reset falliscono davvero,
+            # l'utente vede il MOTIVO (rete, permessi, ...) invece di un generico
+            # "fallito" che non aiuta la diagnosi.
+            'if ! OUT=$(git fetch origin 2>&1); then echo "'
+            + _L(lang, "!! FETCH FALLITO — controlla la rete", "!! FETCH FAILED — check the network")
+            + '"; echo "$OUT"; exit 1; fi',
+            'if ! OUT=$(git reset --hard origin/master 2>&1); then echo "'
+            + _L(lang, "!! AGGIORNAMENTO NON RIUSCITO", "!! UPDATE FAILED")
+            + '"; echo "$OUT"; exit 1; fi',
             'A=$(git rev-parse --short HEAD 2>/dev/null)',
             'if [ "$B" = "$A" ]; then echo "' + _L(lang, "OK: già all'ultima versione (niente da aggiornare).",
                                                           "OK: already up to date (nothing to update).") + '"; '

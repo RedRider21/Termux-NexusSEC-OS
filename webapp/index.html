@@ -664,7 +664,11 @@ function toast(msg){
 }
 
 /* ---------------- overlay ---------------- */
-$("#ovclose").onclick=()=>{ overlay.classList.remove("open"); term.src="about:blank"; closeStream(); };
+// Chiudendo l'overlay chiudo DAVVERO l'eventuale terminale mostrato: lo tolgo
+// dalla barra e fermo il ttyd. Così "chiudo il terminale" = programma chiuso,
+// non più una voce che resta appesa nella taskbar.
+$("#ovclose").onclick=()=>{ overlay.classList.remove("open"); term.src="about:blank"; closeStream();
+  if(curTermId){ closeTermWindow(curTermId); } };
 function resetOverlay(){
   $("#copyBtn").hidden=true; $("#dlBtn").hidden=true; $("#ovmeta").hidden=true;
   $("#tabBtn").hidden=true; $("#termHint").hidden=true;
@@ -672,6 +676,7 @@ function resetOverlay(){
   closeStream();
   $("#streamOut").hidden=true; $("#streamBar").classList.remove("on");
   $("#guide").hidden=true;
+  curTermId=null;   // overlay non-terminale: nessun terminale "corrente"
 }
 function showGuide(){
   resetOverlay();
@@ -979,6 +984,7 @@ async function openTerminal(tool){
     const d=await r.json();
     if(!r.ok){ showOutput(tool.name,tr("Errore: ")+(d.detail||r.status)); return; }
     showTerminal(tool.name, d.url);
+    curTermId=tool.id;
     openWins.set(tool.id, {name:tool.name, url:d.url}); renderTaskbarWins();
   }catch(e){ showOutput(tool.name,tr("Errore di rete: ")+e); }
 }
@@ -1456,14 +1462,24 @@ function findTool(id){ for(const arr of Object.values(ALL)) for(const t of arr) 
 
 // finestre (terminali) aperte, mostrate come task nella barra
 const openWins=new Map();
+let curTermId=null;   // id del terminale attualmente mostrato nell'overlay
+// Chiude DAVVERO una finestra terminale: la toglie dalla barra E ferma il
+// processo ttyd sul server (altrimenti resterebbe appeso, consumando risorse
+// e lasciando la voce nella taskbar anche dopo aver chiuso l'overlay).
+function closeTermWindow(id){
+  if(!id) return;
+  openWins.delete(id); renderTaskbarWins();
+  fetch("/api/terminal/"+encodeURIComponent(id)+"/stop",{method:"POST"}).catch(()=>{});
+  if(curTermId===id) curTermId=null;
+}
 function renderTaskbarWins(){
   const c=$("#tbOpen"); c.innerHTML="";
   openWins.forEach((w,id)=>{
     const el=document.createElement("div"); el.className="tb-win";
     const nm=document.createElement("span"); nm.className="nm"; nm.textContent=(ICON[id]||"▸")+" "+tr(w.name);
-    nm.onclick=()=>showTerminal(w.name,w.url);
+    nm.onclick=()=>{ showTerminal(w.name,w.url); curTermId=id; };
     const x=document.createElement("span"); x.className="x"; x.textContent="✕";
-    x.onclick=(e)=>{ e.stopPropagation(); openWins.delete(id); renderTaskbarWins(); };
+    x.onclick=(e)=>{ e.stopPropagation(); closeTermWindow(id); };
     el.appendChild(nm); el.appendChild(x); c.appendChild(el);
   });
 }

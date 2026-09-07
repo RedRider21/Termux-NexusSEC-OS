@@ -429,12 +429,34 @@ def open_terminal(tool_id: str, request: Request):
     else:
         inner = [*prefix, *tool["cmd"]]
 
-    port = TTYD_BASE_PORT + len(_ttyd_procs)
+    # Prima porta libera >= BASE (non uso len(): se un terminale è stato chiuso
+    # la sua porta si libera e riusarla per indice porterebbe a collisioni).
+    used = {p for (pr, p) in _ttyd_procs.values() if pr.poll() is None}
+    port = TTYD_BASE_PORT
+    while port in used:
+        port += 1
     # ttyd: -i localhost, -W abilita l'input da tastiera, -t per il tema.
     ttyd_cmd = ["ttyd", "-i", HOST, "-p", str(port), "-W", "-t", f"theme={ttyd_theme}", *inner]
     proc = subprocess.Popen(ttyd_cmd)
     _ttyd_procs[tool_id] = (proc, port)
     return {"url": f"http://{HOST}:{port}"}
+
+
+@app.post("/api/terminal/{tool_id}/stop")
+def stop_terminal(tool_id: str):
+    """Ferma l'istanza ttyd di un tool: la PWA la chiama quando l'utente chiude
+    la finestra del terminale, così il processo non resta appeso e la voce sparisce
+    davvero dalla taskbar."""
+    entry = _ttyd_procs.pop(tool_id, None)
+    if entry:
+        proc, _ = entry
+        if proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+    return {"ok": True}
 
 
 # --------------------------------------------------------------------------- #
