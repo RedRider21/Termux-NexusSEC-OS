@@ -1,212 +1,524 @@
 <!DOCTYPE html>
-<html lang="it">
+<!--
+  Termux-NexusSEC-OS — sito di presentazione (GitHub Pages, master/docs).
+  Landing unica, bilingue IT/EN (toggle 🌐), tema terminale con chiaro/scuro (🌓).
+  Statica: nessun framework, nessun build. Gli screenshot vengono da docs/screens/.
+  © 2026 RedRider21 — GNU AGPL-3.0.
+-->
+<html lang="it" data-sitelang="it">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050705">
-<title>Termux-NexusSEC-OS · scarica Termux</title>
+<title>NexusSEC · pentesting su Android senza root</title>
+<meta name="description" content="Termux-NexusSEC-OS: ambiente di pentesting su Android, senza root. Interfaccia web, profili, catalogo tool, Wizard automatici, Tor, multilingua.">
+<!-- Applica lingua e tema salvati PRIMA del render (niente flash) -->
+<script>
+  (function(){
+    try{
+      var l=localStorage.getItem("nx_site_lang"); if(!l){ l=(navigator.language||"it").slice(0,2)==="en"?"en":"it"; }
+      document.documentElement.setAttribute("data-sitelang", l); document.documentElement.lang=l;
+      var th=localStorage.getItem("nx_site_theme")||"dark";
+      document.documentElement.setAttribute("data-theme", th);
+    }catch(e){}
+  })();
+</script>
 <style>
   :root{
-    --bg:#050705; --panel:#0b0e0b; --card:#0d120d; --line:#16321f;
-    --fg:#3dff88; --fg-dim:#2aa35a; --muted:#5a7a63; --white:#d7f5e2;
-    --amber:#ffb454; --red:#ff5c5c; --radius:14px;
+    --bg:#050705; --bg2:#0a1a0f; --panel:#0b0e0b; --card:#0d120d; --card2:#0a0d0a;
+    --line:#16321f; --fg:#3dff88; --fg-dim:#2aa35a; --muted:#5a7a63; --white:#d7f5e2;
+    --amber:#ffb454; --amber-bd:#4a3a12; --red:#ff5c5c; --on-accent:#04160a;
+    --radius:14px; --maxw:1080px;
+  }
+  html[data-theme="light"]{
+    --bg:#f4f7f3; --bg2:#e7f0ea; --panel:#ffffff; --card:#ffffff; --card2:#eef3ef;
+    --line:#cfe0d4; --fg:#0f7a3d; --fg-dim:#2f9257; --muted:#5c6f63; --white:#0c1b12;
+    --amber:#a2650a; --amber-bd:#e6cfa0; --red:#c02626; --on-accent:#ffffff;
   }
   *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
   body{
-    margin:0; background:var(--bg); color:var(--fg); line-height:1.5;
+    margin:0; background:var(--bg); color:var(--fg); line-height:1.55;
     font-family:ui-monospace,"Cascadia Code",Menlo,Consolas,monospace;
-    background-image:radial-gradient(circle at 50% -10%, #0a1a0f 0%, var(--bg) 55%);
+    background-image:radial-gradient(circle at 50% -8%, var(--bg2) 0%, var(--bg) 55%);
     -webkit-text-size-adjust:100%;
   }
-  .wrap{max-width:640px; margin:0 auto; padding:22px 16px 60px}
-  header{text-align:center; margin-bottom:6px}
-  .brand{font-size:20px; font-weight:700; letter-spacing:.5px}
-  .brand b{color:var(--white)}
-  .sub{color:var(--muted); font-size:12.5px; margin-top:4px}
-  .warn{background:#1a1206; border:1px solid #4a3a12; color:var(--amber);
-    border-radius:12px; padding:11px 13px; font-size:12.5px; margin:18px 0}
-  h2{font-size:13px; color:var(--fg-dim); text-transform:uppercase; letter-spacing:2px;
-    margin:26px 2px 12px; display:flex; align-items:center; gap:9px}
-  h2 .n{display:inline-flex; width:22px; height:22px; align-items:center; justify-content:center;
-    background:var(--fg); color:#04160a; border-radius:50%; font-size:12px; font-weight:700}
-  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
-    padding:14px; margin-bottom:12px}
-  .card p{margin:0 0 10px; color:var(--muted); font-size:12.5px}
-  .card p b{color:var(--white)}
-  a.btn{display:flex; align-items:center; gap:10px; text-decoration:none;
-    background:linear-gradient(180deg,#0e140e,#0a0d0a); color:var(--white);
-    border:1px solid var(--line); border-radius:11px; padding:12px 14px; margin-top:8px;
-    font-size:13.5px}
-  a.btn:active{transform:scale(.98)}
-  a.btn .e{font-size:20px}
-  a.btn .t{flex:1}
-  a.btn .t small{display:block; color:var(--muted); font-size:11px; margin-top:2px}
-  a.btn.reco{border-color:var(--fg-dim); box-shadow:0 0 0 1px var(--fg-dim) inset}
-  .tag{font-size:10px; letter-spacing:1px; padding:2px 8px; border-radius:20px;
-    border:1px solid var(--fg-dim); color:var(--fg-dim)}
-  .grid{display:grid; grid-template-columns:1fr 1fr; gap:8px}
-  .grid a.btn{margin-top:0}
-  code, pre{font-family:inherit}
-  pre{background:#04160a; border:1px solid var(--line); border-radius:11px;
-    padding:12px 13px; overflow-x:auto; color:var(--white); font-size:12.5px; margin:0}
-  .copy{display:block; width:100%; margin-top:8px; background:var(--fg); color:#04160a;
-    border:0; border-radius:10px; padding:11px; font-family:inherit; font-size:13px;
-    font-weight:700; cursor:pointer}
+  a{color:var(--fg-dim)}
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 18px}
+  /* lingua: mostra solo il blocco della lingua attiva */
+  [data-sitelang="it"] [data-lang="en"]{display:none!important}
+  [data-sitelang="en"] [data-lang="it"]{display:none!important}
+
+  /* ---------- NAV ---------- */
+  .nav{position:sticky; top:0; z-index:50; backdrop-filter:blur(8px);
+    background:color-mix(in srgb, var(--bg) 82%, transparent); border-bottom:1px solid var(--line)}
+  .nav .row{max-width:var(--maxw); margin:0 auto; display:flex; align-items:center; gap:10px; padding:10px 18px}
+  .brand{font-size:16px; font-weight:700; letter-spacing:.5px; white-space:nowrap}
+  .brand .p{color:var(--fg)} .brand b{color:var(--white)}
+  .nav .links{display:flex; gap:16px; margin-left:14px; overflow-x:auto}
+  .nav .links a{color:var(--muted); text-decoration:none; font-size:13px; white-space:nowrap}
+  .nav .links a:hover{color:var(--fg)}
+  .nav .sp{flex:1}
+  .iconbtn{background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:9px;
+    padding:7px 10px; font-family:inherit; font-size:13px; cursor:pointer; white-space:nowrap}
+  .iconbtn:active{transform:scale(.95)}
+  @media(max-width:760px){ .nav .links{display:none} }
+
+  /* ---------- HERO ---------- */
+  .hero{padding:54px 0 30px; display:grid; grid-template-columns:1.1fr .9fr; gap:34px; align-items:center}
+  @media(max-width:860px){ .hero{grid-template-columns:1fr; padding:34px 0 10px; gap:22px} }
+  .hero h1{font-size:40px; line-height:1.08; margin:0 0 12px; color:var(--white); letter-spacing:.5px}
+  .hero h1 .p{color:var(--fg)}
+  @media(max-width:860px){ .hero h1{font-size:30px} }
+  .hero .tag{color:var(--muted); font-size:15px; margin:0 0 20px; max-width:34em}
+  .hero .cta{display:flex; gap:10px; flex-wrap:wrap}
+  .btn{display:inline-flex; align-items:center; gap:8px; text-decoration:none; cursor:pointer;
+    border-radius:11px; padding:12px 16px; font-size:14px; font-family:inherit; border:1px solid var(--line);
+    background:var(--card); color:var(--white)}
+  .btn.pri{background:var(--fg); color:var(--on-accent); border-color:var(--fg); font-weight:700}
+  .btn:active{transform:scale(.98)}
+  .pill{display:inline-flex; gap:7px; align-items:center; font-size:11.5px; color:var(--fg-dim);
+    border:1px solid var(--line); border-radius:20px; padding:4px 11px; margin-bottom:16px}
+
+  /* terminale finto nell'hero */
+  .term{background:var(--card2); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.35)}
+  .term .bar{display:flex; align-items:center; gap:6px; padding:9px 12px; border-bottom:1px solid var(--line);
+    background:color-mix(in srgb,var(--card) 70%, var(--bg))}
+  .term .bar i{width:10px; height:10px; border-radius:50%; display:inline-block}
+  .term .bar .t{margin-left:8px; color:var(--muted); font-size:11px}
+  .term pre{margin:0; padding:14px 15px; font-size:12.5px; color:var(--white); min-height:190px; white-space:pre-wrap}
+  .term .g{color:var(--fg)} .term .m{color:var(--muted)} .term .a{color:var(--amber)}
+  .cur{display:inline-block; width:8px; height:15px; background:var(--fg); vertical-align:-2px; animation:bl 1s steps(1) infinite}
+  @keyframes bl{50%{opacity:0}}
+  @media(prefers-reduced-motion:reduce){ .cur{animation:none} }
+
+  /* ---------- SEZIONI ---------- */
+  section{padding:46px 0; border-top:1px solid var(--line)}
+  .sec-h{font-size:12px; color:var(--fg-dim); text-transform:uppercase; letter-spacing:3px; margin:0 0 6px}
+  .sec-t{font-size:26px; color:var(--white); margin:0 0 8px; letter-spacing:.3px}
+  .sec-d{color:var(--muted); font-size:14px; margin:0 0 24px; max-width:52em}
+  @media(max-width:860px){ .sec-t{font-size:22px} }
+
+  .grid{display:grid; gap:14px}
+  .g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
+  @media(max-width:860px){ .g3,.g2{grid-template-columns:1fr} }
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px}
+  .card .ic{font-size:26px; line-height:1}
+  .card h3{margin:10px 0 6px; font-size:16px; color:var(--white)}
+  .card p{margin:0; color:var(--muted); font-size:13px}
+  .kbd{color:var(--fg)}
+
+  /* wizard / screenshot */
+  .shots{display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
+  @media(max-width:860px){ .shots{grid-template-columns:repeat(2,1fr)} }
+  .shot{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:8px; cursor:zoom-in}
+  .shot img{display:block; width:100%; border-radius:8px}
+  .shot .cap{color:var(--muted); font-size:11.5px; margin-top:7px; text-align:center}
+
+  table.steps{width:100%; border-collapse:collapse; font-size:13px}
+  table.steps td{border:1px solid var(--line); padding:9px 11px; vertical-align:top}
+  table.steps td:first-child{color:var(--white); white-space:nowrap; font-weight:700}
+  table.steps td:last-child{color:var(--muted)}
+
+  /* flow / architettura */
+  .flow{display:flex; flex-direction:column; gap:10px; max-width:560px}
+  .flow .box{border:1px solid var(--line); border-radius:12px; padding:13px 15px; background:var(--card)}
+  .flow .box b{color:var(--white)} .flow .box span{color:var(--muted); font-size:12.5px}
+  .flow .ar{text-align:center; color:var(--fg-dim); font-size:16px}
+
+  /* installazione */
+  .warn{background:color-mix(in srgb,var(--amber) 12%, var(--bg)); border:1px solid var(--amber-bd);
+    color:var(--amber); border-radius:12px; padding:12px 14px; font-size:13px; margin:0 0 16px}
+  pre.cmd{background:var(--card2); border:1px solid var(--line); border-radius:11px; padding:13px;
+    overflow-x:auto; color:var(--white); font-size:12.5px; margin:0}
+  .copy{display:block; width:100%; margin-top:9px; background:var(--fg); color:var(--on-accent);
+    border:0; border-radius:10px; padding:11px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer}
   .copy:active{transform:scale(.98)}
-  .muted{color:var(--muted); font-size:12px}
-  footer{text-align:center; color:var(--muted); font-size:11.5px; margin-top:30px}
+  a.dl{display:flex; align-items:center; gap:11px; text-decoration:none; background:var(--card2);
+    color:var(--white); border:1px solid var(--line); border-radius:11px; padding:12px 14px; margin-top:8px; font-size:13.5px}
+  a.dl .e{font-size:20px} a.dl .t{flex:1} a.dl .t small{display:block; color:var(--muted); font-size:11px; margin-top:2px}
+  a.dl.reco{border-color:var(--fg-dim); box-shadow:0 0 0 1px var(--fg-dim) inset}
+  .dlgrid{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+  .dlgrid a.dl{margin-top:0}
+  .tagr{font-size:10px; letter-spacing:1px; padding:2px 8px; border-radius:20px; border:1px solid var(--fg-dim); color:var(--fg-dim)}
+
+  /* faq */
+  details.faq{border:1px solid var(--line); border-radius:12px; background:var(--card); padding:0; margin-bottom:10px}
+  details.faq summary{cursor:pointer; padding:14px 16px; color:var(--white); font-size:14px; list-style:none}
+  details.faq summary::-webkit-details-marker{display:none}
+  details.faq summary::before{content:"＋ "; color:var(--fg)}
+  details.faq[open] summary::before{content:"− "}
+  details.faq .a{padding:0 16px 14px; color:var(--muted); font-size:13px}
+
+  footer{border-top:1px solid var(--line); padding:30px 0 44px; color:var(--muted); font-size:12.5px; text-align:center}
   footer a{color:var(--fg-dim)}
+
+  /* lightbox */
+  #lb{position:fixed; inset:0; background:rgba(0,0,0,.86); display:none; align-items:center; justify-content:center;
+    z-index:100; padding:20px; cursor:zoom-out}
+  #lb.show{display:flex}
+  #lb img{max-width:100%; max-height:100%; border-radius:10px; border:1px solid var(--line)}
   #toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px);
-    background:var(--panel); border:1px solid var(--fg-dim); color:var(--white);
-    padding:10px 16px; border-radius:24px; font-size:13px; opacity:0; pointer-events:none;
-    transition:.25s}
+    background:var(--panel); border:1px solid var(--fg-dim); color:var(--white); padding:10px 16px;
+    border-radius:24px; font-size:13px; opacity:0; pointer-events:none; transition:.25s; z-index:110}
   #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div class="brand">&gt;_ <b>Termux-NexusSEC-OS</b></div>
-    <div class="sub">Ambiente di pentesting su Android · senza root</div>
-  </header>
 
-  <div class="warn">
-    ⚠️ <b>Non installare Termux dal Play Store:</b> quella versione è vecchia e non
-    aggiornabile. Usa una delle fonti ufficiali qui sotto.
-  </div>
-
-  <h2><span class="n">1</span> Scarica Termux</h2>
-
-  <div class="warn">
-    🔑 <b>Regola d'oro:</b> installa <b>Termux e i suoi add-on</b> (Termux:Boot,
-    Termux:API) <b>dalla stessa fonte</b>. Le app Termux si scambiano i permessi in base
-    alla <b>firma</b>: se mescoli F-Droid e GitHub, gli add-on <b>non funzioneranno</b>.
-    Il modo più semplice e sicuro è <b>prendere tutto da F-Droid</b>.
-  </div>
-
-  <div class="card">
-    <p><b>Modo consigliato — F-Droid.</b> Si aggiorna da solo e sceglie in automatico
-    l'APK giusto per il tuo telefono.</p>
-    <a class="btn reco" href="https://f-droid.org/en/packages/com.termux/" rel="noopener">
-      <span class="e">🟢</span>
-      <span class="t">Termux su F-Droid<small>apri e premi "Scarica APK" (richiede l'app F-Droid o il download diretto)</small></span>
-      <span class="tag">CONSIGLIATO</span>
-    </a>
-  </div>
-
-  <div class="card">
-    <p><b>In alternativa — APK ufficiale da GitHub</b> (release <code>v0.118.3</code>).
-    Scegli l'architettura del tuo telefono: <b>quasi tutti</b> i modelli dal 2017 sono
-    <b>arm64-v8a</b>. Se non sei sicuro, usa <b>universal</b> (va bene ovunque, ma pesa di più).</p>
-    <a class="btn reco" href="https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_arm64-v8a.apk" rel="noopener">
-      <span class="e">📱</span>
-      <span class="t">arm64-v8a<small id="arm64Note">la scelta giusta per la maggior parte dei telefoni</small></span>
-      <span class="tag" id="arm64Tag">GIUSTO PER TE?</span>
-    </a>
-    <div class="grid" style="margin-top:8px">
-      <a class="btn" href="https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_universal.apk" rel="noopener">
-        <span class="e">🌍</span><span class="t">universal<small>va ovunque (~118 MB)</small></span></a>
-      <a class="btn" href="https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_armeabi-v7a.apk" rel="noopener">
-        <span class="e">📟</span><span class="t">armeabi-v7a<small>telefoni vecchi 32-bit</small></span></a>
-      <a class="btn" href="https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_x86_64.apk" rel="noopener">
-        <span class="e">💻</span><span class="t">x86_64<small>emulatore / tablet Intel</small></span></a>
-      <a class="btn" href="https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_x86.apk" rel="noopener">
-        <span class="e">💻</span><span class="t">x86<small>emulatore 32-bit</small></span></a>
+<!-- ============ NAV ============ -->
+<nav class="nav">
+  <div class="row">
+    <span class="brand"><span class="p">&gt;_</span> <b>NexusSEC</b></span>
+    <div class="links">
+      <a href="#cos-e" data-lang="it">Cos'è</a><a href="#cos-e" data-lang="en">What</a>
+      <a href="#funzioni" data-lang="it">Funzioni</a><a href="#funzioni" data-lang="en">Features</a>
+      <a href="#wizard">Wizard</a>
+      <a href="#screenshot">Screenshot</a>
+      <a href="#come-funziona" data-lang="it">Architettura</a><a href="#come-funziona" data-lang="en">How it works</a>
+      <a href="#ecosistema" data-lang="it">Distro</a><a href="#ecosistema" data-lang="en">Distro</a>
+      <a href="#installazione" data-lang="it">Installazione</a><a href="#installazione" data-lang="en">Install</a>
+      <a href="#faq">FAQ</a>
     </div>
-    <p class="muted" style="margin-top:10px">Vuoi sempre l'ultima versione?
-      <a href="https://github.com/termux/termux-app/releases/latest" style="color:var(--fg-dim)" rel="noopener">Release più recente su GitHub</a>.
-      Dopo il download, Android chiederà di consentire l'installazione da "origini sconosciute": accetta.</p>
+    <span class="sp"></span>
+    <button class="iconbtn" id="langBtn" title="Italiano / English">🌐 <span id="langLbl">EN</span></button>
+    <button class="iconbtn" id="themeBtn" title="Tema chiaro / scuro">🌓</button>
+    <a class="iconbtn" href="https://github.com/RedRider21/Termux-NexusSEC-OS" rel="noopener" style="text-decoration:none">GitHub ↗</a>
   </div>
+</nav>
 
-  <h2><span class="n">2</span> Installa NexusSEC-OS</h2>
-  <div class="card">
-    <p><b>Modo facile — una riga sola.</b> Apri <b>Termux</b> appena installato e
-      incolla questa (tieni premuto per incollare): fa tutto e avvia l'app.</p>
-    <pre id="one">pkg install -y curl &amp;&amp; curl -fsSL https://raw.githubusercontent.com/RedRider21/Termux-NexusSEC-OS/master/nexussec-setup.sh | bash</pre>
-    <button class="copy" id="copyOne">📋 Copia il comando</button>
-    <p class="muted" style="margin-top:10px">Poi apri <b>http://127.0.0.1:8000</b> nel
-      browser. Scarica ~700 MB–1 GB (tool + Debian minimale): meglio sotto Wi-Fi.</p>
-  </div>
+<div class="wrap">
 
-  <div class="card">
-    <p><b>Modo manuale</b> (se preferisci vedere ogni passaggio):</p>
-    <pre id="cmd">pkg update -y &amp;&amp; pkg upgrade -y
+  <!-- ============ HERO ============ -->
+  <section class="hero" style="border-top:0">
+    <div>
+      <span class="pill">🐧 <span data-lang="it">L'estensione Android di <b style="color:var(--white)">NexusSEC OS</b></span><span data-lang="en">The Android extension of <b style="color:var(--white)">NexusSEC OS</b></span></span>
+      <h1><span class="p">&gt;_</span> NexusSEC</h1>
+      <p class="tag">
+        <span data-lang="it">Un <b>ambiente di pentesting completo su Android</b>, <b>senza root</b>. Decine di strumenti di sicurezza guidati da una <b>interfaccia web</b> elegante: profili pronti, catalogo installabile, <b>Wizard automatici</b>, Tor e multilingua.</span>
+        <span data-lang="en">A <b>full pentesting environment on Android</b>, <b>no root</b>. Dozens of security tools driven by a sleek <b>web interface</b>: ready profiles, an installable catalog, <b>automated Wizards</b>, Tor and multilingual.</span>
+      </p>
+      <div class="cta">
+        <a class="btn pri" href="#installazione">⬇ <span data-lang="it">Installa ora</span><span data-lang="en">Install now</span></a>
+        <a class="btn" href="#wizard">🧙 Wizard</a>
+        <a class="btn" href="https://github.com/RedRider21/Termux-NexusSEC-OS/blob/master/MANUALE.md" rel="noopener">📖 <span data-lang="it">Manuale</span><span data-lang="en">Manual</span></a>
+      </div>
+    </div>
+    <div class="term" aria-hidden="true">
+      <div class="bar"><i style="background:#ff5f56"></i><i style="background:#ffbd2e"></i><i style="background:#27c93f"></i><span class="t">nexus@android</span></div>
+      <pre id="termPre"></pre>
+    </div>
+  </section>
+
+  <!-- ============ COS'È ============ -->
+  <section id="cos-e">
+    <div class="sec-h" data-lang="it">Cos'è</div><div class="sec-h" data-lang="en">What it is</div>
+    <h2 class="sec-t" data-lang="it">Tre strati leggeri, nessun kernel da compilare</h2>
+    <h2 class="sec-t" data-lang="en">Three light layers, no kernel to compile</h2>
+    <p class="sec-d" data-lang="it">Non riscriviamo Android: mettiamo insieme strumenti che già funzionano bene su telefono, e li rendiamo semplici da usare.</p>
+    <p class="sec-d" data-lang="en">We don't rewrite Android: we combine tools that already run well on a phone and make them simple to use.</p>
+    <div class="grid g3">
+      <div class="card"><div class="ic">📦</div>
+        <h3 data-lang="it">1 · Gli strumenti</h3><h3 data-lang="en">1 · The tools</h3>
+        <p data-lang="it">La maggior parte sono <b>pacchetti nativi di Termux</b> (nmap, tor, sqlmap…). Il resto vive in un <b>Debian/Kali minimale</b> in <b>proot</b>, senza root.</p>
+        <p data-lang="en">Most are <b>native Termux packages</b> (nmap, tor, sqlmap…). The rest live in a <b>minimal Debian/Kali</b> under <b>proot</b>, no root.</p>
+      </div>
+      <div class="card"><div class="ic">🌐</div>
+        <h3 data-lang="it">2 · Il ponte</h3><h3 data-lang="en">2 · The bridge</h3>
+        <p data-lang="it">Un piccolo server locale (<span class="kbd">server.py</span>, FastAPI su <span class="kbd">127.0.0.1:8000</span>) esegue i comandi e trasmette l'output <b>in diretta</b>.</p>
+        <p data-lang="en">A tiny local server (<span class="kbd">server.py</span>, FastAPI on <span class="kbd">127.0.0.1:8000</span>) runs commands and streams output <b>live</b>.</p>
+      </div>
+      <div class="card"><div class="ic">📱</div>
+        <h3 data-lang="it">3 · L'interfaccia</h3><h3 data-lang="en">3 · The interface</h3>
+        <p data-lang="it">Una <b>PWA</b> (installabile sulla Home) con schede, profili, temi e Wizard: usi tutto <b>toccando</b>, senza ricordare i flag.</p>
+        <p data-lang="en">A <b>PWA</b> (installable to Home) with cards, profiles, themes and Wizards: everything by <b>tapping</b>, no flags to remember.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ECOSISTEMA / DISTRO ============ -->
+  <section id="ecosistema">
+    <div class="sec-h" data-lang="it">Ecosistema</div><div class="sec-h" data-lang="en">Ecosystem</div>
+    <h2 class="sec-t" data-lang="it">Il fratello Android di NexusSEC OS</h2>
+    <h2 class="sec-t" data-lang="en">The Android sibling of NexusSEC OS</h2>
+    <div class="card" style="display:grid; grid-template-columns:56px 1fr; gap:16px; align-items:start">
+      <div class="ic" style="font-size:44px">🐧</div>
+      <div>
+        <p style="color:var(--muted); font-size:14px; margin:0 0 12px">
+          <span data-lang="it">Questa app è l'<b>estensione su Android</b> della distro Linux <b>NexusSEC OS</b>: la stessa filosofia — <b>profili dinamici</b> e strumenti di sicurezza pronti all'uso — portata sul telefono, <b>senza root</b>. Hai un PC o vuoi una postazione completa? Prova la <b>distro live</b> (ISO x86_64/aarch64), con desktop, pannello e profili.</span>
+          <span data-lang="en">This app is the <b>Android extension</b> of the <b>NexusSEC OS</b> Linux distro: the same philosophy — <b>dynamic profiles</b> and ready-to-use security tools — brought to your phone, <b>no root</b>. Got a PC or want a full workstation? Try the <b>live distro</b> (x86_64/aarch64 ISO), with desktop, panel and profiles.</span>
+        </p>
+        <div class="cta">
+          <a class="btn pri" href="https://redrider21.github.io/NexusSec-OS/" rel="noopener">🌐 <span data-lang="it">Sito della distro</span><span data-lang="en">Distro website</span></a>
+          <a class="btn" href="https://github.com/RedRider21/NexusSec-OS" rel="noopener">GitHub ↗</a>
+          <a class="btn" href="https://github.com/RedRider21/NexusSec-OS/releases" rel="noopener">⬇ <span data-lang="it">ISO (Releases)</span><span data-lang="en">ISO (Releases)</span></a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FUNZIONI ============ -->
+  <section id="funzioni">
+    <div class="sec-h" data-lang="it">Funzionalità</div><div class="sec-h" data-lang="en">Features</div>
+    <h2 class="sec-t" data-lang="it">Tutto quello che serve, a portata di tocco</h2>
+    <h2 class="sec-t" data-lang="en">Everything you need, a tap away</h2>
+    <div class="grid g3">
+      <div class="card"><div class="ic">🎯</div><h3 data-lang="it">Profili pronti</h3><h3 data-lang="en">Ready profiles</h3>
+        <p data-lang="it">Pen Testing, Web, OSINT, Forensics, Reverse… installi un intero set con un tocco.</p>
+        <p data-lang="en">Pen Testing, Web, OSINT, Forensics, Reverse… install a whole set with one tap.</p></div>
+      <div class="card"><div class="ic">🧰</div><h3 data-lang="it">Catalogo tool</h3><h3 data-lang="en">Tool catalog</h3>
+        <p data-lang="it">Decine di strumenti installabili singolarmente, con parametri grafici e anteprima del comando.</p>
+        <p data-lang="en">Dozens of tools installable one by one, with graphical parameters and command preview.</p></div>
+      <div class="card"><div class="ic">🧙</div><h3 data-lang="it">Wizard automatici</h3><h3 data-lang="en">Automated wizards</h3>
+        <p data-lang="it">Catene di comandi per profilo: l'output di un passo alimenta il successivo. Creabili e condivisibili.</p>
+        <p data-lang="en">Per-profile command chains: one step's output feeds the next. Create and share your own.</p></div>
+      <div class="card"><div class="ic">◈</div><h3 data-lang="it">Flusso live</h3><h3 data-lang="en">Live stream</h3>
+        <p data-lang="it">Output in diretta in un pannello nativo; alcuni tool ti fanno anche rispondere alle domande.</p>
+        <p data-lang="en">Live output in a native panel; some tools even let you answer prompts.</p></div>
+      <div class="card"><div class="ic">🧅</div><h3>Tor</h3>
+        <p data-lang="it">Instrada il traffico dei tool compatibili via Tor con un interruttore.</p>
+        <p data-lang="en">Route compatible tools' traffic through Tor with a switch.</p></div>
+      <div class="card"><div class="ic">🎨</div><h3 data-lang="it">Temi</h3><h3 data-lang="en">Themes</h3>
+        <p data-lang="it">Terminale, Glass, Neon, Minimal chiaro/scuro. Persino il prompt della shell segue il tema.</p>
+        <p data-lang="en">Terminal, Glass, Neon, Minimal light/dark. Even the shell prompt follows the theme.</p></div>
+      <div class="card"><div class="ic">🌐</div><h3 data-lang="it">Multilingua</h3><h3 data-lang="en">Multilingual</h3>
+        <p data-lang="it">Interamente in Italiano o English: interfaccia, tool, messaggi e output delle procedure.</p>
+        <p data-lang="en">Fully in Italian or English: interface, tools, messages and procedure output.</p></div>
+      <div class="card"><div class="ic">🛠️</div><h3 data-lang="it">Gestione dalla PWA</h3><h3 data-lang="en">Manage from the PWA</h3>
+        <p data-lang="it">Aggiornamenti, installazioni, repo Kali, autostart e riavvio: tutto dai pulsanti dell'app.</p>
+        <p data-lang="en">Updates, installs, Kali repo, autostart and restart: all from the app's buttons.</p></div>
+      <div class="card"><div class="ic">🔒</div><h3 data-lang="it">Senza root</h3><h3 data-lang="en">No root</h3>
+        <p data-lang="it">Gira su un telefono stock. I tool che richiedono root sono segnalati e disattivati.</p>
+        <p data-lang="en">Runs on a stock phone. Tools that need root are flagged and disabled.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ WIZARD ============ -->
+  <section id="wizard">
+    <div class="sec-h">Wizard</div>
+    <h2 class="sec-t" data-lang="it">Sequenze automatiche, dato solo un bersaglio</h2>
+    <h2 class="sec-t" data-lang="en">Automated sequences, from a single target</h2>
+    <p class="sec-d" data-lang="it">Apri il pannello dal riquadro <span class="kbd">&gt;_</span>, scegli un wizard, inserisci un IP/host (o un file) e parte la catena: <b>l'output di un passo diventa l'input del successivo</b> (le porte trovate da nmap finiscono in Nikto, e così via). Sei tu il regista: puoi <b>crearne di tuoi</b>, modificarli, eliminarli e <b>condividerli</b>.</p>
+    <p class="sec-d" data-lang="en">Open the panel from the <span class="kbd">&gt;_</span> box, pick a wizard, enter an IP/host (or a file) and the chain runs: <b>one step's output becomes the next step's input</b> (nmap's open ports flow into Nikto, and so on). You're in control: <b>build your own</b>, edit, delete and <b>share</b> them.</p>
+    <div class="shots" style="margin-bottom:22px">
+      <div class="shot" data-full="screens/25-wizard-pannello.png"><img loading="lazy" src="screens/25-wizard-pannello.png" alt="Pannello Wizard"><div class="cap" data-lang="it">Pannello · un wizard per profilo</div><div class="cap" data-lang="en">Panel · one wizard per profile</div></div>
+      <div class="shot" data-full="screens/26-wizard-lancio.png"><img loading="lazy" src="screens/26-wizard-lancio.png" alt="Lancio Wizard"><div class="cap" data-lang="it">Lancio · bersaglio → sequenza live</div><div class="cap" data-lang="en">Launch · target → live sequence</div></div>
+      <div class="shot" data-full="screens/27-wizard-editor.png"><img loading="lazy" src="screens/27-wizard-editor.png" alt="Editor Wizard"><div class="cap" data-lang="it">Editor · crea il tuo (programma + parametri)</div><div class="cap" data-lang="en">Editor · build your own (program + params)</div></div>
+    </div>
+    <table class="steps">
+      <tr><td>🎯 Pentest</td><td><span data-lang="it">discovery porte → enumerazione servizi <span class="kbd">-sC -sV</span> → script di vulnerabilità NSE</span><span data-lang="en">port discovery → service enumeration <span class="kbd">-sC -sV</span> → NSE vuln scripts</span></td></tr>
+      <tr><td>🕸️ Web</td><td><span data-lang="it">WhatWeb → WAF → porte web → Nikto → Nuclei (sev ≥ media)</span><span data-lang="en">WhatWeb → WAF → web ports → Nikto → Nuclei (sev ≥ medium)</span></td></tr>
+      <tr><td>🔎 OSINT</td><td>whois → DNS → subfinder → theHarvester → dnsrecon</td></tr>
+      <tr><td>🧪 Forensics</td><td><span data-lang="it">SHA-256 → tipo file → exiftool → binwalk → stringhe</span><span data-lang="en">SHA-256 → file type → exiftool → binwalk → strings</span></td></tr>
+      <tr><td>🧩 Reverse</td><td><span data-lang="it">tipo file → rabin2 (protezioni/import) → stringhe sezioni dati</span><span data-lang="en">file type → rabin2 (protections/imports) → data-section strings</span></td></tr>
+    </table>
+  </section>
+
+  <!-- ============ SCREENSHOT ============ -->
+  <section id="screenshot">
+    <div class="sec-h">Screenshot</div>
+    <h2 class="sec-t" data-lang="it">Dai un'occhiata</h2><h2 class="sec-t" data-lang="en">Take a look</h2>
+    <p class="sec-d" data-lang="it">Tocca un'immagine per ingrandirla.</p>
+    <p class="sec-d" data-lang="en">Tap an image to enlarge it.</p>
+    <div class="shots">
+      <div class="shot" data-full="screens/01-home.png"><img loading="lazy" src="screens/01-home.png" alt="Home"><div class="cap">Home</div></div>
+      <div class="shot" data-full="screens/04-profilo.png"><img loading="lazy" src="screens/04-profilo.png" alt="Profilo"><div class="cap" data-lang="it">Profilo</div><div class="cap" data-lang="en">Profile</div></div>
+      <div class="shot" data-full="screens/02-catalogo.png"><img loading="lazy" src="screens/02-catalogo.png" alt="Catalogo"><div class="cap" data-lang="it">Catalogo</div><div class="cap" data-lang="en">Catalog</div></div>
+      <div class="shot" data-full="screens/11-parametri.png"><img loading="lazy" src="screens/11-parametri.png" alt="Parametri"><div class="cap" data-lang="it">Parametri grafici</div><div class="cap" data-lang="en">Graphical params</div></div>
+      <div class="shot" data-full="screens/08-temi.png"><img loading="lazy" src="screens/08-temi.png" alt="Temi"><div class="cap" data-lang="it">Temi</div><div class="cap" data-lang="en">Themes</div></div>
+      <div class="shot" data-full="screens/10-manutenzione.png"><img loading="lazy" src="screens/10-manutenzione.png" alt="Manutenzione"><div class="cap" data-lang="it">Manutenzione</div><div class="cap" data-lang="en">Maintenance</div></div>
+      <div class="shot" data-full="screens/22-update-live.png"><img loading="lazy" src="screens/22-update-live.png" alt="Aggiornamento"><div class="cap" data-lang="it">Aggiornamento live</div><div class="cap" data-lang="en">Live update</div></div>
+      <div class="shot" data-full="screens/24-lingua.png"><img loading="lazy" src="screens/24-lingua.png" alt="Lingua"><div class="cap" data-lang="it">Lingua IT/EN</div><div class="cap" data-lang="en">Language IT/EN</div></div>
+      <div class="shot" data-full="screens/09-guida.png"><img loading="lazy" src="screens/09-guida.png" alt="Guida"><div class="cap" data-lang="it">Guida in-app</div><div class="cap" data-lang="en">In-app guide</div></div>
+    </div>
+  </section>
+
+  <!-- ============ COME FUNZIONA ============ -->
+  <section id="come-funziona">
+    <div class="sec-h" data-lang="it">Architettura</div><div class="sec-h" data-lang="en">How it works</div>
+    <h2 class="sec-t" data-lang="it">Dal tocco al comando, in locale</h2><h2 class="sec-t" data-lang="en">From tap to command, locally</h2>
+    <p class="sec-d" data-lang="it">Tutto gira sul telefono, in locale. Nessun server esterno: la PWA parla solo con <span class="kbd">127.0.0.1</span>.</p>
+    <p class="sec-d" data-lang="en">Everything runs on the phone, locally. No external server: the PWA talks only to <span class="kbd">127.0.0.1</span>.</p>
+    <div class="flow">
+      <div class="box"><b>📱 PWA</b> — <span data-lang="it">interfaccia nel browser (schede, profili, Wizard)</span><span data-lang="en">browser interface (cards, profiles, Wizards)</span></div>
+      <div class="ar">↕ <span style="font-size:12px" class="m">HTTP / WebSocket · 127.0.0.1:8000</span></div>
+      <div class="box"><b>🌐 server.py</b> — <span data-lang="it">FastAPI: valida, esegue, trasmette l'output live</span><span data-lang="en">FastAPI: validates, runs, streams output live</span></div>
+      <div class="ar">↕</div>
+      <div class="box"><b>⚙️ <span data-lang="it">Esecuzione</span><span data-lang="en">Execution</span></b> — <span data-lang="it">tool nativi <b>Termux</b> · <b>Debian/Kali</b> in proot · <b>ttyd</b> per i terminali · <b>Tor</b></span><span data-lang="en"><b>Termux</b> native tools · <b>Debian/Kali</b> under proot · <b>ttyd</b> for terminals · <b>Tor</b></span></div>
+    </div>
+  </section>
+
+  <!-- ============ INSTALLAZIONE ============ -->
+  <section id="installazione">
+    <div class="sec-h" data-lang="it">Installazione</div><div class="sec-h" data-lang="en">Install</div>
+    <h2 class="sec-t" data-lang="it">Due passi: Termux, poi NexusSEC</h2><h2 class="sec-t" data-lang="en">Two steps: Termux, then NexusSEC</h2>
+
+    <div class="warn">⚠️ <span data-lang="it"><b>Non installare Termux dal Play Store:</b> quella versione è vecchia e non aggiornabile. Usa F-Droid o l'APK ufficiale GitHub.</span><span data-lang="en"><b>Do not install Termux from the Play Store:</b> that build is old and cannot update. Use F-Droid or the official GitHub APK.</span></div>
+    <div class="warn">🔑 <span data-lang="it"><b>Regola d'oro:</b> installa Termux <b>e i suoi add-on</b> (Boot, API) <b>dalla stessa fonte</b> — le firme devono combaciare. Il modo più semplice: <b>tutto da F-Droid</b>.</span><span data-lang="en"><b>Golden rule:</b> install Termux <b>and its add-ons</b> (Boot, API) <b>from the same source</b> — signatures must match. Easiest: <b>everything from F-Droid</b>.</span></div>
+
+    <div class="grid g2">
+      <div class="card">
+        <h3 data-lang="it">1 · Scarica Termux</h3><h3 data-lang="en">1 · Get Termux</h3>
+        <a class="dl reco" href="https://f-droid.org/en/packages/com.termux/" rel="noopener">
+          <span class="e">🟢</span><span class="t">Termux · F-Droid<small data-lang="it">consigliato: si aggiorna da solo</small><small data-lang="en">recommended: auto-updates</small></span><span class="tagr" data-lang="it">CONSIGLIATO</span><span class="tagr" data-lang="en">BEST</span></a>
+        <a class="dl reco" href="https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_arm64-v8a.apk" rel="noopener">
+          <span class="e">📱</span><span class="t">arm64-v8a<small id="arm64Note" data-lang="it">la scelta giusta per la maggior parte dei telefoni</small><small data-lang="en">the right pick for most phones</small></span><span class="tagr" id="arm64Tag">?</span></a>
+        <div class="dlgrid" style="margin-top:8px">
+          <a class="dl" href="https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_universal.apk" rel="noopener"><span class="e">🌍</span><span class="t">universal<small>~118 MB</small></span></a>
+          <a class="dl" href="https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_armeabi-v7a.apk" rel="noopener"><span class="e">📟</span><span class="t">armeabi-v7a<small>32-bit</small></span></a>
+          <a class="dl" href="https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_x86_64.apk" rel="noopener"><span class="e">💻</span><span class="t">x86_64<small>emu/tablet</small></span></a>
+          <a class="dl" href="https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_x86.apk" rel="noopener"><span class="e">💻</span><span class="t">x86<small>emu 32-bit</small></span></a>
+        </div>
+        <p style="color:var(--muted);font-size:12px;margin:10px 0 0"><span data-lang="it">Sempre l'ultima: </span><span data-lang="en">Always latest: </span><a href="https://github.com/termux/termux-app/releases/latest" rel="noopener">release GitHub</a>.</p>
+      </div>
+
+      <div class="card">
+        <h3 data-lang="it">2 · Installa NexusSEC</h3><h3 data-lang="en">2 · Install NexusSEC</h3>
+        <p style="color:var(--muted);font-size:12.5px;margin:0 0 8px"><span data-lang="it"><b>Una riga sola.</b> Apri Termux e incolla (tieni premuto per incollare):</span><span data-lang="en"><b>One line.</b> Open Termux and paste (long-press to paste):</span></p>
+        <pre class="cmd" id="one">pkg install -y curl &amp;&amp; curl -fsSL https://raw.githubusercontent.com/RedRider21/Termux-NexusSEC-OS/master/nexussec-setup.sh | bash</pre>
+        <button class="copy" id="copyOne">📋 <span data-lang="it">Copia il comando</span><span data-lang="en">Copy the command</span></button>
+        <p style="color:var(--muted);font-size:12px;margin:10px 0 12px"><span data-lang="it">Poi apri </span><span data-lang="en">Then open </span><b>http://127.0.0.1:8000</b>. <span data-lang="it">Scarica ~700 MB–1 GB: meglio sotto Wi-Fi.</span><span data-lang="en">Downloads ~700 MB–1 GB: prefer Wi-Fi.</span></p>
+        <p style="color:var(--muted);font-size:12.5px;margin:0 0 8px"><span data-lang="it"><b>Oppure, passo per passo:</b></span><span data-lang="en"><b>Or, step by step:</b></span></p>
+        <pre class="cmd" id="cmd">pkg update -y &amp;&amp; pkg upgrade -y
 termux-setup-storage
 pkg install -y git python
 git clone https://github.com/RedRider21/Termux-NexusSEC-OS.git
 cd Termux-NexusSEC-OS
 bash install.sh
 python server.py</pre>
-    <button class="copy" id="copyBtn">📋 Copia i comandi</button>
-  </div>
+        <button class="copy" id="copyBtn">📋 <span data-lang="it">Copia i comandi</span><span data-lang="en">Copy the commands</span></button>
+      </div>
+    </div>
 
-  <h2><span class="n">3</span> Comodità (opzionale)</h2>
-  <div class="card">
-    <p><b>Avvio automatico all'accensione.</b> Installa <b>Termux:Boot</b>: poi
-      dall'app NexusSEC (menu → Manutenzione → <b>Abilita autostart</b>) il server
-      partirà da solo. Utile anche <b>Termux:API</b>.</p>
-    <a class="btn" href="https://f-droid.org/en/packages/com.termux.boot/" rel="noopener">
-      <span class="e">🚀</span><span class="t">Termux:Boot<small>avvia il server all'accensione (F-Droid)</small></span></a>
-    <a class="btn" href="https://f-droid.org/en/packages/com.termux.api/" rel="noopener">
-      <span class="e">🔌</span><span class="t">Termux:API<small>notifiche, appunti, apri-URL… (F-Droid)</small></span></a>
-    <p class="muted" style="margin-top:10px">⚠️ Questi add-on sono su <b>F-Droid</b>: usali
-      solo se hai installato <b>anche Termux da F-Droid</b>. Se hai preso Termux dall'APK
-      GitHub, scarica gli add-on dalle <b>release GitHub</b>
-      (<a href="https://github.com/termux/termux-boot/releases/latest" style="color:var(--fg-dim)" rel="noopener">termux-boot</a>,
-      <a href="https://github.com/termux/termux-api/releases/latest" style="color:var(--fg-dim)" rel="noopener">termux-api</a>)
-      così le firme combaciano.</p>
-    <p class="muted" style="margin-top:10px">L'interfaccia si apre nel <b>browser</b> del
-      telefono. Puoi anche <b>aggiungerla alla schermata Home</b> per usarla a schermo
-      intero come un'app.</p>
-  </div>
+    <div class="card" style="margin-top:14px">
+      <h3 data-lang="it">Comodità (opzionale)</h3><h3 data-lang="en">Nice to have (optional)</h3>
+      <p style="color:var(--muted);font-size:12.5px;margin:0 0 8px"><span data-lang="it"><b>Avvio all'accensione</b> con Termux:Boot (poi menu → Manutenzione → Abilita autostart). Utile anche Termux:API. Ricorda: <b>stessa fonte</b> di Termux.</span><span data-lang="en"><b>Start on boot</b> with Termux:Boot (then menu → Maintenance → Enable autostart). Termux:API is handy too. Remember: <b>same source</b> as Termux.</span></p>
+      <div class="dlgrid">
+        <a class="dl" href="https://f-droid.org/en/packages/com.termux.boot/" rel="noopener"><span class="e">🚀</span><span class="t">Termux:Boot<small>F-Droid</small></span></a>
+        <a class="dl" href="https://f-droid.org/en/packages/com.termux.api/" rel="noopener"><span class="e">🔌</span><span class="t">Termux:API<small>F-Droid</small></span></a>
+      </div>
+    </div>
+  </section>
 
-  <h2><span class="n">4</span> Aggiornare e lingua</h2>
-  <div class="card">
-    <p><b>Aggiornamenti dall'app, senza comandi.</b> Quando esce una versione nuova,
-      appare un <b>pallino arancione ●</b> sul pulsante <b>☰ NexusSEC</b>: apri
-      <b>☰ → Manutenzione → ⬇ Aggiorna app</b>, guarda il flusso live con il
-      <b>resoconto</b>, poi parte da sola <b>⏻ Riavvia server</b> e la pagina si ricarica.</p>
-    <p><b>🌐 Italiano / English.</b> L'app è tutta localizzata (interfaccia, tool,
-      messaggi e procedure). Si cambia da <b>☰ → Sistema → 🌐</b> con una combobox.</p>
-    <a class="btn" href="https://github.com/RedRider21/Termux-NexusSEC-OS/blob/master/MANUALE.md#aggiornare-lapp-fase-completa" rel="noopener">
-      <span class="e">📖</span><span class="t">Fase di aggiornamento illustrata<small>i 5 passi con gli screenshot, nel manuale</small></span></a>
-  </div>
+  <!-- ============ GUIDA RAPIDA ============ -->
+  <section id="guida">
+    <div class="sec-h" data-lang="it">Guida rapida</div><div class="sec-h" data-lang="en">Quick start</div>
+    <h2 class="sec-t" data-lang="it">Dai primi tocchi al primo scan</h2><h2 class="sec-t" data-lang="en">From first taps to first scan</h2>
+    <div class="grid g2">
+      <div class="card"><p style="color:var(--muted);font-size:13px;margin:0">
+        <span data-lang="it"><b>1.</b> Apri <b>http://127.0.0.1:8000</b> (aggiungila alla Home per usarla a schermo intero).<br><b>2.</b> Scegli un <b>profilo</b> e premi <b>Installa</b>, oppure installa i singoli tool dal <b>catalogo 🧰</b>.<br><b>3.</b> Tocca una scheda: compila i <b>parametri grafici</b> e premi <b>» run</b> (output live).<br><b>4.</b> Per automatizzare, apri i <b>Wizard</b> dal riquadro <span class="kbd">&gt;_</span>.</span>
+        <span data-lang="en"><b>1.</b> Open <b>http://127.0.0.1:8000</b> (add it to Home for full screen).<br><b>2.</b> Pick a <b>profile</b> and tap <b>Install</b>, or install single tools from the <b>catalog 🧰</b>.<br><b>3.</b> Tap a card: fill the <b>graphical parameters</b> and hit <b>» run</b> (live output).<br><b>4.</b> To automate, open the <b>Wizards</b> from the <span class="kbd">&gt;_</span> box.</span>
+      </p></div>
+      <div class="card"><p style="color:var(--muted);font-size:13px;margin:0 0 12px">
+        <span data-lang="it">Il <b>manuale completo</b>, con tutti gli screenshot passo-passo (installazione, aggiornamenti, autostart, lingua), è su GitHub.</span>
+        <span data-lang="en">The <b>full manual</b>, with all step-by-step screenshots (install, updates, autostart, language), is on GitHub.</span></p>
+        <a class="btn pri" href="https://github.com/RedRider21/Termux-NexusSEC-OS/blob/master/MANUALE.md" rel="noopener">📖 <span data-lang="it">Apri il manuale completo</span><span data-lang="en">Open the full manual</span></a>
+      </div>
+    </div>
+  </section>
 
-  <footer>
-    Progetto: <a href="https://github.com/RedRider21/Termux-NexusSEC-OS" rel="noopener">github.com/RedRider21/Termux-NexusSEC-OS</a><br>
-    Solo per test autorizzati / apprendimento. Termux © termux.dev (link ufficiali).
-  </footer>
-</div>
+  <!-- ============ FAQ ============ -->
+  <section id="faq">
+    <div class="sec-h">FAQ</div>
+    <h2 class="sec-t" data-lang="it">Domande frequenti</h2><h2 class="sec-t" data-lang="en">Frequently asked</h2>
+    <details class="faq"><summary data-lang="it">Serve il root?</summary><summary data-lang="en">Do I need root?</summary>
+      <div class="a" data-lang="it">No. Tutto gira su un telefono <b>stock</b>. I pochi tool che richiedono root (es. raw socket) sono segnalati e disattivati.</div>
+      <div class="a" data-lang="en">No. Everything runs on a <b>stock</b> phone. The few tools that need root (e.g. raw sockets) are flagged and disabled.</div></details>
+    <details class="faq"><summary data-lang="it">È legale?</summary><summary data-lang="en">Is it legal?</summary>
+      <div class="a" data-lang="it">Gli strumenti sono di sicurezza: usali <b>solo su sistemi tuoi o con autorizzazione scritta</b>. L'uso non autorizzato è illegale e a tuo rischio.</div>
+      <div class="a" data-lang="en">These are security tools: use them <b>only on systems you own or are authorized to test</b>. Unauthorized use is illegal and at your own risk.</div></details>
+    <details class="faq"><summary data-lang="it">Quanto spazio occupa?</summary><summary data-lang="en">How much space?</summary>
+      <div class="a" data-lang="it">Il primo setup scarica ~700 MB–1 GB (tool + Debian minimale). Poi installi solo ciò che ti serve.</div>
+      <div class="a" data-lang="en">First setup downloads ~700 MB–1 GB (tools + minimal Debian). After that you install only what you need.</div></details>
+    <details class="faq"><summary data-lang="it">Come si aggiorna?</summary><summary data-lang="en">How do I update?</summary>
+      <div class="a" data-lang="it">Dall'app: quando c'è un aggiornamento appare un <b>pallino arancione</b>; premi <b>☰ → Manutenzione → ⬇ Aggiorna app</b> e il server si riavvia da solo.</div>
+      <div class="a" data-lang="en">From the app: when an update is available an <b>orange dot</b> appears; tap <b>☰ → Maintenance → ⬇ Update app</b> and the server restarts itself.</div></details>
+    <details class="faq"><summary data-lang="it">Funziona offline?</summary><summary data-lang="en">Does it work offline?</summary>
+      <div class="a" data-lang="it">L'interfaccia sì (è locale). Servono Internet per <b>installare</b> i tool e per gli scan verso l'esterno.</div>
+      <div class="a" data-lang="en">The interface yes (it's local). Internet is needed to <b>install</b> tools and for scans against external targets.</div></details>
+  </section>
+
+  <!-- ============ SICUREZZA & LICENZA ============ -->
+  <section id="licenza">
+    <div class="sec-h" data-lang="it">Sicurezza & Licenza</div><div class="sec-h" data-lang="en">Security & License</div>
+    <div class="grid g2">
+      <div class="card"><div class="ic">⚠️</div><h3 data-lang="it">Uso responsabile</h3><h3 data-lang="en">Responsible use</h3>
+        <p data-lang="it">NexusSEC è per <b>test autorizzati</b>, apprendimento e ricerca. Nessuna garanzia: usalo a tuo rischio e nel rispetto delle leggi.</p>
+        <p data-lang="en">NexusSEC is for <b>authorized testing</b>, learning and research. No warranty: use at your own risk and within the law.</p></div>
+      <div class="card"><div class="ic">⚖️</div><h3 data-lang="it">Licenza AGPL-3.0</h3><h3 data-lang="en">AGPL-3.0 license</h3>
+        <p data-lang="it">Software libero sotto <b>GNU AGPL-3.0</b>, © 2026 RedRider21. Per sponsor/uso commerciale è prevista una licenza dedicata.</p>
+        <p data-lang="en">Free software under <b>GNU AGPL-3.0</b>, © 2026 RedRider21. A dedicated license is available for sponsors/commercial use.</p>
+        <p style="margin-top:8px"><a href="https://github.com/RedRider21/Termux-NexusSEC-OS/blob/master/LICENSE" rel="noopener">LICENSE</a> · <a href="https://github.com/RedRider21/Termux-NexusSEC-OS/blob/master/COPYRIGHT" rel="noopener">COPYRIGHT</a></p></div>
+    </div>
+  </section>
+
+</div><!-- /wrap -->
+
+<footer>
+  <div class="wrap">
+    <p><span class="brand"><span class="p">&gt;_</span> <b>NexusSEC</b></span></p>
+    <p><a href="https://github.com/RedRider21/Termux-NexusSEC-OS" rel="noopener">github.com/RedRider21/Termux-NexusSEC-OS</a></p>
+    <p><span data-lang="it">Distro Linux: </span><span data-lang="en">Linux distro: </span><a href="https://redrider21.github.io/NexusSec-OS/" rel="noopener">NexusSEC OS</a> · <a href="https://github.com/RedRider21/NexusSec-OS" rel="noopener">GitHub</a></p>
+    <p data-lang="it">Solo per test autorizzati / apprendimento · © 2026 RedRider21 · AGPL-3.0<br>Termux © termux.dev (link ufficiali).</p>
+    <p data-lang="en">Authorized testing / learning only · © 2026 RedRider21 · AGPL-3.0<br>Termux © termux.dev (official links).</p>
+  </div>
+</footer>
+
+<div id="lb"><img id="lbImg" src="" alt=""></div>
 <div id="toast"></div>
+
 <script>
-  var t=document.getElementById("toast");
+  var $=function(s){return document.querySelector(s)};
+  var toast=$("#toast");
+  function show(m){toast.textContent=m; toast.classList.add("show"); setTimeout(function(){toast.classList.remove("show")},1700)}
+
+  // --- Lingua ---
+  function curLang(){ return document.documentElement.getAttribute("data-sitelang")||"it"; }
+  function setLang(l){
+    document.documentElement.setAttribute("data-sitelang", l);
+    document.documentElement.lang=l;
+    try{ localStorage.setItem("nx_site_lang", l); }catch(e){}
+    $("#langLbl").textContent = (l==="it") ? "EN" : "IT";  // mostra la lingua verso cui switchare
+  }
+  setLang(curLang());
+  $("#langBtn").addEventListener("click", function(){ setLang(curLang()==="it"?"en":"it"); });
+
+  // --- Tema ---
+  $("#themeBtn").addEventListener("click", function(){
+    var t=document.documentElement.getAttribute("data-theme")==="light"?"dark":"light";
+    document.documentElement.setAttribute("data-theme", t);
+    try{ localStorage.setItem("nx_site_theme", t); }catch(e){}
+  });
+
+  // --- Copia comandi ---
   function copyFrom(id){
     var el=document.getElementById(id); if(!el) return;
     var txt=el.innerText;
     (navigator.clipboard&&navigator.clipboard.writeText(txt)||Promise.reject())
-      .then(function(){show("Copiato")},function(){
+      .then(function(){show(curLang()==="it"?"Copiato":"Copied")},function(){
         var r=document.createRange(); r.selectNode(el);
         var s=getSelection(); s.removeAllRanges(); s.addRange(r);
-        try{document.execCommand("copy"); show("Copiato")}catch(e){show("Copia manuale: selezione pronta")}
+        try{document.execCommand("copy"); show(curLang()==="it"?"Copiato":"Copied")}catch(e){show(curLang()==="it"?"Copia manuale":"Select & copy")}
       });
   }
-  var cO=document.getElementById("copyOne"); if(cO) cO.addEventListener("click",function(){copyFrom("one")});
-  var cB=document.getElementById("copyBtn"); if(cB) cB.addEventListener("click",function(){copyFrom("cmd")});
-  function show(m){t.textContent=m; t.classList.add("show"); setTimeout(function(){t.classList.remove("show")},1800)}
+  var cO=$("#copyOne"); if(cO) cO.addEventListener("click",function(){copyFrom("one")});
+  var cB=$("#copyBtn"); if(cB) cB.addEventListener("click",function(){copyFrom("cmd")});
 
-  // Rileva l'architettura del telefono (quando il browser lo permette) e conferma
-  // quale APK scaricare, evidenziando la scelta giusta.
+  // --- Lightbox ---
+  var lb=$("#lb"), lbImg=$("#lbImg");
+  document.querySelectorAll(".shot").forEach(function(s){
+    s.addEventListener("click", function(){ lbImg.src=s.getAttribute("data-full"); lb.classList.add("show"); });
+  });
+  lb.addEventListener("click", function(){ lb.classList.remove("show"); lbImg.src=""; });
+
+  // --- Rileva architettura (conferma quale APK) ---
   (function detectArch(){
-    var tag=document.getElementById("arm64Tag"), note=document.getElementById("arm64Note");
+    var tag=$("#arm64Tag"), note=$("#arm64Note");
     function apply(arch,bits){
-      if(!arch) return;
+      if(!arch||!tag) return;
       var a=(arch+"").toLowerCase(), is64=(bits==="64"||bits===64);
-      if(a.indexOf("arm")>=0){
-        if(is64){ tag.textContent="✓ RILEVATO"; note.textContent="rilevato sul tuo telefono: scarica questo"; }
-        else{ note.textContent="il tuo telefono sembra ARM 32-bit: usa armeabi-v7a qui sotto"; }
-      } else if(a.indexOf("x86")>=0){
-        note.textContent="il tuo telefono/emulatore sembra Intel/x86: usa "+(is64?"x86_64":"x86")+" qui sotto";
-      }
+      if(a.indexOf("arm")>=0 && is64){ tag.textContent="✓"; }
     }
     try{
       if(navigator.userAgentData&&navigator.userAgentData.getHighEntropyValues){
@@ -215,9 +527,42 @@ python server.py</pre>
       } else {
         var ua=(navigator.userAgent||"").toLowerCase();
         if(ua.indexOf("aarch64")>=0||ua.indexOf("arm64")>=0) apply("arm","64");
-        else if(ua.indexOf("x86_64")>=0) apply("x86","64");
       }
     }catch(e){}
+  })();
+
+  // --- Typewriter nell'hero (rispetta prefers-reduced-motion) ---
+  (function(){
+    var pre=$("#termPre"); if(!pre) return;
+    var linesIT=[
+      {p:"nexus:~$ ",c:"nmap -sV 10.0.0.5",d:"g"},
+      {o:"  PORT    STATE  SERVICE"},
+      {o:"  22/tcp  open   ssh"},
+      {o:"  80/tcp  open   http"},
+      {o:"  443/tcp open   https",a:1},
+      {p:"nexus:~$ ",c:"wizard web → target",d:"g"},
+      {o:"  [1/5] whatweb  ✓"},
+      {o:"  [2/5] wafw00f  ✓"},
+      {o:"  [3/5] porte web → 80,443"},
+      {o:"  [4/5] nikto -p 80,443 …"}
+    ];
+    var reduce=false; try{ reduce=matchMedia("(prefers-reduced-motion:reduce)").matches; }catch(e){}
+    function render(lines){
+      pre.innerHTML="";
+      lines.forEach(function(L){
+        if(L.p!==undefined){ var s='<span class="m">'+L.p+'</span><span class="g">'+L.c+'</span>\n'; pre.insertAdjacentHTML("beforeend", s); }
+        else { pre.insertAdjacentHTML("beforeend", '<span class="'+(L.a?"a":"")+'">'+L.o+'</span>\n'); }
+      });
+    }
+    if(reduce){ render(linesIT); return; }
+    var shown=[], i=0;
+    function step(){
+      if(i>=linesIT.length){ setTimeout(function(){ shown=[]; i=0; step(); }, 3500); return; }
+      shown.push(linesIT[i]); i++; render(shown);
+      pre.insertAdjacentHTML("beforeend", '<span class="cur"></span>');
+      setTimeout(step, 620);
+    }
+    step();
   })();
 </script>
 </body>
